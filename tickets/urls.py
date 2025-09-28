@@ -8,6 +8,7 @@ router.register(r'tickets', TicketViewSet)
 router.register(r'comments', CommentViewSet)
 router.register(r'sections', SectionViewSet)
 router.register(r'facilities', FacilityViewSet)
+router.register(r'users', UserViewSet)
 
 urlpatterns = [
     path('api/', include(router.urls)),

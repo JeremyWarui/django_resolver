@@ -5,11 +5,6 @@ from django.contrib.auth import get_user_model
 
 # User = get_user_model()
 
-class TicketSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Ticket
-        fields = '__all__'
-
 class FacilitySerializer(serializers.ModelSerializer):
     class Meta:
         model = Facility
@@ -55,11 +50,40 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 class CommentSerializer(serializers.ModelSerializer):
+    author = serializers.StringRelatedField(read_only=True)
     class Meta:
         model = Comment
         fields = ['id', 'ticket', 'text', 'author']
 
 class FeedbackSerializer(serializers.ModelSerializer):
+    rated_by = serializers.StringRelatedField(read_only=True)
     class Meta:
         model = Feedback
         fields = '__all__'
+
+
+class TicketSerializer(serializers.ModelSerializer):
+    section = serializers.StringRelatedField(read_only=True)
+    facility = serializers.StringRelatedField(read_only=True)
+    raised_by = serializers.StringRelatedField(read_only=True)
+    assigned_to = serializers.StringRelatedField(read_only=True)
+    comments = CommentSerializer(many=True, read_only=True)
+    feedback = FeedbackSerializer(many=True, read_only=True, source='feedback_set')
+
+    class Meta:
+        model = Ticket
+        fields = [
+            'id',
+            'ticket_no',
+            'title',
+            'description',
+            'status',
+            'section',
+            'facility',
+            'raised_by',
+            'assigned_to',
+            'created_at',
+            'updated_at',
+            'comments',
+            'feedback',
+        ]

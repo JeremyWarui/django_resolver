@@ -1,7 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.conf import settings
-
+from django.utils import timezone
+from datetime import timedelta
 
 # Create your models here.
 
@@ -103,6 +104,25 @@ class Ticket(models.Model):
                 f"{self.title}\n"
                 f"{self.status}\n")
 
+    @classmethod
+    def total_tickets(cls):
+        """ return number of tickets """
+        return cls.objects.count()
+
+    def is_overdue(self):
+        """check time lapsed beyond 24 hours"""
+        if self.status == 'open':
+            elapsed_time = timezone.now() - self.created_at
+            return elapsed_time > timedelta(hours=24)
+        return False
+
+    def time_since_creation(self):
+        """return time since creation"""
+        return timezone.now() - self.created_at
+
+    # def comments_count(self):
+    #     """return number of comments"""
+    #     return self.comment_set.count()
 
 
 # COMMENTS MODEL
@@ -123,6 +143,10 @@ class Comment(models.Model):
     def __str__(self):
         return (f"Comment by: {self.author.username}\n"
                 f"on ticket: {self.ticket.title}\n")
+
+    @classmethod
+    def total_comments(cls):
+        return cls.objects.count()
 
 
 # FEEDBACK MODEL

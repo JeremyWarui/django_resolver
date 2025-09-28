@@ -20,7 +20,7 @@ class SectionSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
-        model = User
+        model = CustomUser
         fields = '__all__'
 
 class CommentSerializer(serializers.ModelSerializer):

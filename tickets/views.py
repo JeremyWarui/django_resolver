@@ -24,3 +24,7 @@ class CommentViewSet(viewsets.ModelViewSet):
 class FeedbackViewSet(viewsets.ModelViewSet):
     queryset = Feedback.objects.all().order_by('-created_at')
     serializer_class = FeedbackSerializer
+
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = CustomUser.objects.all().order_by('username')
+    serializer_class = UserSerializer

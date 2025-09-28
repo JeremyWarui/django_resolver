@@ -57,7 +57,7 @@ class UserSerializer(serializers.ModelSerializer):
 class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
-        fields = ['id', 'ticket__ticket_no', 'text', 'author']
+        fields = ['id', 'ticket', 'text', 'author']
 
 class FeedbackSerializer(serializers.ModelSerializer):
     class Meta:

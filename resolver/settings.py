@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 
+from tickets.apps import TicketsConfig
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -37,7 +39,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    # add tickets app
+    'tickets.apps.TicketsConfig',
 ]
+
+AUTH_USER_MODEL = "tickets.CustomUser"
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

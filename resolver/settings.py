@@ -41,6 +41,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     # add tickets app
     'tickets.apps.TicketsConfig',
+    # add django rest framework
+    'rest_framework',
 ]
 
 AUTH_USER_MODEL = "tickets.CustomUser"

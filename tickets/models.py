@@ -3,6 +3,7 @@ from django.contrib.auth.models import AbstractUser
 from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 # Create your models here.
 
@@ -109,6 +110,11 @@ class Ticket(models.Model):
     def total_tickets(cls):
         """ return number of tickets """
         return cls.objects.count()
+    
+    def set_to_pending(self):
+        """set ticket status to pending"""
+        self.status = 'pending'
+        self.save()
 
     def is_overdue(self):
         """check time lapsed beyond 24 hours"""
@@ -123,7 +129,7 @@ class Ticket(models.Model):
 
     def comments_count(self):
         """return number of comments"""
-        return self.comment_set.count()
+        return self.comments.count()
 
 
 # COMMENTS MODEL
@@ -164,8 +170,8 @@ class Feedback(models.Model):
     )
     rating = models.FloatField(
         validators=[
-            models.Min(1.0),
-            models.Max(5.0)
+            MinValueValidator(1.0),
+            MaxValueValidator(5.0)
         ]
     )
     comment = models.TextField(blank=True, null=True)

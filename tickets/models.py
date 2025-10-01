@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, transaction
 from django.contrib.auth.models import AbstractUser
 from django.conf import settings
 from django.utils import timezone
@@ -32,7 +32,7 @@ class Section(models.Model):
 
 # FACILITY MODEL
 class Facility(models.Model):
-    """Facilities e.g. Building, ICT Equipment, Kitchen Equipment, Residential, e.t.c """
+    """Facilities e.g. Building, ICT Equipment, Kitchen Equipment, Residential, e.t.c"""
     FACILITY_CHOICES = [
         ('building', 'Building'),
         ('ict', 'ICT Equipment'),
@@ -94,9 +94,10 @@ class Ticket(models.Model):
     def save(self, *args, **kwargs):
         """auto generate the ticket_no if not set"""
         if not self.ticket_no:
-            last_ticket = Ticket.objects.all().order_by('-id').first()
-            next_id = 1 if not last_ticket else last_ticket.id + 1
-            self.ticket_no = f"TKT-{next_id:06d}"
+            with transaction.atomic():
+                last_ticket = Ticket.objects.all().order_by('-id').first()
+                next_id = 1 if not last_ticket else last_ticket.id + 1
+                self.ticket_no = f"TKT-{next_id:06d}"
         super(Ticket, self).save(*args, **kwargs)
 
     def __str__(self):
@@ -120,9 +121,9 @@ class Ticket(models.Model):
         """return time since creation"""
         return timezone.now() - self.created_at
 
-    # def comments_count(self):
-    #     """return number of comments"""
-    #     return self.comment_set.count()
+    def comments_count(self):
+        """return number of comments"""
+        return self.comment_set.count()
 
 
 # COMMENTS MODEL
@@ -161,7 +162,12 @@ class Feedback(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE
     )
-    rating = models.FloatField()
+    rating = models.FloatField(
+        validators=[
+            models.Min(1.0),
+            models.Max(5.0)
+        ]
+    )
     comment = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

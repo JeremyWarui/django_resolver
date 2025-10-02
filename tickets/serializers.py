@@ -68,7 +68,7 @@ class TicketSerializer(serializers.ModelSerializer):
     raised_by = serializers.StringRelatedField(read_only=True)
     assigned_to = serializers.StringRelatedField(read_only=True)
     comments = CommentSerializer(many=True, read_only=True)
-    feedback = FeedbackSerializer(many=True, read_only=True, source='feedback')
+    feedback = FeedbackSerializer(many=True, read_only=True)
 
     class Meta:
         model = Ticket

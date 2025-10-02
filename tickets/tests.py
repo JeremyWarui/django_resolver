@@ -214,7 +214,7 @@ class SerializerTests(TestCase):
 
         self.assertEqual(data['text'], 'This is a comment.')
         self.assertEqual(data['author'], self.user.username)
-        self.assertEqual(data['ticket'], self.ticket.id)
+        self.assertEqual(data['ticket'], str(self.ticket))
     
 
     def test_custom_user_serializer(self):
@@ -247,9 +247,9 @@ class SerializerTests(TestCase):
         data = {
             'title': 'New Ticket',
             'description': 'This is a new ticket.',
-            'section': self.section.id,
-            'facility': self.facility.id,
-            'raised_by': self.user.id,
+            'section_id': self.section.id,
+            'facility_id': self.facility.id,
+            'raised_by_id': self.user.id,
             'status': 'open'
         }
         serializer = TicketSerializer(data=data)
@@ -260,3 +260,18 @@ class SerializerTests(TestCase):
         self.assertEqual(ticket.raised_by, self.user)
         self.assertEqual(ticket.status, 'open')
         self.assertTrue(ticket.assigned_to is None)
+
+    def test_comment_serializer_create(self):
+        """ test comment serializer create method"""
+        data = {
+            'ticket_id': self.ticket.id,
+            'text': 'This is another comment.',
+            'author_id': self.technician.id
+        }
+        serializer = CommentSerializer(data=data)
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+
+        comment = serializer.save()
+        self.assertEqual(comment.text, 'This is another comment.')
+        self.assertEqual(comment.author, self.technician)
+        self.assertEqual(comment.ticket, self.ticket)

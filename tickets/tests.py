@@ -241,3 +241,22 @@ class SerializerTests(TestCase):
         user = serializer.save()
         self.assertEqual(user.username, 'john.doe')
         self.assertEqual(user.email, 'johndoe@test.com')
+
+    def test_ticket_serializer_create(self):
+        """ test ticket serializer create method"""
+        data = {
+            'title': 'New Ticket',
+            'description': 'This is a new ticket.',
+            'section': self.section.id,
+            'facility': self.facility.id,
+            'raised_by': self.user.id,
+            'status': 'open'
+        }
+        serializer = TicketSerializer(data=data)
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+
+        ticket = serializer.save()
+        self.assertEqual(ticket.title, 'New Ticket')
+        self.assertEqual(ticket.raised_by, self.user)
+        self.assertEqual(ticket.status, 'open')
+        self.assertTrue(ticket.assigned_to is None)

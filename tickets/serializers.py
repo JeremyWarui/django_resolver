@@ -5,15 +5,18 @@ from django.contrib.auth import get_user_model
 
 # User = get_user_model()
 
+
 class FacilitySerializer(serializers.ModelSerializer):
     class Meta:
         model = Facility
         fields = ['id', 'name', 'type', 'status', 'location']
 
+
 class SectionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Section
         fields = "__all__"
+
 
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
@@ -21,7 +24,8 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'first_name', 'last_name', 'email', 'password', 'role']
+        fields = ['id', 'username', 'first_name',
+                  'last_name', 'email', 'password', 'role']
 
     def create(self, validated_data):
         first_name = validated_data.get('first_name')
@@ -49,26 +53,61 @@ class UserSerializer(serializers.ModelSerializer):
         )
         return user
 
+
 class CommentSerializer(serializers.ModelSerializer):
+    # Write-only field for author ID
+    author_id = serializers.PrimaryKeyRelatedField(
+        queryset=CustomUser.objects.all(), source='author', write_only=True)
+    # write ony field for ticket ID
+    ticket_id = serializers.PrimaryKeyRelatedField(
+        queryset=Ticket.objects.all(), source='ticket', write_only=True)
+
+    # read-only field for author username
     author = serializers.StringRelatedField(read_only=True)
+    ticket = serializers.StringRelatedField(read_only=True)
+
     class Meta:
         model = Comment
-        fields = ['id', 'ticket', 'text', 'author']
+        fields = ['id', 'ticket_id', 'ticket', 'text', 'author_id', 'author']
+
 
 class FeedbackSerializer(serializers.ModelSerializer):
+    # Write-only field for rated_by ID
+    rated_by_id = serializers.PrimaryKeyRelatedField(
+        queryset=CustomUser.objects.all(), source='rated_by', write_only=True)
+    # write only field for ticket ID
+    ticket_id = serializers.PrimaryKeyRelatedField(
+        queryset=Ticket.objects.all(), source='ticket', write_only=True)
+
     rated_by = serializers.StringRelatedField(read_only=True)
+
     class Meta:
         model = Feedback
-        fields = '__all__'
+        fields = ['id', 'ticket_id', 'ticket',
+                  'rated_by_id', 'rated_by', 'rating', 'comment']
 
 
 class TicketSerializer(serializers.ModelSerializer):
+    # write only field for IDS
+    raised_by_id = serializers.PrimaryKeyRelatedField(
+        queryset=CustomUser.objects.all(), source='raised_by', write_only=True)
+    
+    assigned_to_id = serializers.PrimaryKeyRelatedField(
+        queryset=CustomUser.objects.all(), source='assigned_to', write_only=True, allow_null=True, required=False)
+    
+    section_id = serializers.PrimaryKeyRelatedField(
+        queryset=Section.objects.all(), source='section', write_only=True)  
+    
+    facility_id = serializers.PrimaryKeyRelatedField(
+        queryset=Facility.objects.all(), source='facility', write_only=True)
+    
+    # read only fields for related names
     section = serializers.StringRelatedField(read_only=True)
     facility = serializers.StringRelatedField(read_only=True)
     raised_by = serializers.StringRelatedField(read_only=True)
     assigned_to = serializers.StringRelatedField(read_only=True)
     comments = CommentSerializer(many=True, read_only=True)
-    feedback = FeedbackSerializer(many=True, read_only=True, source='feedback')
+    feedback = FeedbackSerializer(many=True, read_only=True)
 
     class Meta:
         model = Ticket
@@ -78,10 +117,10 @@ class TicketSerializer(serializers.ModelSerializer):
             'title',
             'description',
             'status',
-            'section',
-            'facility',
-            'raised_by',
-            'assigned_to',
+            'section_id', 'section',
+            'facility_id', 'facility',
+            'raised_by_id', 'raised_by',
+            'assigned_to_id', 'assigned_to',
             'created_at',
             'updated_at',
             'comments',

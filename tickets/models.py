@@ -32,7 +32,7 @@ class Section(models.Model):
     description = models.TextField(max_length=200, blank=True)
 
     def __str__(self):
-        return f"{self.name}\n"
+        return f"{self.name}"
 
 # FACILITY MODEL
 
@@ -57,7 +57,7 @@ class Facility(models.Model):
     location = models.CharField(max_length=100, blank=True, null=True)
 
     def __str__(self):
-        return f"{self.name}\n"
+        return f"{self.name}"
 
 
 # TICKETS MODEL
@@ -104,12 +104,28 @@ class Ticket(models.Model):
                 last_ticket = Ticket.objects.all().order_by('-id').first()
                 next_id = 1 if not last_ticket else last_ticket.id + 1
                 self.ticket_no = f"TKT-{next_id:06d}"
+
+        if self.pk:
+            # existing ticket to update
+            prev_ticket = Ticket.objects.get(pk=self.pk)
+            # if previously unassigned and is now assigned,
+            # update status to 'assigned'
+            if prev_ticket.assigned_to is None and self.assigned_to:
+                if self.status == 'open':
+                    self.status = 'assigned'
+                    self.updated_at = timezone.now()
+
+            # if previously assigned and is now unassigned,
+            # update status to 'open' if not resolved or closed
+            elif prev_ticket.assigned_to and self.assigned_to is None:
+                if self.status not in ['resolved', 'closed']:
+                    self.status = 'open'
+                    self.updated_at = timezone.now()
+
         super(Ticket, self).save(*args, **kwargs)
 
     def __str__(self):
-        return (f"{self.ticket_no}: "
-                f"{self.title}, Status: "
-                f"{self.status}")
+        return (f"{self.ticket_no}: {self.title}")
 
     @classmethod
     def total_tickets(cls):

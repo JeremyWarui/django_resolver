@@ -92,8 +92,12 @@ class TicketSerializer(serializers.ModelSerializer):
     raised_by_id = serializers.PrimaryKeyRelatedField(
         queryset=CustomUser.objects.all(), source='raised_by', write_only=True)
 
-    assigned_to_id = serializers.PrimaryKeyRelatedField(
-        queryset=CustomUser.objects.all(), source='assigned_to', write_only=True, allow_null=True, required=False)
+    assigned_to_id = serializers.SlugRelatedField(
+        slug_field='username',
+        queryset=CustomUser.objects.all(),
+        source='assigned_to',
+        allow_null=True,
+        required=False)
 
     section_id = serializers.PrimaryKeyRelatedField(
         queryset=Section.objects.all(), source='section', write_only=True)

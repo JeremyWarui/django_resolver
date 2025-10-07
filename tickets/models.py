@@ -8,6 +8,8 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 # Create your models here.
 
 # Custom User Model
+
+
 class CustomUser(AbstractUser):
     """Extends Django's AbstractUser class to include additional fields"""
     ROLE_CHOICES = [
@@ -16,7 +18,8 @@ class CustomUser(AbstractUser):
         ('technician', 'Technician'),
         ('manager', 'Manager'),
     ]
-    role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='user')
+    role = models.CharField(
+        max_length=10, choices=ROLE_CHOICES, default='user')
 
     def __str__(self):
         return f"{self.username}"
@@ -32,6 +35,8 @@ class Section(models.Model):
         return f"{self.name}\n"
 
 # FACILITY MODEL
+
+
 class Facility(models.Model):
     """Facilities e.g. Building, ICT Equipment, Kitchen Equipment, Residential, e.t.c"""
     FACILITY_CHOICES = [
@@ -102,15 +107,15 @@ class Ticket(models.Model):
         super(Ticket, self).save(*args, **kwargs)
 
     def __str__(self):
-        return (f"{self.ticket_no}\n"
-                f"{self.title}\n"
-                f"{self.status}\n")
+        return (f"{self.ticket_no}: "
+                f"{self.title}, Status: "
+                f"{self.status}")
 
     @classmethod
     def total_tickets(cls):
         """ return number of tickets """
         return cls.objects.count()
-    
+
     def set_to_pending(self):
         """set ticket status to pending"""
         self.status = 'pending'
@@ -190,7 +195,8 @@ class TicketLog(models.Model):
         on_delete=models.CASCADE,
         related_name='logs'
     )
-    action = models.CharField(max_length=255)  # e.g., "Assigned to John", "Status changed to Pending"
+    # e.g., "Assigned to John", "Status changed to Pending"
+    action = models.CharField(max_length=255)
     performed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'tickets.apps.TicketsConfig',
     # add django rest framework
     'rest_framework',
+    'django_filters',
 ]
 
 REST_FRAMEWORK = {

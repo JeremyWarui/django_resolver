@@ -79,6 +79,7 @@ class FeedbackSerializer(serializers.ModelSerializer):
     ticket_id = serializers.PrimaryKeyRelatedField(
         queryset=Ticket.objects.all(), source='ticket', write_only=True)
 
+    ticket = serializers.StringRelatedField(read_only=True)
     rated_by = serializers.StringRelatedField(read_only=True)
 
     class Meta:

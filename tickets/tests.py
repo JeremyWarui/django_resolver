@@ -12,6 +12,7 @@ from datetime import timedelta
 # Create your tests here.
 User = get_user_model()
 
+
 class ModelTests(TestCase):
 
     def setUp(self):
@@ -45,13 +46,13 @@ class ModelTests(TestCase):
             assigned_to=self.technician,
             status='assigned',
         )
-    
+
     def test_user_creation(self):
         """test the user creation"""
         self.assertEqual(self.user.username, 'testuser')
         self.assertEqual(self.user.email, 'testuser@example.com')
         self.assertTrue(self.user.check_password('testpass'))
-    
+
     def test_section_creation(self):
         """test the section creation"""
         self.assertEqual(self.section.name, 'IT')
@@ -63,11 +64,12 @@ class ModelTests(TestCase):
         self.assertEqual(self.technician.email, 'techuser@example.com')
         self.assertEqual(self.technician.role, 'technician')
         self.assertTrue(self.technician.check_password('techpass'))
-    
+
     def test_ticket_creation(self):
         """ test ticket creation"""
         self.assertEqual(self.ticket.title, 'Faulty Printer')
-        self.assertEqual(self.ticket.description, 'The printer in the IT section is not working.')
+        self.assertEqual(self.ticket.description,
+                         'The printer in the IT section is not working.')
         self.assertEqual(self.ticket.section, self.section)
         self.assertEqual(self.ticket.facility, self.facility)
         self.assertEqual(self.ticket.raised_by, self.user)
@@ -112,7 +114,7 @@ class ModelTests(TestCase):
         self.ticket.assigned_to = self.technician
         self.ticket.save()
         self.assertEqual(self.ticket.status, 'assigned')
-    
+
     def test_ticket_creation_and_auto_increment_ticket_no(self):
         """ test ticket creation and auto increment ticket_no"""
         initial_ticket_no = self.ticket.ticket_no
@@ -141,7 +143,7 @@ class ModelTests(TestCase):
             status='open',
         )
         self.assertEqual(Ticket.total_tickets(), initial_count + 1)
-    
+
     def test_ticket_comments_count(self):
         """ test comments count method"""
         Comment.objects.create(
@@ -195,7 +197,7 @@ class SerializerTests(TestCase):
             text='This is a comment.',
             author=self.user
         )
-    
+
     def test_ticket_serializer(self):
         """ test ticket serializer"""
         serializer = TicketSerializer(instance=self.ticket)
@@ -215,7 +217,6 @@ class SerializerTests(TestCase):
         self.assertEqual(data['text'], 'This is a comment.')
         self.assertEqual(data['author'], self.user.username)
         self.assertEqual(data['ticket'], str(self.ticket))
-    
 
     def test_custom_user_serializer(self):
         """ test custom user serializer"""
@@ -275,3 +276,20 @@ class SerializerTests(TestCase):
         self.assertEqual(comment.text, 'This is another comment.')
         self.assertEqual(comment.author, self.technician)
         self.assertEqual(comment.ticket, self.ticket)
+
+    def test_feedback_serializer_create(self):
+        """ test feedback serializer creation"""
+        data = {
+            'ticket_id': self.ticket.id,
+            'rated_by_id': self.user.id,
+            'rating': 4,
+            'comment': 'Good service.'
+        }
+
+        serializer = FeedbackSerializer(data=data)
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        feedback = serializer.save()
+        self.assertEqual(feedback.ticket, self.ticket)
+        self.assertEqual(feedback.rated_by, self.user)
+        self.assertEqual(feedback.rating, 4)
+        self.assertEqual(feedback.comment, 'Good service.')

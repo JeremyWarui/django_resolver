@@ -304,16 +304,19 @@ class APITests(APITestCase):
             password='testpassword'
         )
         self.client.login(username='testuser', password='testpassword')
+
         self.section = Section.objects.create(
             name='IT',
             description='Information Technology'
         )
+
         self.facility = Facility.objects.create(
             name='Main Office',
             type='Office',
             status='Active',
             location='Building A'
         )
+
         self.ticket = Ticket.objects.create(
             title='Test Ticket',
             description='This is a test ticket.',
@@ -321,6 +324,7 @@ class APITests(APITestCase):
             facility=self.facility,
             raised_by=self.user
         )
+
         self.technician = User.objects.create_user(
             username='techuser',
             email='techuser@example.com',
@@ -330,6 +334,7 @@ class APITests(APITestCase):
         self.ticket.assigned_to = self.technician
         self.ticket.status = 'assigned'
         self.ticket.save()
+
         self.comment = Comment.objects.create(
             ticket=self.ticket,
             text='This is a test comment.',

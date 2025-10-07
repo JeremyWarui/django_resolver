@@ -91,23 +91,23 @@ class TicketSerializer(serializers.ModelSerializer):
     # write only field for IDS
     raised_by_id = serializers.PrimaryKeyRelatedField(
         queryset=CustomUser.objects.all(), source='raised_by', write_only=True)
-    
+
     assigned_to_id = serializers.PrimaryKeyRelatedField(
         queryset=CustomUser.objects.all(), source='assigned_to', write_only=True, allow_null=True, required=False)
-    
+
     section_id = serializers.PrimaryKeyRelatedField(
-        queryset=Section.objects.all(), source='section', write_only=True)  
-    
+        queryset=Section.objects.all(), source='section', write_only=True)
+
     facility_id = serializers.PrimaryKeyRelatedField(
         queryset=Facility.objects.all(), source='facility', write_only=True)
-    
+
     # read only fields for related names
     section = serializers.StringRelatedField(read_only=True)
     facility = serializers.StringRelatedField(read_only=True)
     raised_by = serializers.StringRelatedField(read_only=True)
     assigned_to = serializers.StringRelatedField(read_only=True)
     comments = CommentSerializer(many=True, read_only=True)
-    feedback = FeedbackSerializer(many=True, read_only=True)
+    feedback = FeedbackSerializer(read_only=True)
 
     class Meta:
         model = Ticket

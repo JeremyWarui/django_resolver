@@ -73,30 +73,39 @@ class CommentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Comment
-        fields = ['id', 'ticket_id', 'ticket', 'text', 'author_id', 'author']
+        fields = ['id', 'ticket', 'text', 'author', 'created_at']
 
 
 class FeedbackSerializer(serializers.ModelSerializer):
-    # Write-only field for rated_by ID
-    rated_by_id = serializers.PrimaryKeyRelatedField(
-        queryset=CustomUser.objects.all(), source='rated_by', write_only=True)
-    # write only field for ticket ID
-    ticket_id = serializers.PrimaryKeyRelatedField(
-        queryset=Ticket.objects.all(), source='ticket', write_only=True)
+    # # Write-only field for rated_by ID
+    # rated_by_id = serializers.PrimaryKeyRelatedField(
+    #     queryset=CustomUser.objects.all(), source='rated_by', write_only=True)
+    # # write only field for ticket ID
+    # ticket_id = serializers.PrimaryKeyRelatedField(
+    #     queryset=Ticket.objects.all(), source='ticket', write_only=True)
+
+    """
+    rated_by_id and ticket_id to be extracted from the API or the views
+    such as the current user and current ticket id
+    request.user and ticket.id = pk
+
+    """
 
     ticket = serializers.StringRelatedField(read_only=True)
     rated_by = serializers.StringRelatedField(read_only=True)
 
     class Meta:
         model = Feedback
-        fields = ['id', 'ticket_id', 'ticket',
-                  'rated_by_id', 'rated_by', 'rating', 'comment']
+        fields = ['id', 'ticket', 'rated_by', 'rating', 'comment', 'created_at']
 
 
 class TicketSerializer(serializers.ModelSerializer):
     # write only field for IDS
-    raised_by_id = serializers.PrimaryKeyRelatedField(
-        queryset=CustomUser.objects.all(), source='raised_by', write_only=True)
+    # raised_by_id = serializers.PrimaryKeyRelatedField(
+    #     queryset=CustomUser.objects.all(), source='raised_by', write_only=True)
+    """
+    no longer set raised_by_id. to be done by the views using context
+    """
 
     assigned_to_id = serializers.SlugRelatedField(
         slug_field='username',
@@ -129,7 +138,7 @@ class TicketSerializer(serializers.ModelSerializer):
             'status',
             'section_id', 'section',
             'facility_id', 'facility',
-            'raised_by_id', 'raised_by',
+            'raised_by',
             'assigned_to_id', 'assigned_to',
             'created_at',
             'updated_at',

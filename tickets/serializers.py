@@ -56,11 +56,16 @@ class UserSerializer(serializers.ModelSerializer):
 
 class CommentSerializer(serializers.ModelSerializer):
     # Write-only field for author ID
-    author_id = serializers.PrimaryKeyRelatedField(
-        queryset=CustomUser.objects.all(), source='author', write_only=True)
+    # author_id = serializers.PrimaryKeyRelatedField(
+    #     queryset=CustomUser.objects.all(), source='author', write_only=True)
     # write ony field for ticket ID
-    ticket_id = serializers.PrimaryKeyRelatedField(
-        queryset=Ticket.objects.all(), source='ticket', write_only=True)
+    # ticket_id = serializers.PrimaryKeyRelatedField(
+    #     queryset=Ticket.objects.all(), source='ticket', write_only=True)
+    """
+        redefined to ensure the author_id and ticket_id are
+        defined or retrieved from the current user and current ticket
+        that is being commented on
+    """
 
     # read-only field for author username
     author = serializers.StringRelatedField(read_only=True)

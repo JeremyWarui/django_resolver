@@ -3,6 +3,7 @@ from rest_framework import viewsets, filters
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
 from .serializers import *
 from django_filters.rest_framework import DjangoFilterBackend
+from . import services
 
 # Create your views here.
 
@@ -41,7 +42,7 @@ class TicketListCreateView(ListCreateAPIView):
 
     def perform_create(self, serializer):
         """Delegate ticket creation to service layer"""
-       # services.create_ticket(serializer, self.request.user)
+       services.create_ticket(serializer, self.request.user)
 
 class TicketDetailView(RetrieveUpdateDestroyAPIView):
     queryset = Ticket.objects.all()
@@ -49,7 +50,7 @@ class TicketDetailView(RetrieveUpdateDestroyAPIView):
 
     def perform_update(self, serializer):
         """ delegate ticket update ( assign, update status, etc) """
-        # services.update_ticket(serializer, self.request.user)
+        services.update_ticket(serializer, self.request.user)
 
 # --------------------------------
 # COMMENTS

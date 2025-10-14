@@ -9,10 +9,13 @@ from . import services
 # --------------------------------
 # SECTION
 # ----------------------------------
+
+
 class SectionListCreateView(ListCreateAPIView):
     queryset = Section.objects.all()
     serializer_class = SectionSerializer
     # permission_classes = [IsAuthenticated]
+
 
 class SectionDetailView(RetrieveUpdateDestroyAPIView):
     queryset = Section.objects.all()
@@ -23,10 +26,12 @@ class SectionDetailView(RetrieveUpdateDestroyAPIView):
 # FACILITY
 # ----------------------------------
 
+
 class FacilityListCreateView(ListCreateAPIView):
     queryset = Facility.objects.all()
     serializer_class = FacilitySerializer
     # permission_classes = [IsAuthenticated]
+
 
 class FacilityDetailView(RetrieveUpdateDestroyAPIView):
     queryset = Facility.objects.all()
@@ -36,6 +41,7 @@ class FacilityDetailView(RetrieveUpdateDestroyAPIView):
 # --------------------------------
 # TICKETS
 # ----------------------------------
+
 
 class TicketListCreateView(ListCreateAPIView):
     queryset = Ticket.objects.all().order_by('-created_at')
@@ -47,6 +53,7 @@ class TicketListCreateView(ListCreateAPIView):
     def perform_create(self, serializer):
         """Delegate ticket creation to service layer """
         services.create_ticket(serializer, self.request.user)
+
 
 class TicketDetailView(RetrieveUpdateDestroyAPIView):
     queryset = Ticket.objects.all()
@@ -60,6 +67,7 @@ class TicketDetailView(RetrieveUpdateDestroyAPIView):
 # --------------------------------
 # COMMENTS
 # ----------------------------------
+
 
 class CommentListCreateView(ListCreateAPIView):
     queryset = Comment.objects.all().order_by('created_at')
@@ -85,7 +93,7 @@ class FeedbackListCreateView(ListCreateAPIView):
     # permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
-        ticket_id = self.request.data.get('ticket_id')
+        ticket_id = self.request.data.get('ticket')
         services.create_feedback(serializer, self.request.user, ticket_id)
 
 
@@ -99,6 +107,7 @@ class UserListCreateView(ListCreateAPIView):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['role']
     # permission_classes = [IsAuthenticated]
+
 
 class UserDetailView(RetrieveUpdateDestroyAPIView):
     queryset = CustomUser.objects.all()

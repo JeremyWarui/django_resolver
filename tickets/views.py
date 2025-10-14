@@ -1,6 +1,5 @@
-from django.shortcuts import render
-from rest_framework import viewsets, filters
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
+from rest_framework.permissions import IsAuthenticated
 from .serializers import *
 from django_filters.rest_framework import DjangoFilterBackend
 from . import services
@@ -13,10 +12,12 @@ from . import services
 class SectionListCreateView(ListCreateAPIView):
     queryset = Section.objects.all()
     serializer_class = SectionSerializer
+    # permission_classes = [IsAuthenticated]
 
 class SectionDetailView(RetrieveUpdateDestroyAPIView):
     queryset = Section.objects.all()
     serializer_class = SectionSerializer
+    # permission_classes = [IsAuthenticated]
 
 # --------------------------------
 # FACILITY
@@ -25,10 +26,12 @@ class SectionDetailView(RetrieveUpdateDestroyAPIView):
 class FacilityListCreateView(ListCreateAPIView):
     queryset = Facility.objects.all()
     serializer_class = FacilitySerializer
+    # permission_classes = [IsAuthenticated]
 
 class FacilityDetailView(RetrieveUpdateDestroyAPIView):
     queryset = Facility.objects.all()
     serializer_class = FacilitySerializer
+    # permission_classes = [IsAuthenticated]
 
 # --------------------------------
 # TICKETS
@@ -39,14 +42,16 @@ class TicketListCreateView(ListCreateAPIView):
     serializer_class = TicketSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['status', 'section', 'assigned_to', 'raised_by']
+    # permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
-        """Delegate ticket creation to service layer"""
-       services.create_ticket(serializer, self.request.user)
+        """Delegate ticket creation to service layer """
+        services.create_ticket(serializer, self.request.user)
 
 class TicketDetailView(RetrieveUpdateDestroyAPIView):
     queryset = Ticket.objects.all()
     serializer_class = TicketSerializer
+    # permission_classes = [IsAuthenticated]
 
     def perform_update(self, serializer):
         """ delegate ticket update ( assign, update status, etc) """
@@ -61,10 +66,11 @@ class CommentListCreateView(ListCreateAPIView):
     serializer_class = CommentSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['author', 'ticket']
+    # permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
-        # ticket_id = self.request.data.get('ticket_id')
-        # services.create_comment(serializer, self.request.user, ticket_id)
+        ticket_id = self.request.data.get('ticket')
+        services.create_comment(serializer, self.request.user, ticket_id)
 
 
 # --------------------------------
@@ -76,10 +82,11 @@ class FeedbackListCreateView(ListCreateAPIView):
     serializer_class = FeedbackSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['rating', 'rated_by', 'ticket']
+    # permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
-        # ticket_id = self.request.data.get('ticket_id')
-        # services.create_feedback(serializer, self.request.user, ticket_id)
+        ticket_id = self.request.data.get('ticket_id')
+        services.create_feedback(serializer, self.request.user, ticket_id)
 
 
 # --------------------------------
@@ -91,7 +98,9 @@ class UserListCreateView(ListCreateAPIView):
     serializer_class = UserSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['role']
+    # permission_classes = [IsAuthenticated]
 
 class UserDetailView(RetrieveUpdateDestroyAPIView):
     queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
+    # permission_classes = [IsAuthenticated]

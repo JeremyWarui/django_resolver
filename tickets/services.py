@@ -1,5 +1,5 @@
 from django.shortcuts import get_object_or_404
-from rest_framework.settings import perform_import
+from rest_framework.exceptions import ValidationError, PermissionDenied
 
 from .models import Ticket, Comment, Feedback, TicketLog
 
@@ -17,42 +17,74 @@ from .models import Ticket, Comment, Feedback, TicketLog
 #         ticket.save()
 #         return ticket
 
-def create_ticket(serializer, user):
-    """ Logic for creating a ticket """
-    serializer.save(raised_by=user)
-    TicketLog.objects.create(
-        ticket = serializer.instance,
-        performed_by = user,
-        action = f"Ticket created by {user.username}"
-    )
-
-def update_ticket(serializer, user):
-    """ logic for updating ticket """
-    old_ticket = Ticket.objects.get(pk=serializer.instance.pk)
-    new_ticket = serializer.save()
-
-     # log changes
-    if old_ticket.status != new_ticket.status:
-        TicketLog.objects.create(
-            ticket=new_ticket,
-            performed_by=user,
-            action=f"Status changed from {old_ticket.status} to {new_ticket.status}"
-        )
-
-    if old_ticket.assigned_to != new_ticket.assigned_to:
-        TicketLog.objects.create(
-            ticket=new_ticket,
-            performed_by=user,
-            action=f"Reassigned to {new_ticket.assigned_to or 'None'}"
-        )
 
 # ---------------------
-# COMMENT SERVICES
-# ----------------------
+# TICKET SERVICES
+# ---------------------
+
+def create_ticket(serializer, user):
+    """Logic for creating a ticket."""
+    ticket = serializer.save(raised_by=user)
+
+    TicketLog.objects.create(
+        ticket=ticket,
+        performed_by=user,
+        action=f"Ticket created by {user.username}"
+    )
+    return ticket
+
+
+def update_ticket(serializer, user):
+    """Logic for updating a ticket (assignments, status, etc.)"""
+    ticket = serializer.instance
+    old_assigned_to = ticket.assigned_to
+    old_status = ticket.status
+
+    # Get new data from serializer (not saved yet)
+    new_assigned_to = serializer.validated_data.get('assigned_to', old_assigned_to)
+    new_status = serializer.validated_data.get('status', old_status)
+
+    # Check section consistency
+    if new_assigned_to and ticket.section != new_assigned_to.section:
+        raise ValidationError(
+            f"Technician {new_assigned_to.username} does not belong to section {ticket.section.name}."
+        )
+
+    # Auto-change status if newly assigned and was open
+    if old_assigned_to is None and new_assigned_to and old_status == 'open':
+        new_status = 'assigned'
+        serializer.validated_data['status'] = 'assigned'
+
+    # Save updated fields
+    updated_ticket = serializer.save()
+
+    # Log assignment changes
+    if old_assigned_to != new_assigned_to:
+        TicketLog.objects.create(
+            ticket=updated_ticket,
+            performed_by=user,
+            action=f"Assigned to {new_assigned_to or 'None'}"
+        )
+
+    # Log status changes
+    if old_status != new_status:
+        TicketLog.objects.create(
+            ticket=updated_ticket,
+            performed_by=user,
+            action=f"Status changed from {old_status} to {new_status}"
+        )
+
+    return updated_ticket
+# ---------------------------------------------
+#  COMMENT SERVICES
+# ---------------------------------------------
 def create_comment(serializer, user, ticket_id):
-    """Attach author and ticket to comment"""
+    """
+    Attach author and ticket to a new comment.
+    Log the action under TicketLog.
+    """
     ticket = get_object_or_404(Ticket, id=ticket_id)
-    serializer.save(author=user, ticket=ticket)
+    comment = serializer.save(author=user, ticket=ticket)
 
     TicketLog.objects.create(
         ticket=ticket,
@@ -60,20 +92,28 @@ def create_comment(serializer, user, ticket_id):
         action=f"Comment added by {user.username}"
     )
 
-# ----------------------------
-# FEEDBACK SERVICES
-# ----------------------------
+    return comment
+
+
+# ---------------------------------------------
+#  FEEDBACK SERVICES
+# ---------------------------------------------
 def create_feedback(serializer, user, ticket_id):
-    """Ensure only ticket raiser can give feedback"""
+    """
+    Ensure only the ticket raiser can provide feedback.
+    Attach user and ticket, log the action.
+    """
     ticket = get_object_or_404(Ticket, id=ticket_id)
 
     if ticket.raised_by != user:
-        raise PermissionError("Only the ticket raiser can give feedback.")
+        raise PermissionDenied("Only the ticket raiser can give feedback.")
 
-    serializer.save(rated_by=user, ticket=ticket)
+    feedback = serializer.save(rated_by=user, ticket=ticket)
 
     TicketLog.objects.create(
         ticket=ticket,
         performed_by=user,
-        action=f"Feedback ({serializer.validated_data['rating']}/5) added by {user.username}"
+        action=f"Feedback ({serializer.validated_data.get('rating', '?')}/5) added by {user.username}"
     )
+
+    return feedback

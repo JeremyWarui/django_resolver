@@ -59,3 +59,21 @@ def create_comment(serializer, user, ticket_id):
         performed_by=user,
         action=f"Comment added by {user.username}"
     )
+
+# ----------------------------
+# FEEDBACK SERVICES
+# ----------------------------
+def create_feedback(serializer, user, ticket_id):
+    """Ensure only ticket raiser can give feedback"""
+    ticket = get_object_or_404(Ticket, id=ticket_id)
+
+    if ticket.raised_by != user:
+        raise PermissionError("Only the ticket raiser can give feedback.")
+
+    serializer.save(rated_by=user, ticket=ticket)
+
+    TicketLog.objects.create(
+        ticket=ticket,
+        performed_by=user,
+        action=f"Feedback ({serializer.validated_data['rating']}/5) added by {user.username}"
+    )

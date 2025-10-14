@@ -49,3 +49,13 @@ def update_ticket(serializer, user):
 # ---------------------
 # COMMENT SERVICES
 # ----------------------
+def create_comment(serializer, user, ticket_id):
+    """Attach author and ticket to comment"""
+    ticket = get_object_or_404(Ticket, id=ticket_id)
+    serializer.save(author=user, ticket=ticket)
+
+    TicketLog.objects.create(
+        ticket=ticket,
+        performed_by=user,
+        action=f"Comment added by {user.username}"
+    )

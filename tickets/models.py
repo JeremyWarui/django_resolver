@@ -16,6 +16,15 @@ class CustomUser(AbstractUser):
     ]
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='user')
 
+    # add section - many-to-many relationship
+    # allows to query section.objects.get(name-'IT').technicians.all()
+    sections_specialized_in = models.ManyToManyField(
+        'Section',
+        related_name="technicians",
+        blank=True,
+        help_text='Sections the technician is specialized in.'
+    )
+
     def __str__(self):
         return f"{self.username}"
 

@@ -60,7 +60,7 @@ class TinyTicketSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = Ticket
-        fields = "__all__"
+        fields = ['id', 'ticket_no']
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -78,7 +78,8 @@ class CommentSerializer(serializers.ModelSerializer):
 
     # read-only field for author username
     author = serializers.StringRelatedField(read_only=True)
-    ticket = serializers.StringRelatedField(read_only=True)
+    # ticket = serializers.StringRelatedField(read_only=True)
+    ticket = TinyTicketSerializer(read_only=True)
 
     class Meta:
         model = Comment
@@ -100,7 +101,8 @@ class FeedbackSerializer(serializers.ModelSerializer):
 
     """
 
-    ticket = serializers.StringRelatedField(read_only=True)
+    # ticket = serializers.StringRelatedField(read_only=True)
+    ticket = TinyTicketSerializer(read_only=True)
     rated_by = serializers.StringRelatedField(read_only=True)
 
     class Meta:
@@ -108,6 +110,7 @@ class FeedbackSerializer(serializers.ModelSerializer):
         fields = ['id', 'ticket', 'rated_by', 'rating', 'comment', 'created_at']
 
 
+# main  ticket serializer
 class TicketSerializer(serializers.ModelSerializer):
     # write only field for IDS
     # raised_by_id = serializers.PrimaryKeyRelatedField(
@@ -121,7 +124,9 @@ class TicketSerializer(serializers.ModelSerializer):
         queryset=CustomUser.objects.all(),
         source='assigned_to',
         allow_null=True,
-        required=False)
+        required=False,
+        write_only=True
+    )
 
     section_id = serializers.PrimaryKeyRelatedField(
         queryset=Section.objects.all(), source='section', write_only=True)

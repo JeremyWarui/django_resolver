@@ -1,15 +1,11 @@
-from django.db import models, transaction
+from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.conf import settings
-from django.utils import timezone
-from datetime import timedelta
-from django.core.validators import MinValueValidator, MaxValueValidator
+
 
 # Create your models here.
 
 # Custom User Model
-
-
 class CustomUser(AbstractUser):
     """Extends Django's AbstractUser class to include additional fields"""
     ROLE_CHOICES = [
@@ -18,8 +14,16 @@ class CustomUser(AbstractUser):
         ('technician', 'Technician'),
         ('manager', 'Manager'),
     ]
-    role = models.CharField(
-        max_length=10, choices=ROLE_CHOICES, default='user')
+    role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='user')
+
+    # add section - many-to-many relationship
+    # allows to query section.objects.get(name-'IT').technicians.all()
+    sections_specialized_in = models.ManyToManyField(
+        'Section',
+        related_name="technicians",
+        blank=True,
+        help_text='Sections the technician is specialized in.'
+    )
 
     def __str__(self):
         return f"{self.username}"
@@ -32,13 +36,11 @@ class Section(models.Model):
     description = models.TextField(max_length=200, blank=True)
 
     def __str__(self):
-        return f"{self.name}"
-
+        return f"{self.name}\n"
 
 # FACILITY MODEL
-
 class Facility(models.Model):
-    """Facilities e.g. Building, ICT Equipment, Kitchen Equipment, Residential, e.t.c"""
+    """Facilities e.g. Building, ICT Equipment, Kitchen Equipment, Residential, e.t.c """
     FACILITY_CHOICES = [
         ('building', 'Building'),
         ('ict', 'ICT Equipment'),
@@ -57,7 +59,7 @@ class Facility(models.Model):
     location = models.CharField(max_length=100, blank=True, null=True)
 
     def __str__(self):
-        return f"{self.name}"
+        return f"{self.name}\n"
 
 
 # TICKETS MODEL
@@ -100,40 +102,16 @@ class Ticket(models.Model):
     def save(self, *args, **kwargs):
         """auto generate the ticket_no if not set"""
         if not self.ticket_no:
-            with transaction.atomic():
-                last_ticket = Ticket.objects.all().order_by('-id').first()
-                next_id = 1 if not last_ticket else last_ticket.id + 1
-                self.ticket_no = f"TKT-{next_id:06d}"
-
+            last_ticket = Ticket.objects.all().order_by('-id').first()
+            next_id = 1 if not last_ticket else last_ticket.id + 1
+            self.ticket_no = f"TKT-{next_id:06d}"
         super(Ticket, self).save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.ticket_no}: {self.title}"
+        return (f"{self.ticket_no}\n"
+                f"{self.title}\n"
+                f"{self.status}\n")
 
-    @classmethod
-    def total_tickets(cls):
-        """ return number of tickets """
-        return cls.objects.count()
-
-    def set_to_pending(self):
-        """set ticket status to pending"""
-        self.status = 'pending'
-        self.save()
-
-    def is_overdue(self):
-        """check time lapsed beyond 24 hours"""
-        if self.status == 'open':
-            elapsed_time = timezone.now() - self.created_at
-            return elapsed_time > timedelta(hours=24)
-        return False
-
-    def time_since_creation(self):
-        """return time since creation"""
-        return timezone.now() - self.created_at
-
-    def comments_count(self):
-        """return number of comments"""
-        return self.comments.count()
 
 
 # COMMENTS MODEL
@@ -155,10 +133,6 @@ class Comment(models.Model):
         return (f"Comment by: {self.author.username}\n"
                 f"on ticket: {self.ticket.title}\n")
 
-    @classmethod
-    def total_comments(cls):
-        return cls.objects.count()
-
 
 # FEEDBACK MODEL
 class Feedback(models.Model):
@@ -172,12 +146,7 @@ class Feedback(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE
     )
-    rating = models.FloatField(
-        validators=[
-            MinValueValidator(1.0),
-            MaxValueValidator(5.0)
-        ]
-    )
+    rating = models.FloatField()
     comment = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -194,8 +163,7 @@ class TicketLog(models.Model):
         on_delete=models.CASCADE,
         related_name='logs'
     )
-    # e.g., "Assigned to John", "Status changed to Pending"
-    action = models.CharField(max_length=255)
+    action = models.CharField(max_length=255)  # e.g., "Assigned to John", "Status changed to Pending"
     performed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

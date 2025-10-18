@@ -73,7 +73,7 @@ class CommentListCreateView(ListCreateAPIView):
     # permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
-        ticket_id = self.request.data.get('ticket')
+        ticket_id = serializer.validated_data.get('ticket')
         services.create_comment(serializer, self.request.user, ticket_id)
 
 
@@ -89,7 +89,8 @@ class FeedbackListCreateView(ListCreateAPIView):
     # permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
-        ticket_id = self.request.data.get('ticket')
+        # ticket_id = self.request.data.get('ticket')
+        ticket_id = serializer.validated_data.get('ticket')
         services.create_feedback(serializer, self.request.user, ticket_id)
 
 

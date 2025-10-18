@@ -1,0 +1,599 @@
+[
+    {
+        "model": "tickets.section",
+        "pk": 1,
+        "fields": {
+            "name": "IT",
+            "description": "Issues related to computers, network, and software."
+        }
+    },
+    {
+        "model": "tickets.section",
+        "pk": 2,
+        "fields": {
+            "name": "Plumbing",
+            "description": "Issues related to water systems and drainage."
+        }
+    },
+    {
+        "model": "tickets.section",
+        "pk": 3,
+        "fields": {
+            "name": "Electrical",
+            "description": "Issues related to power, wiring, and lighting."
+        }
+    },
+    {
+        "model": "tickets.section",
+        "pk": 4,
+        "fields": {
+            "name": "HVAC",
+            "description": "Heating, Ventilation, and Air Conditioning systems."
+        }
+    },
+    {
+        "model": "tickets.facility",
+        "pk": 1,
+        "fields": {
+            "name": "Main Office Block",
+            "type": "building",
+            "status": "active",
+            "location": "Floor 1, West Wing"
+        }
+    },
+    {
+        "model": "tickets.facility",
+        "pk": 2,
+        "fields": {
+            "name": "Server Rack 01",
+            "type": "ict",
+            "status": "active",
+            "location": "IT Server Room"
+        }
+    },
+    {
+        "model": "tickets.facility",
+        "pk": 3,
+        "fields": {
+            "name": "Kitchen Unit A",
+            "type": "kitchen",
+            "status": "active",
+            "location": "Main Cafeteria"
+        }
+    },
+    {
+        "model": "tickets.facility",
+        "pk": 4,
+        "fields": {
+            "name": "Apartment 101",
+            "type": "residential",
+            "status": "active",
+            "location": "Residential Block A"
+        }
+    },
+    {
+        "model": "tickets.facility",
+        "pk": 5,
+        "fields": {
+            "name": "Laundry Room",
+            "type": "laundry",
+            "status": "active",
+            "location": "Basement Level"
+        }
+    },
+    {
+        "model": "tickets.facility",
+        "pk": 6,
+        "fields": {
+            "name": "Conference Room B",
+            "type": "building",
+            "status": "active",
+            "location": "Floor 2"
+        }
+    },
+    {
+        "model": "tickets.customuser",
+        "pk": 1,
+        "fields": {
+            "password": "adminuser123",
+            "is_superuser": true,
+            "username": "admin_user",
+            "first_name": "System",
+            "last_name": "Admin",
+            "email": "admin@example.com",
+            "is_staff": true,
+            "is_active": true,
+            "date_joined": "2025-10-01T10:00:00Z",
+            "role": "admin"
+        }
+    },
+    {
+        "model": "tickets.customuser",
+        "pk": 2,
+        "fields": {
+            "password": "janedoe123",
+            "is_superuser": false,
+            "username": "jane_user",
+            "first_name": "Jane",
+            "last_name": "Doe",
+            "email": "jane@example.com",
+            "is_staff": false,
+            "is_active": true,
+            "date_joined": "2025-10-01T10:05:00Z",
+            "role": "user"
+        }
+    },
+    {
+        "model": "tickets.customuser",
+        "pk": 3,
+        "fields": {
+            "password": "alexsmith123",
+            "is_superuser": false,
+            "username": "tech_alex",
+            "first_name": "Alex",
+            "last_name": "Smith",
+            "email": "alex@example.com",
+            "is_staff": true,
+            "is_active": true,
+            "date_joined": "2025-10-01T10:10:00Z",
+            "role": "technician"
+        }
+    },
+    {
+        "model": "tickets.customuser",
+        "pk": 4,
+        "fields": {
+            "password": "mariagarcia",
+            "is_superuser": false,
+            "username": "tech_maria",
+            "first_name": "Maria",
+            "last_name": "Garcia",
+            "email": "maria@example.com",
+            "is_staff": true,
+            "is_active": true,
+            "date_joined": "2025-10-01T10:15:00Z",
+            "role": "technician"
+        }
+    },
+    {
+        "model": "tickets.customuser",
+        "pk": 5,
+        "fields": {
+            "password": "benclark123",
+            "is_superuser": false,
+            "username": "manager_ben",
+            "first_name": "Ben",
+            "last_name": "Clark",
+            "email": "ben@example.com",
+            "is_staff": true,
+            "is_active": true,
+            "date_joined": "2025-10-01T10:20:00Z",
+            "role": "manager"
+        }
+    },
+    {
+        "model": "tickets.ticket",
+        "pk": 1,
+        "fields": {
+            "ticket_no": "TKT-000001",
+            "title": "Office Light Flickering",
+            "description": "Fluorescent light in the main corridor is flickering and buzzing loudly.",
+            "section": 3,
+            "facility": 1,
+            "raised_by": 2,
+            "status": "in_progress",
+            "created_at": "2025-10-10T08:00:00Z",
+            "updated_at": "2025-10-10T12:00:00Z",
+            "assigned_to": 3
+        }
+    },
+    {
+        "model": "tickets.ticket",
+        "pk": 2,
+        "fields": {
+            "ticket_no": "TKT-000002",
+            "title": "Server Overheating Critical Alert",
+            "description": "Received a critical alert that Server Rack 01 temperature is above threshold.",
+            "section": 1,
+            "facility": 2,
+            "raised_by": 1,
+            "status": "open",
+            "created_at": "2025-10-11T14:30:00Z",
+            "updated_at": "2025-10-11T14:30:00Z",
+            "assigned_to": null
+        }
+    },
+    {
+        "model": "tickets.ticket",
+        "pk": 3,
+        "fields": {
+            "ticket_no": "TKT-000003",
+            "title": "Leaking Faucet in Apt 101",
+            "description": "The kitchen sink faucet in Apartment 101 has a continuous drip.",
+            "section": 2,
+            "facility": 4,
+            "raised_by": 2,
+            "status": "closed",
+            "created_at": "2025-10-12T10:00:00Z",
+            "updated_at": "2025-10-12T14:30:00Z",
+            "assigned_to": 3
+        }
+    },
+    {
+        "model": "tickets.ticket",
+        "pk": 4,
+        "fields": {
+            "ticket_no": "TKT-000004",
+            "title": "Broken Network Port",
+            "description": "Network wall port in Conference Room B is damaged and not connecting.",
+            "section": 1,
+            "facility": 6,
+            "raised_by": 5,
+            "status": "resolved",
+            "created_at": "2025-10-13T09:15:00Z",
+            "updated_at": "2025-10-13T16:45:00Z",
+            "assigned_to": 4
+        }
+    },
+    {
+        "model": "tickets.ticket",
+        "pk": 5,
+        "fields": {
+            "ticket_no": "TKT-000005",
+            "title": "AC Unit Malfunction",
+            "description": "The HVAC unit in the West Wing stopped blowing cold air.",
+            "section": 4,
+            "facility": 1,
+            "raised_by": 2,
+            "status": "assigned",
+            "created_at": "2025-10-14T11:00:00Z",
+            "updated_at": "2025-10-14T11:30:00Z",
+            "assigned_to": 4
+        }
+    },
+    {
+        "model": "tickets.ticket",
+        "pk": 6,
+        "fields": {
+            "ticket_no": "TKT-000006",
+            "title": "Oven Element Burnout",
+            "description": "One of the heating elements on the main cafeteria oven (Kitchen Unit A) is not working.",
+            "section": 3,
+            "facility": 3,
+            "raised_by": 1,
+            "status": "pending",
+            "created_at": "2025-10-15T07:45:00Z",
+            "updated_at": "2025-10-15T15:00:00Z",
+            "assigned_to": 3
+        }
+    },
+    {
+        "model": "tickets.ticket",
+        "pk": 7,
+        "fields": {
+            "ticket_no": "TKT-000007",
+            "title": "Slow Internet in Admin Area",
+            "description": "The internet connection is unusually slow, possibly due to a routing issue.",
+            "section": 1,
+            "facility": 1,
+            "raised_by": 5,
+            "status": "resolved",
+            "created_at": "2025-10-16T13:00:00Z",
+            "updated_at": "2025-10-16T17:00:00Z",
+            "assigned_to": 4
+        }
+    },
+    {
+        "model": "tickets.ticket",
+        "pk": 8,
+        "fields": {
+            "ticket_no": "TKT-000008",
+            "title": "Blocked Drain in Laundry Room",
+            "description": "The main floor drain in the Laundry Room is backing up when using the washing machine.",
+            "section": 2,
+            "facility": 5,
+            "raised_by": 2,
+            "status": "open",
+            "created_at": "2025-10-17T09:30:00Z",
+            "updated_at": "2025-10-17T09:30:00Z",
+            "assigned_to": null
+        }
+    },
+    {
+        "model": "tickets.ticket",
+        "pk": 9,
+        "fields": {
+            "ticket_no": "TKT-000009",
+            "title": "Damaged Power Outlet",
+            "description": "Power outlet near the water cooler has a broken plastic casing.",
+            "section": 3,
+            "facility": 1,
+            "raised_by": 1,
+            "status": "assigned",
+            "created_at": "2025-10-18T10:15:00Z",
+            "updated_at": "2025-10-18T11:00:00Z",
+            "assigned_to": 3
+        }
+    },
+    {
+        "model": "tickets.ticket",
+        "pk": 10,
+        "fields": {
+            "ticket_no": "TKT-000010",
+            "title": "Software License Renewal",
+            "description": "License for key project management software is expiring next week.",
+            "section": 1,
+            "facility": 1,
+            "raised_by": 5,
+            "status": "open",
+            "created_at": "2025-10-19T14:00:00Z",
+            "updated_at": "2025-10-19T14:00:00Z",
+            "assigned_to": null
+        }
+    },
+    {
+        "model": "tickets.ticket",
+        "pk": 11,
+        "fields": {
+            "ticket_no": "TKT-000011",
+            "title": "Apartment Door Lock Sticky",
+            "description": "The main entrance door lock for Apartment 101 is difficult to turn.",
+            "section": 2,
+            "facility": 4,
+            "raised_by": 2,
+            "status": "closed",
+            "created_at": "2025-10-20T08:30:00Z",
+            "updated_at": "2025-10-20T11:00:00Z",
+            "assigned_to": 3
+        }
+    },
+    {
+        "model": "tickets.ticket",
+        "pk": 12,
+        "fields": {
+            "ticket_no": "TKT-000012",
+            "title": "Cold Draft in Conference Room",
+            "description": "Noticeable cold air draft near the windows of Conference Room B.",
+            "section": 4,
+            "facility": 6,
+            "raised_by": 1,
+            "status": "in_progress",
+            "created_at": "2025-10-21T12:00:00Z",
+            "updated_at": "2025-10-21T14:00:00Z",
+            "assigned_to": 4
+        }
+    },
+    {
+        "model": "tickets.comment",
+        "pk": 1,
+        "fields": {
+            "text": "Received, heading over to check the wiring now.",
+            "ticket": 1,
+            "author": 3,
+            "created_at": "2025-10-10T08:30:00Z"
+        }
+    },
+    {
+        "model": "tickets.comment",
+        "pk": 2,
+        "fields": {
+            "text": "This is a critical issue, please escalate immediately.",
+            "ticket": 2,
+            "author": 5,
+            "created_at": "2025-10-11T14:45:00Z"
+        }
+    },
+    {
+        "model": "tickets.comment",
+        "pk": 3,
+        "fields": {
+            "text": "Washer replacement fixed the leak. Closing ticket.",
+            "ticket": 3,
+            "author": 3,
+            "created_at": "2025-10-12T14:30:00Z"
+        }
+    },
+    {
+        "model": "tickets.comment",
+        "pk": 4,
+        "fields": {
+            "text": "Replaced the network jack and tested connection. Working now.",
+            "ticket": 4,
+            "author": 4,
+            "created_at": "2025-10-13T16:45:00Z"
+        }
+    },
+    {
+        "model": "tickets.comment",
+        "pk": 5,
+        "fields": {
+            "text": "I need to order a new heating element for the oven. Status set to pending.",
+            "ticket": 6,
+            "author": 3,
+            "created_at": "2025-10-15T15:00:00Z"
+        }
+    },
+    {
+        "model": "tickets.comment",
+        "pk": 6,
+        "fields": {
+            "text": "The slow down was due to a misconfigured router. Fixed the configuration.",
+            "ticket": 7,
+            "author": 4,
+            "created_at": "2025-10-16T16:00:00Z"
+        }
+    },
+    {
+        "model": "tickets.comment",
+        "pk": 7,
+        "fields": {
+            "text": "Assigned technician Alex to investigate the broken outlet.",
+            "ticket": 9,
+            "author": 5,
+            "created_at": "2025-10-18T11:00:00Z"
+        }
+    },
+    {
+        "model": "tickets.comment",
+        "pk": 8,
+        "fields": {
+            "text": "A simple lubrication of the tumbler fixed the issue. Closed.",
+            "ticket": 11,
+            "author": 3,
+            "created_at": "2025-10-20T11:00:00Z"
+        }
+    },
+    {
+        "model": "tickets.feedback",
+        "pk": 1,
+        "fields": {
+            "ticket": 3,
+            "rated_by": 2,
+            "rating": 5.0,
+            "comment": "Quick and efficient service! The technician was very professional.",
+            "created_at": "2025-10-12T15:00:00Z"
+        }
+    },
+    {
+        "model": "tickets.feedback",
+        "pk": 2,
+        "fields": {
+            "ticket": 4,
+            "rated_by": 5,
+            "rating": 4.5,
+            "comment": "Very fast resolution, excellent work on the network port.",
+            "created_at": "2025-10-13T17:00:00Z"
+        }
+    },
+    {
+        "model": "tickets.feedback",
+        "pk": 3,
+        "fields": {
+            "ticket": 7,
+            "rated_by": 5,
+            "rating": 5.0,
+            "comment": "Internet speed restored completely. Thank you!",
+            "created_at": "2025-10-16T17:30:00Z"
+        }
+    },
+    {
+        "model": "tickets.ticketlog",
+        "pk": 1,
+        "fields": {
+            "ticket": 1,
+            "action": "Ticket Created",
+            "performed_by": 2,
+            "timestamp": "2025-10-10T08:00:00Z"
+        }
+    },
+    {
+        "model": "tickets.ticketlog",
+        "pk": 2,
+        "fields": {
+            "ticket": 1,
+            "action": "Status changed to Assigned (to tech_alex)",
+            "performed_by": 5,
+            "timestamp": "2025-10-10T08:15:00Z"
+        }
+    },
+    {
+        "model": "tickets.ticketlog",
+        "pk": 3,
+        "fields": {
+            "ticket": 3,
+            "action": "Status changed to Closed",
+            "performed_by": 3,
+            "timestamp": "2025-10-12T14:30:00Z"
+        }
+    },
+    {
+        "model": "tickets.ticketlog",
+        "pk": 4,
+        "fields": {
+            "ticket": 5,
+            "action": "Status changed to Assigned (to tech_maria)",
+            "performed_by": 5,
+            "timestamp": "2025-10-14T11:30:00Z"
+        }
+    },
+    {
+        "model": "tickets.ticketlog",
+        "pk": 5,
+        "fields": {
+            "ticket": 6,
+            "action": "Status changed to Pending (awaiting part)",
+            "performed_by": 3,
+            "timestamp": "2025-10-15T15:00:00Z"
+        }
+    },
+    {
+        "model": "tickets.ticketlog",
+        "pk": 6,
+        "fields": {
+            "ticket": 7,
+            "action": "Status changed to Resolved",
+            "performed_by": 4,
+            "timestamp": "2025-10-16T17:00:00Z"
+        }
+    },
+    {
+        "model": "tickets.ticketlog",
+        "pk": 7,
+        "fields": {
+            "ticket": 9,
+            "action": "Status changed to Assigned (to tech_alex)",
+            "performed_by": 5,
+            "timestamp": "2025-10-18T11:00:00Z"
+        }
+    },
+    {
+        "model": "tickets.ticketlog",
+        "pk": 8,
+        "fields": {
+            "ticket": 11,
+            "action": "Status changed to Closed",
+            "performed_by": 3,
+            "timestamp": "2025-10-20T11:00:00Z"
+        }
+    },
+    {
+        "model": "tickets.ticketlog",
+        "pk": 9,
+        "fields": {
+            "ticket": 12,
+            "action": "Ticket Created",
+            "performed_by": 1,
+            "timestamp": "2025-10-21T12:00:00Z"
+        }
+    },
+    {
+        "model": "tickets.ticketlog",
+        "pk": 10,
+        "fields": {
+            "ticket": 12,
+            "action": "Status changed to In Progress (tech_maria investigating)",
+            "performed_by": 4,
+            "timestamp": "2025-10-21T14:00:00Z"
+        }
+    },
+    {
+        "model": "tickets.ticketlog",
+        "pk": 11,
+        "fields": {
+            "ticket": 4,
+            "action": "Status changed to Resolved",
+            "performed_by": 4,
+            "timestamp": "2025-10-13T16:45:00Z"
+        }
+    },
+    {
+        "model": "tickets.ticketlog",
+        "pk": 12,
+        "fields": {
+            "ticket": 6,
+            "action": "Status changed to Assigned (to tech_alex)",
+            "performed_by": 5,
+            "timestamp": "2025-10-15T08:00:00Z"
+        }
+    }
+]

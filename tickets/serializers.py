@@ -121,7 +121,7 @@ class TicketSerializer(serializers.ModelSerializer):
 
     assigned_to_id = serializers.SlugRelatedField(
         slug_field='username',
-        queryset=CustomUser.objects.all(),
+        queryset=CustomUser.objects.filter(role='technician'),
         source='assigned_to',
         allow_null=True,
         required=False,
@@ -138,7 +138,8 @@ class TicketSerializer(serializers.ModelSerializer):
     section = serializers.StringRelatedField(read_only=True)
     facility = serializers.StringRelatedField(read_only=True)
     raised_by = serializers.StringRelatedField(read_only=True)
-    assigned_to = serializers.StringRelatedField(read_only=True)
+    # assigned_to = serializers.StringRelatedField(read_only=True)
+    assigned_to = UserSerializer(read_only=True)
     comments = CommentSerializer(many=True, read_only=True)
     feedback = FeedbackSerializer(read_only=True)
 

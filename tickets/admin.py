@@ -5,13 +5,14 @@ from .models import *
 
 
 # Register your models here.
+
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
     model = CustomUser
     list_display = ("username", "email", "role", "is_staff", "is_active")
-    list_filter = ("role","is_staff", "is_active")
+    list_filter = ("role","is_staff", "is_active", "sections_specialized_in")
     fieldsets = UserAdmin.fieldsets + (
-        ('Role', { 'fields': ('role', 'sections_specialized_in')}),
+        ('Role and Specialization', { 'fields': ('role', 'sections_specialized_in')}),
     )
     add_fieldsets = UserAdmin.add_fieldsets + (
         ('Role', { 'fields': ('role', )}),

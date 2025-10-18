@@ -1,4 +1,8 @@
-# Python
+# ------------------------------------
+# Project Ignored Files and Directories
+# ------------------------------------
+
+# Python artifacts
 __pycache__/
 *.py[cod]
 *.pyo
@@ -13,9 +17,19 @@ db.sqlite3
 media/
 staticfiles/
 
-# If using Django migrations cache
+# Django migrations cache
 */migrations/__pycache__/
 */migrations/*.pyc
+
+# ➡️ IGNORE ALL MIGRATIONS FILES
+# This excludes migration history from all apps, which can be regenerated.
+*/migrations/
+!*/migrations/__init__.py
+# The line above ensures the __init__.py files remain, which are required for imports.
+
+# 🔑 IGNORE FIXTURE JSON FILES WITH SENSITIVE DATA (PASSWORDS)
+# Excludes JSON fixtures within the 'tickets' app's fixtures directory.
+tickets/fixtures/*.json
 
 # Environment
 venv/

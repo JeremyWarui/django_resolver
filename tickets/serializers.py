@@ -112,7 +112,9 @@ class TicketSerializer(serializers.ModelSerializer):
         queryset=CustomUser.objects.all(),
         source='assigned_to',
         allow_null=True,
-        required=False)
+        required=False,
+        write_only=True
+    )
 
     section_id = serializers.PrimaryKeyRelatedField(
         queryset=Section.objects.all(), source='section', write_only=True)

@@ -34,8 +34,8 @@ class Section(models.Model):
     def __str__(self):
         return f"{self.name}"
 
-# FACILITY MODEL
 
+# FACILITY MODEL
 
 class Facility(models.Model):
     """Facilities e.g. Building, ICT Equipment, Kitchen Equipment, Residential, e.t.c"""

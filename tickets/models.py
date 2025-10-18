@@ -108,7 +108,7 @@ class Ticket(models.Model):
         super(Ticket, self).save(*args, **kwargs)
 
     def __str__(self):
-        return "{self.ticket_no}: {self.title}"
+        return f"{self.ticket_no}: {self.title}"
 
     @classmethod
     def total_tickets(cls):

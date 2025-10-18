@@ -53,6 +53,15 @@ class UserSerializer(serializers.ModelSerializer):
         )
         return user
 
+# minimal serializer for ticket to avoid circular dependency during nested serialization
+class TinyTicketSerializer(serializers.ModelSerializer):
+    """ minimal version ticket serializer to be used by
+        Comments serializer and Feedback serializer
+    """
+    class Meta:
+        model = Ticket
+        fields = "__all__"
+
 
 class CommentSerializer(serializers.ModelSerializer):
     # Write-only field for author ID

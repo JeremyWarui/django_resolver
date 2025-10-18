@@ -29,11 +29,22 @@ def update_ticket(serializer, user):
     new_assigned_to = serializer.validated_data.get('assigned_to', old_assigned_to)
     new_status = serializer.validated_data.get('status', old_status)
 
-    # Check section consistency
-    if new_assigned_to and ticket.section != new_assigned_to.section:
-        raise ValidationError(
-            f"Technician {new_assigned_to.username} does not belong to section {ticket.section.name}."
-        )
+    if new_assigned_to:
+        # 1. Check if the assigned user's role is 'technician'
+        # Assuming your User model has a 'role' field
+        if new_assigned_to.role != 'technician':
+            raise ValidationError(
+                f"User {new_assigned_to.username} cannot be assigned. Their role is not 'technician'."
+            )
+
+        # 2. Check section consistency (existing logic)
+        if ticket.section != new_assigned_to.section:
+            raise ValidationError(
+                f"Technician {new_assigned_to.username} does not belong to section {ticket.section.name}."
+            )
+        # 3. Prevent assignment if ticket is closed or resolved (existing logic)
+        if old_status in ["resolved", "closed"]:
+            raise ValidationError("Cannot assign a ticket that is resolved or closed.")
 
     # Auto-change status if newly assigned and was open
     if old_assigned_to is None and new_assigned_to and old_status == 'open':

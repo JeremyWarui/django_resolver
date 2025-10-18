@@ -7,9 +7,8 @@ from . import services
 # Create your views here.
 
 # --------------------------------
-# SECTION
+# SECTION API
 # ----------------------------------
-
 
 class SectionListCreateView(ListCreateAPIView):
     queryset = Section.objects.all()
@@ -23,9 +22,8 @@ class SectionDetailView(RetrieveUpdateDestroyAPIView):
     # permission_classes = [IsAuthenticated]
 
 # --------------------------------
-# FACILITY
+# FACILITY API
 # ----------------------------------
-
 
 class FacilityListCreateView(ListCreateAPIView):
     queryset = Facility.objects.all()
@@ -39,9 +37,8 @@ class FacilityDetailView(RetrieveUpdateDestroyAPIView):
     # permission_classes = [IsAuthenticated]
 
 # --------------------------------
-# TICKETS
+# TICKETS API
 # ----------------------------------
-
 
 class TicketListCreateView(ListCreateAPIView):
     queryset = Ticket.objects.all().order_by('-created_at')
@@ -65,9 +62,8 @@ class TicketDetailView(RetrieveUpdateDestroyAPIView):
         services.update_ticket(serializer, self.request.user)
 
 # --------------------------------
-# COMMENTS
+# COMMENTS API
 # ----------------------------------
-
 
 class CommentListCreateView(ListCreateAPIView):
     queryset = Comment.objects.all().order_by('created_at')
@@ -82,7 +78,7 @@ class CommentListCreateView(ListCreateAPIView):
 
 
 # --------------------------------
-# FEEDBACK
+# FEEDBACK API
 # ----------------------------------
 
 class FeedbackListCreateView(ListCreateAPIView):
@@ -98,7 +94,7 @@ class FeedbackListCreateView(ListCreateAPIView):
 
 
 # --------------------------------
-# FEEDBACK
+# USERS API
 # ----------------------------------
 
 class UserListCreateView(ListCreateAPIView):

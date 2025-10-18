@@ -1,22 +1,7 @@
 from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import ValidationError, PermissionDenied
 
-from .models import Ticket, Comment, Feedback, TicketLog
-
-# ---------------------
-# TICKET SERVICES
-# ----------------------
-
-# class TicketService:
-#     @staticmethod
-#     def assign_ticket(ticket, technician, assigned_by):
-#         if technician.section != ticket.section:
-#             raise ValidationError("Technician not in the same section")
-#         ticket.assigned_to = technician
-#         ticket.status = "assigned"
-#         ticket.save()
-#         return ticket
-
+from .models import Ticket, TicketLog
 
 # ---------------------
 # TICKET SERVICES
@@ -54,6 +39,10 @@ def update_ticket(serializer, user):
     if old_assigned_to is None and new_assigned_to and old_status == 'open':
         new_status = 'assigned'
         serializer.validated_data['status'] = 'assigned'
+
+    #prevent assignment if ticket is closed or resolved
+    if new_assigned_to and old_status in ["resolved", "closed"]:
+        raise ValidationError("Cannot assign a ticket that is resolved or closed.")
 
     # Save updated fields
     updated_ticket = serializer.save()

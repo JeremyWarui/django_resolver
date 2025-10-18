@@ -53,6 +53,15 @@ class UserSerializer(serializers.ModelSerializer):
         )
         return user
 
+# minimal serializer for ticket to avoid circular dependency during nested serialization
+class TinyTicketSerializer(serializers.ModelSerializer):
+    """ minimal version ticket serializer to be used by
+        Comments serializer and Feedback serializer
+    """
+    class Meta:
+        model = Ticket
+        fields = ['id', 'ticket_no']
+
 
 class CommentSerializer(serializers.ModelSerializer):
     # Write-only field for author ID
@@ -69,7 +78,8 @@ class CommentSerializer(serializers.ModelSerializer):
 
     # read-only field for author username
     author = serializers.StringRelatedField(read_only=True)
-    ticket = serializers.StringRelatedField(read_only=True)
+    # ticket = serializers.StringRelatedField(read_only=True)
+    ticket = TinyTicketSerializer(read_only=True)
 
     class Meta:
         model = Comment
@@ -91,7 +101,8 @@ class FeedbackSerializer(serializers.ModelSerializer):
 
     """
 
-    ticket = serializers.StringRelatedField(read_only=True)
+    # ticket = serializers.StringRelatedField(read_only=True)
+    ticket = TinyTicketSerializer(read_only=True)
     rated_by = serializers.StringRelatedField(read_only=True)
 
     class Meta:
@@ -99,6 +110,7 @@ class FeedbackSerializer(serializers.ModelSerializer):
         fields = ['id', 'ticket', 'rated_by', 'rating', 'comment', 'created_at']
 
 
+# main  ticket serializer
 class TicketSerializer(serializers.ModelSerializer):
     # write only field for IDS
     # raised_by_id = serializers.PrimaryKeyRelatedField(

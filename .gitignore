@@ -31,6 +31,9 @@ staticfiles/
 # Excludes JSON fixtures within the 'tickets' app's fixtures directory.
 tickets/fixtures/tickets_initial_data.json
 
+tickets/fixtures/tickets_initial_data.json
+
+
 # Environment
 venv/
 .env

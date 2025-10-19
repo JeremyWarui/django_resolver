@@ -1,7 +1,7 @@
 import pytest
 from django.urls import reverse
 from rest_framework.test import APIClient
-from tickets.models import Ticket, CustomUser, Section, Facility
+from tickets.models import Ticket, CustomUser, Section, Facility, Comment, Feedback
 
 
 @pytest.fixture
@@ -75,7 +75,6 @@ def setup_data(db):
         "admin": admin
     }
 
-
 @pytest.mark.django_db
 def test_ticket_creation(api_client, setup_data):
     """ user can create a ticket and its starts with open status and no technician"""
@@ -97,7 +96,6 @@ def test_ticket_creation(api_client, setup_data):
     assert ticket.status == "open"
     assert ticket.assigned_to is None
     assert ticket.raised_by == setup_data["user"]
-
 
 @pytest.mark.django_db
 def test_admin_can_assign_ticket(api_client, setup_data):
@@ -128,7 +126,6 @@ def test_admin_can_assign_ticket(api_client, setup_data):
     ticket.refresh_from_db()
     assert ticket.assigned_to == setup_data["technician"]
     assert ticket.status == "assigned"
-
 
 @pytest.mark.django_db
 def test_admin_cant_assign_ticket_to_technician_not_in_section(api_client, setup_data):
@@ -173,7 +170,6 @@ def test_admin_cant_assign_ticket_to_technician_not_in_section(api_client, setup
     ticket.refresh_from_db()
     assert ticket.assigned_to is None
     assert ticket.status == "open"
-
 
 @pytest.mark.django_db
 def test_technician_can_update_ticket_status(api_client, setup_data):
@@ -244,4 +240,39 @@ def test_user_cant_update_ticket_status(api_client, setup_data):
     assert response.status_code in [400, 404]
     ticket.refresh_from_db()
     assert ticket.status == "assigned"
+
+@pytest.mark.django_db()
+def test_technician_or_admin_add_comment_to_ticket(api_client, setup_data):
+    """ test that comments can be added to a ticket """
+    ticket = Ticket.objects.create(
+        title="Email down",
+        description="Outlook not syncing",
+        section=setup_data["section"],
+        facility=setup_data["facility"],
+        raised_by=setup_data["user"],
+        assigned_to=setup_data["technician"],
+        status="in_progress"
+    )
+    api_client.force_authenticate(user=setup_data['technician'])
+    payload = {
+        "text": "It is now working!",
+    }
+
+    response = api_client.post(reverse("ticket-comments", args=[ticket.id]), payload, format="json")
+    print(response.status_code, response.data)
+    assert response.status_code == 201
+    comment_tech = Comment.objects.first()
+    assert comment_tech.author == setup_data["technician"]
+    assert comment_tech.text == payload['text']
+
+    api_client.force_authenticate(user=setup_data['admin'])
+    admin_payload = {
+        "text": "Great to hear!",
+    }
+    response = api_client.post(reverse("ticket-comments", args=[ticket.id]), admin_payload, format="json")
+    print(response.status_code, response.data)
+    assert response.status_code == 201
+    admin_comment = Comment.objects.last()
+    assert admin_comment.text == admin_payload["text"]
+    assert admin_comment.author == setup_data["admin"]
 

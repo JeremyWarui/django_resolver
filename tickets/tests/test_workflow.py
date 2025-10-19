@@ -187,3 +187,61 @@ def test_technician_can_update_ticket_status(api_client, setup_data):
         assigned_to=setup_data["technician"],
         status="Assigned"
     )
+
+    payload = {
+        "status": "in_progress"
+    }
+    api_client.force_authenticate(user=setup_data['technician'])
+
+    response = api_client.patch(reverse('ticket-detail', args=[ticket.id]), payload, format="json")
+    assert response.status_code in [200, 202]
+    ticket.refresh_from_db()
+    assert ticket.status == "in_progress"
+
+    payload = {
+        "status": "resolved"
+    }
+    response = api_client.patch(reverse('ticket-detail', args=[ticket.id]), payload, format="json")
+    assert response.status_code in [200, 202]
+    ticket.refresh_from_db()
+    assert ticket.status == "resolved"
+
+@pytest.mark.django_db
+def test_user_cant_update_ticket_status(api_client, setup_data):
+    """ User cannot updates ticket from assigned to in_progress to resolved """
+    ticket = Ticket.objects.create(
+        title="Email down",
+        description="Outlook not syncing",
+        section=setup_data["section"],
+        facility=setup_data["facility"],
+        raised_by=setup_data["user"],
+        assigned_to=setup_data["technician"],
+        status="assigned"
+    )
+
+    user2 = CustomUser.objects.create_user(
+        username="user2",
+        password="userpass123",
+        email="user2@example.com",
+        role="user"
+    )
+
+    payload = {
+        "status": "in_progress"
+    }
+
+    api_client.force_authenticate(user=user2)
+
+    response = api_client.patch(reverse('ticket-detail', args=[ticket.id]), payload, format="json")
+    assert response.status_code in [400, 404]
+    ticket.refresh_from_db()
+    assert ticket.status == "assigned"
+
+    payload = {
+        "status": "resolved"
+    }
+    response = api_client.patch(reverse('ticket-detail', args=[ticket.id]), payload, format="json")
+    assert response.status_code in [400, 404]
+    ticket.refresh_from_db()
+    assert ticket.status == "assigned"
+

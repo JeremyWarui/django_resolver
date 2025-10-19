@@ -73,7 +73,8 @@ class CommentListCreateView(ListCreateAPIView):
     # permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
-        ticket_id = serializer.validated_data.get('ticket')
+        # ticket_id = serializer.validated_data.get('ticket')
+        ticket_id = self.kwargs.get("ticket_id")
         services.create_comment(serializer, self.request.user, ticket_id)
 
 

@@ -125,14 +125,15 @@ class TicketSerializer(serializers.ModelSerializer):
         source='assigned_to',
         allow_null=True,
         required=False,
-        write_only=True
+        write_only=True,
+        label="Assigned_To ID"
     )
 
     section_id = serializers.PrimaryKeyRelatedField(
-        queryset=Section.objects.all(), source='section', write_only=True)
+        queryset=Section.objects.all(), source='section', write_only=True, label='Section ID')
 
     facility_id = serializers.PrimaryKeyRelatedField(
-        queryset=Facility.objects.all(), source='facility', write_only=True)
+        queryset=Facility.objects.all(), source='facility', write_only=True, label='Facility ID')
 
     # read only fields for related names
     section = serializers.StringRelatedField(read_only=True)

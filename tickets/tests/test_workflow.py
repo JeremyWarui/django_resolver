@@ -90,6 +90,8 @@ def test_admin_can_assign_ticket(api_client, setup_data):
     }
 
     print(ticket, payload)
+    # ✅ authenticate as admin
+    api_client.force_authenticate(user=setup_data["admin"])
 
     response = api_client.patch(reverse("ticket-detail", args=[ticket.id]), payload, format="json" )
     print(response.status_code, response.data)

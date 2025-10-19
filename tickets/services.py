@@ -59,11 +59,13 @@ def update_ticket(serializer, user):
     # Save updated fields
     updated_ticket = serializer.save()
 
+    performed_by = user if user.is_authenticated else None
+
     # Log assignment changes
     if old_assigned_to != new_assigned_to:
         TicketLog.objects.create(
             ticket=updated_ticket,
-            performed_by=user,
+            performed_by=performed_by,
             action=f"Assigned to {new_assigned_to or 'None'}"
         )
 
@@ -71,7 +73,7 @@ def update_ticket(serializer, user):
     if old_status != new_status:
         TicketLog.objects.create(
             ticket=updated_ticket,
-            performed_by=user,
+            performed_by=performed_by,
             action=f"Status changed from {old_status} to {new_status}"
         )
 

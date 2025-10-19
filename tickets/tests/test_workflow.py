@@ -276,3 +276,27 @@ def test_technician_or_admin_add_comment_to_ticket(api_client, setup_data):
     assert admin_comment.text == admin_payload["text"]
     assert admin_comment.author == setup_data["admin"]
 
+@pytest.mark.django_db()
+def test_user_can_submit_feedback(api_client, setup_data):
+    """ User submits feedback after ticket is resolved """
+    ticket = Ticket.objects.create(
+        title="Email fixed",
+        description="Problem resolved",
+        section=setup_data["section"],
+        facility=setup_data["facility"],
+        raised_by=setup_data["user"],
+        assigned_to=setup_data["technician"],
+        status="Resolved"
+    )
+
+    api_client.force_authenticate(user=setup_data["user"])
+    payload = {
+        "rating": 5,
+        "comment": "Great job!"
+    }
+
+    response = api_client.post(reverse("ticket-feedback", args=[ticket.id]), payload, format="json" )
+    assert response.status_code == 201
+    feedback = Feedback.objects.get(ticket=ticket)
+    assert feedback.rating == 5
+    assert feedback.rated_by == setup_data["user"]

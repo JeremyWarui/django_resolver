@@ -91,7 +91,9 @@ class FeedbackListCreateView(ListCreateAPIView):
 
     def perform_create(self, serializer):
         # ticket_id = self.request.data.get('ticket')
-        ticket_id = serializer.validated_data.get('ticket')
+        # ticket_id = serializer.validated_data.get('ticket')
+        #  fetch ticket_id from the url
+        ticket_id = self.kwargs.get("ticket_id")
         services.create_feedback(serializer, self.request.user, ticket_id)
 
 

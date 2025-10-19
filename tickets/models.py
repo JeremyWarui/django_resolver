@@ -18,7 +18,7 @@ class CustomUser(AbstractUser):
 
     # add section - many-to-many relationship
     # allows to query section.objects.get(name-'IT').technicians.all()
-    sections_specialized_in = models.ManyToManyField(
+    sections = models.ManyToManyField(
         'Section',
         related_name="technicians",
         blank=True,

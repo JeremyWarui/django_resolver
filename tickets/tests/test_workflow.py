@@ -15,6 +15,7 @@ def setup_data(db):
         name='IT',
         description='Information Technology'
     )
+
     facility = Facility.objects.create(
         name='Main Building',
         type='building',
@@ -30,7 +31,7 @@ def setup_data(db):
         username='techuser',
         email='techuser@example.com',
         password='techpass',
-        role='technician'
+        role='technician',
     )
     admin = CustomUser.objects.create_user(
         username="adminuser",
@@ -38,6 +39,8 @@ def setup_data(db):
         password="adminpass",
         role="admin"
     )
+
+    technician.sections.add(section)
 
     return {
         'section': section,
@@ -69,3 +72,30 @@ def test_ticket_creation(api_client, setup_data):
     assert ticket.assigned_to is None
     assert ticket.raised_by == setup_data["user"]
 
+@pytest.mark.django_db
+def test_admin_can_assign_ticket(api_client, setup_data):
+    """ Admin assigns ticket to technician in same section as ticket section"""
+    ticket = Ticket.objects.create(
+        title="Network issue",
+        description="WiFi is down",
+        section=setup_data["section"],
+        facility=setup_data["facility"],
+        raised_by=setup_data["user"],
+        status="Open"
+    )
+
+    payload = {
+        "assigned_to_id": setup_data["technician"].id,
+        "status": "assigned"
+    }
+
+    print(ticket, payload)
+
+    response = api_client.patch(reverse("ticket-detail", args=[ticket.id]), payload, format="json" )
+    print(response.status_code, response.data)
+
+    assert response.status_code in [200, 202]
+
+    ticket.refresh_from_db()
+    assert ticket.assigned_to == setup_data["technician"]
+    assert ticket.status == "assigned"

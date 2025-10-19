@@ -3,6 +3,7 @@ from rest_framework.exceptions import ValidationError, PermissionDenied
 
 from .models import Ticket, TicketLog
 
+
 # ---------------------
 # TICKET SERVICES
 # ---------------------
@@ -51,7 +52,7 @@ def update_ticket(serializer, user):
         new_status = 'assigned'
         serializer.validated_data['status'] = 'assigned'
 
-    #prevent assignment if ticket is closed or resolved
+    # prevent assignment if ticket is closed or resolved
     if new_assigned_to and old_status in ["resolved", "closed"]:
         raise ValidationError("Cannot assign a ticket that is resolved or closed.")
 
@@ -75,6 +76,8 @@ def update_ticket(serializer, user):
         )
 
     return updated_ticket
+
+
 # ---------------------------------------------
 #  COMMENT SERVICES
 # ---------------------------------------------

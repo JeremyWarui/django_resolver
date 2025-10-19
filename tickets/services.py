@@ -47,6 +47,13 @@ def update_ticket(serializer, user):
         if old_status in ["resolved", "closed"]:
             raise ValidationError("Cannot assign a ticket that is resolved or closed.")
 
+        # prevent update of status by user
+        user = user if user.is_authenticated else None
+        if user.role not in ["technician", "admin"]:
+            raise ValidationError(
+                f"User {user.username} cannot update status. Their role is not 'technician' or 'admin'."
+            )
+
     # Auto-change status if newly assigned and was open
     if old_assigned_to is None and new_assigned_to and old_status == 'open':
         new_status = 'assigned'

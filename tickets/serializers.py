@@ -1,11 +1,11 @@
-from django.contrib.auth.models import User
+# from django.contrib.auth.models import User
 from rest_framework import serializers
 from .models import *
-from django.contrib.auth import get_user_model
+
+
+# from django.contrib.auth import get_user_model
 
 # User = get_user_model()
-
-
 class FacilitySerializer(serializers.ModelSerializer):
     class Meta:
         model = Facility
@@ -63,11 +63,13 @@ class UserSerializer(serializers.ModelSerializer):
             user.sections.set(sections)
         return user
 
+
 # minimal serializer for ticket to avoid circular dependency during nested serialization
 class TinyTicketSerializer(serializers.ModelSerializer):
     """ minimal version ticket serializer to be used by
         Comments serializer and Feedback serializer
     """
+
     class Meta:
         model = Ticket
         fields = ['id', 'ticket_no']

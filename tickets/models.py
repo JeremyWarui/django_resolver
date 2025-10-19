@@ -38,6 +38,7 @@ class Section(models.Model):
     def __str__(self):
         return f"{self.name}\n"
 
+
 # FACILITY MODEL
 class Facility(models.Model):
     """Facilities e.g. Building, ICT Equipment, Kitchen Equipment, Residential, e.t.c """
@@ -111,7 +112,6 @@ class Ticket(models.Model):
         return (f"{self.ticket_no}\n"
                 f"{self.title}\n"
                 f"{self.status}\n")
-
 
 
 # COMMENTS MODEL

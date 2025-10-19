@@ -29,7 +29,7 @@ staticfiles/
 
 # 🔑 IGNORE FIXTURE JSON FILES WITH SENSITIVE DATA (PASSWORDS)
 # Excludes JSON fixtures within the 'tickets' app's fixtures directory.
-tickets/fixtures/*.json
+tickets/fixtures/tickets_initial_data.json
 
 # Environment
 venv/

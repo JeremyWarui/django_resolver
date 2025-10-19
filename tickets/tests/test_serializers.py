@@ -2,16 +2,17 @@ from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework import status
-from tickets.models import *
+from tickets.models import Ticket, CustomUser
 from tickets.serializers import *
 from django.utils import timezone
 from datetime import timedelta
 
+# User = get_user_model()
 
 class SerializerTests(TestCase):
 
     def setUp(self):
-        self.user = User.objects.create_user(
+        self.user = CustomUser.objects.create_user(
             username='testuser',
             email='testuser@example.com',
             password='testpass',
@@ -26,7 +27,7 @@ class SerializerTests(TestCase):
             status='active',
             location='123 Main St'
         )
-        self.technician = User.objects.create_user(
+        self.technician = CustomUser.objects.create_user(
             username='techuser',
             email='techuser@example.com',
             password='techpass',
@@ -55,7 +56,7 @@ class SerializerTests(TestCase):
         self.assertEqual(data['title'], 'Faulty Printer')
         self.assertEqual(data['status'], 'assigned')
         self.assertEqual(data['raised_by'], self.user.username)
-        self.assertEqual(data['assigned_to'], self.technician.username)
+        self.assertEqual(data['assigned_to'], self.technician)
         self.assertEqual(len(data['comments']), 1)
 
     def test_comment_serializer(self):
@@ -99,7 +100,7 @@ class SerializerTests(TestCase):
             'description': 'This is a new ticket.',
             'section_id': self.section.id,
             'facility_id': self.facility.id,
-            'raised_by_id': self.user.id,
+            'raised_by': self.user.id,
             'status': 'open'
         }
         serializer = TicketSerializer(data=data)
@@ -114,9 +115,9 @@ class SerializerTests(TestCase):
     def test_comment_serializer_create(self):
         """ test comment serializer create method"""
         data = {
-            'ticket_id': self.ticket.id,
+            'ticket': self.ticket.id,
             'text': 'This is another comment.',
-            'author_id': self.technician.id
+            'author': self.technician.id
         }
         serializer = CommentSerializer(data=data)
         self.assertTrue(serializer.is_valid(), serializer.errors)
@@ -129,8 +130,8 @@ class SerializerTests(TestCase):
     def test_feedback_serializer_create(self):
         """ test feedback serializer creation"""
         data = {
-            'ticket_id': self.ticket.id,
-            'rated_by_id': self.user.id,
+            'ticket': self.ticket.id,
+            'rated_by': self.user.id,
             'rating': 4,
             'comment': 'Good service.'
         }

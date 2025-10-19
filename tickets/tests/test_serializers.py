@@ -4,6 +4,7 @@ from django.urls import reverse
 from rest_framework import status
 from tickets.models import Ticket, CustomUser
 from tickets.serializers import *
+from tickets import services
 from django.utils import timezone
 from datetime import timedelta
 
@@ -56,7 +57,7 @@ class SerializerTests(TestCase):
         self.assertEqual(data['title'], 'Faulty Printer')
         self.assertEqual(data['status'], 'assigned')
         self.assertEqual(data['raised_by'], self.user.username)
-        self.assertEqual(data['assigned_to'], self.technician)
+        self.assertEqual(data['assigned_to']['id'], self.technician.id)
         self.assertEqual(len(data['comments']), 1)
 
     def test_comment_serializer(self):
@@ -66,7 +67,7 @@ class SerializerTests(TestCase):
 
         self.assertEqual(data['text'], 'This is a comment.')
         self.assertEqual(data['author'], self.user.username)
-        self.assertEqual(data['ticket'], str(self.ticket))
+        self.assertEqual(data['ticket'], self.ticket)
 
     def test_custom_user_serializer(self):
         """ test custom user serializer"""
@@ -106,7 +107,7 @@ class SerializerTests(TestCase):
         serializer = TicketSerializer(data=data)
         self.assertTrue(serializer.is_valid(), serializer.errors)
 
-        ticket = serializer.save()
+        ticket = services.create_ticket(serializer, self.user)
         self.assertEqual(ticket.title, 'New Ticket')
         self.assertEqual(ticket.raised_by, self.user)
         self.assertEqual(ticket.status, 'open')
@@ -122,7 +123,8 @@ class SerializerTests(TestCase):
         serializer = CommentSerializer(data=data)
         self.assertTrue(serializer.is_valid(), serializer.errors)
 
-        comment = serializer.save()
+        # comment = serializer.save()
+        comment = services.create_comment(serializer, self.technician, self.ticket.id)
         self.assertEqual(comment.text, 'This is another comment.')
         self.assertEqual(comment.author, self.technician)
         self.assertEqual(comment.ticket, self.ticket)
@@ -138,7 +140,7 @@ class SerializerTests(TestCase):
 
         serializer = FeedbackSerializer(data=data)
         self.assertTrue(serializer.is_valid(), serializer.errors)
-        feedback = serializer.save()
+        feedback = services.create_feedback(serializer, self.user, ticket_id=self.ticket.id).save()
         self.assertEqual(feedback.ticket, self.ticket)
         self.assertEqual(feedback.rated_by, self.user)
         self.assertEqual(feedback.rating, 4)

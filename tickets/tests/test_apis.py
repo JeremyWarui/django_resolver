@@ -8,11 +8,12 @@ from tickets.serializers import *
 from django.utils import timezone
 from datetime import timedelta
 
+User = get_user_model()
 
 class APITests(APITestCase):
     def setUp(self):
         self.client = APIClient()
-        self.user = User.objects.create_user(
+        self.user = CustomUser.objects.create_user(
             username='testuser',
             email='testuser@example.com',
             password='testpassword'
@@ -39,7 +40,7 @@ class APITests(APITestCase):
             raised_by=self.user
         )
 
-        self.technician = User.objects.create_user(
+        self.technician = CustomUser.objects.create_user(
             username='techuser',
             email='techuser@example.com',
             password='techpassword',

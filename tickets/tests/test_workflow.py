@@ -286,7 +286,7 @@ def test_user_can_submit_feedback(api_client, setup_data):
         facility=setup_data["facility"],
         raised_by=setup_data["user"],
         assigned_to=setup_data["technician"],
-        status="Resolved"
+        status="resolved"
     )
 
     api_client.force_authenticate(user=setup_data["user"])
@@ -300,3 +300,28 @@ def test_user_can_submit_feedback(api_client, setup_data):
     feedback = Feedback.objects.get(ticket=ticket)
     assert feedback.rating == 5
     assert feedback.rated_by == setup_data["user"]
+
+@pytest.mark.django_db()
+def test_user_cant_submit_feedback_is_not_resolved(api_client, setup_data):
+    """ User submits feedback after ticket is resolved """
+    ticket = Ticket.objects.create(
+        title="Email fixed",
+        description="Problem resolved",
+        section=setup_data["section"],
+        facility=setup_data["facility"],
+        raised_by=setup_data["user"],
+        assigned_to=setup_data["technician"],
+        status="pending"
+    )
+
+    api_client.force_authenticate(user=setup_data["user"])
+    payload = {
+        "rating": 5,
+        "comment": "Great job!"
+    }
+
+    response = api_client.post(reverse("ticket-feedback", args=[ticket.id]), payload, format="json" )
+    assert response.status_code == 400
+    feedback = Feedback.objects.filter(ticket=ticket).count()
+    assert feedback == 0
+    # assert feedback.rated_by is None

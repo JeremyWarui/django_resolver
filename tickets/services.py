@@ -120,6 +120,9 @@ def create_feedback(serializer, user, ticket_id):
     if ticket.raised_by != user:
         raise PermissionDenied("Only the ticket raiser can give feedback.")
 
+    if ticket.status != "resolved":
+        raise ValidationError("The ticket has to be resolved to rate the job.")
+
     feedback = serializer.save(rated_by=user, ticket=ticket)
 
     TicketLog.objects.create(

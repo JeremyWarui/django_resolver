@@ -102,7 +102,7 @@ class UserListCreateView(ListCreateAPIView):
     queryset = CustomUser.objects.all().order_by('username')
     serializer_class = UserSerializer
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['role']
+    filterset_fields = ['role', 'sections']
     # permission_classes = [IsAuthenticated]
 
 

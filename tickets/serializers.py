@@ -13,19 +13,26 @@ class FacilitySerializer(serializers.ModelSerializer):
 
 
 class SectionSerializer(serializers.ModelSerializer):
+    technicians = serializers.StringRelatedField(many=True, read_only=True)
+
     class Meta:
         model = Section
-        fields = "__all__"
+        fields = ['id', 'name', 'description', 'technicians']
 
 
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     username = serializers.CharField(read_only=True)
+    sections = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=Section.objects.all(),
+        required=False
+    )
 
     class Meta:
         model = CustomUser
         fields = ['id', 'username', 'first_name',
-                  'last_name', 'email', 'password', 'role']
+                  'last_name', 'email', 'password', 'role', 'sections']
 
     def create(self, validated_data):
         first_name = validated_data.get('first_name')
@@ -33,6 +40,7 @@ class UserSerializer(serializers.ModelSerializer):
         email = validated_data.get('email', '')
         password = validated_data['password']
         role = validated_data.get('role', 'user')
+        sections = validated_data.pop('sections', [])
 
         base_username = f"{first_name.lower()}.{last_name.lower()}"
         username = base_username
@@ -51,6 +59,8 @@ class UserSerializer(serializers.ModelSerializer):
             password=password,
             role=role,
         )
+        if sections:
+            user.sections.set(sections)
         return user
 
 # minimal serializer for ticket to avoid circular dependency during nested serialization
@@ -120,7 +130,7 @@ class TicketSerializer(serializers.ModelSerializer):
     """
 
     assigned_to_id = serializers.SlugRelatedField(
-        slug_field='username',
+        slug_field='id',
         queryset=CustomUser.objects.filter(role='technician'),
         source='assigned_to',
         allow_null=True,

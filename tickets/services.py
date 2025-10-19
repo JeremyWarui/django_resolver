@@ -37,8 +37,8 @@ def update_ticket(serializer, user):
                 f"User {new_assigned_to.username} cannot be assigned. Their role is not 'technician'."
             )
 
-        # 2. Check section consistency (existing logic)
-        if ticket.section != new_assigned_to.section:
+        # Check section of ticket is among the sections the technician has
+        if ticket.section not in new_assigned_to.sections.all():
             raise ValidationError(
                 f"Technician {new_assigned_to.username} does not belong to section {ticket.section.name}."
             )

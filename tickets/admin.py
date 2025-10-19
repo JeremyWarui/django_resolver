@@ -27,7 +27,14 @@ class CustomUserAdmin(UserAdmin):
 # register section
 @admin.register(Section)
 class SectionAdmin(admin.ModelAdmin):
-    list_display = ("name", "description", "technicians")
+    list_display = ("name", "description", "get_technicians")
+    search_fields = ('name', 'description', 'technicians__username')
+
+    def get_technicians(self, obj):
+        """Return list of technicians in this section"""
+        return ", ".join([user.username for user in obj.technicians.all()])
+
+    get_technicians.short_description = "Technicians"
 
 
 # register facilities

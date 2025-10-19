@@ -67,7 +67,7 @@ class SerializerTests(TestCase):
 
         self.assertEqual(data['text'], 'This is a comment.')
         self.assertEqual(data['author'], self.user.username)
-        self.assertEqual(data['ticket'], self.ticket)
+        self.assertEqual(data['ticket']['id'], self.ticket.id)
 
     def test_custom_user_serializer(self):
         """ test custom user serializer"""
@@ -131,6 +131,9 @@ class SerializerTests(TestCase):
 
     def test_feedback_serializer_create(self):
         """ test feedback serializer creation"""
+        self.ticket.status = "resolved"
+        self.ticket.save()
+
         data = {
             'ticket': self.ticket.id,
             'rated_by': self.user.id,
@@ -140,7 +143,7 @@ class SerializerTests(TestCase):
 
         serializer = FeedbackSerializer(data=data)
         self.assertTrue(serializer.is_valid(), serializer.errors)
-        feedback = services.create_feedback(serializer, self.user, ticket_id=self.ticket.id).save()
+        feedback = services.create_feedback(serializer, self.user, ticket_id=self.ticket.id)
         self.assertEqual(feedback.ticket, self.ticket)
         self.assertEqual(feedback.rated_by, self.user)
         self.assertEqual(feedback.rating, 4)

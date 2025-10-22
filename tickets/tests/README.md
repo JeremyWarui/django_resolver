@@ -46,8 +46,13 @@ API tests using Django REST Framework's `APITestCase`. These tests verify the co
 
 #### Closed Status Tests
 - `test_admin_can_close_resolved_ticket` - Only admins can close resolved tickets
+- `test_cannot_close_unresolved_ticket` - Tickets must be resolved before closing
 - `test_cannot_modify_closed_ticket` - Closed tickets cannot be modified
 - `test_comment_on_closed_ticket` - Closed tickets cannot receive comments
+
+#### Comment Visibility Tests
+
+- `test_admin_and_technician_can_view_comments` - Verify comment visibility rules for different user roles
 
 ### 2. `test_models.py`
 

@@ -781,6 +781,109 @@ class APITests(APITestCase):
         # Uncomment if you have such restrictions:
         # self.assertIn(response.status_code, [status.HTTP_400_BAD_REQUEST, status.HTTP_403_FORBIDDEN])
 
+    def test_admin_and_technician_can_view_comments(self):
+        """Test that admins and technicians can view ticket comments"""
+        # Create ticket with multiple comments
+        ticket = Ticket.objects.create(
+            title='Comment Visibility Test',
+            description='Testing comment visibility rules',
+            section=self.section,
+            facility=self.facility,
+            raised_by=self.user,
+            assigned_to=self.technician,
+            status='in_progress'
+        )
+
+        # Add several comments from different users
+        comment1 = Comment.objects.create(
+            ticket=ticket,
+            text='Comment from user',
+            author=self.user
+        )
+
+        comment2 = Comment.objects.create(
+            ticket=ticket,
+            text='Comment from technician',
+            author=self.technician
+        )
+
+        comment3 = Comment.objects.create(
+            ticket=ticket,
+            text='Comment from admin',
+            author=self.admin
+        )
+
+        # Create an unrelated user
+        unrelated_user = CustomUser.objects.create_user(
+            username='unrelated',
+            email='unrelated@example.com',
+            password='password',
+            role='user'
+        )
+
+        # Create another technician who isn't assigned to this ticket
+        other_tech = CustomUser.objects.create_user(
+            username='othertech',
+            email='othertech@example.com',
+            password='password',
+            role='technician'
+        )
+        other_tech.sections.set([self.section.id])
+
+        # Test 1: Admin can view all comments
+        self.client.logout()
+        self.client.login(username='adminuser', password='adminpassword')
+
+        url = reverse('ticket-detail', args=[ticket.id])
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['comments']), 3)
+
+        # Test 2: Assigned technician can view all comments
+        self.client.logout()
+        self.client.login(username='techuser', password='techpassword')
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['comments']), 3)
+
+        # Test 3: Ticket raiser can view all comments
+        self.client.logout()
+        self.client.login(username='testuser', password='testpassword')
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['comments']), 3)
+
+        # Test 4: Unrelated user shouldn't see the ticket
+        # This depends on your permission model - they might see it but
+        # shouldn't be able to see certain information
+        self.client.logout()
+        self.client.login(username='unrelated', password='password')
+
+        response = self.client.get(url)
+
+        # If your implementation restricts viewing tickets:
+        # self.assertNotEqual(response.status_code, status.HTTP_200_OK)
+
+        # If unrelated users can see tickets but should have limited access:
+        if response.status_code == status.HTTP_200_OK:
+            # Verify the user can see the ticket but comments may be restricted
+            self.assertEqual(response.data['title'], 'Comment Visibility Test')
+
+        # Test 5: Other technician in same section should be able to view
+        self.client.logout()
+        self.client.login(username='othertech', password='password')
+
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Other technicians should see all comments if they're in the same section
+        self.assertEqual(len(response.data['comments']), 3)
+
     def test_admin_can_close_resolved_ticket(self):
         """Test that only admin can close tickets after resolution"""
         # Create a simplified test where we directly create a resolved ticket
@@ -825,6 +928,65 @@ class APITests(APITestCase):
         print(f"Response data: {response.data}")
 
         # Assert that it works now
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['status'], 'closed')
+
+    def test_cannot_close_unresolved_ticket(self):
+        """Test that tickets can only be closed if they are resolved first"""
+        # Create tickets with different statuses (none resolved)
+        statuses = ['open', 'assigned', 'in_progress', 'pending']
+        tickets = []
+
+        for status_value in statuses:
+            ticket = Ticket.objects.create(
+                title=f'{status_value.capitalize()} Ticket',
+                description=f'This ticket has {status_value} status.',
+                section=self.section,
+                facility=self.facility,
+                raised_by=self.user,
+                assigned_to=self.technician if status_value != 'open' else None,
+                status=status_value
+            )
+            tickets.append(ticket)
+
+        # Login as admin (who normally can close tickets)
+        self.client.logout()
+        self.client.login(username='adminuser', password='adminpassword')
+
+        # Try to close each ticket that's not resolved
+        for ticket in tickets:
+            url = reverse('ticket-detail', args=[ticket.id])
+            data = {
+                'status': 'closed'
+            }
+
+            response = self.client.patch(url, data, format='json')
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST,
+                             f"Shouldn't be able to close a ticket with '{ticket.status}' status")
+            self.assertIn("Invalid status transition", str(response.data))
+
+            # Verify ticket status didn't change
+            ticket.refresh_from_db()
+            self.assertNotEqual(ticket.status, 'closed')
+
+        # Create a resolved ticket as control
+        resolved_ticket = Ticket.objects.create(
+            title='Resolved Ticket',
+            description='This ticket is resolved and can be closed.',
+            section=self.section,
+            facility=self.facility,
+            raised_by=self.user,
+            assigned_to=self.technician,
+            status='resolved'
+        )
+
+        # Verify admin can close this one
+        url = reverse('ticket-detail', args=[resolved_ticket.id])
+        data = {
+            'status': 'closed'
+        }
+
+        response = self.client.patch(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['status'], 'closed')
 

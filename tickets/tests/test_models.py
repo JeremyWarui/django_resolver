@@ -6,7 +6,6 @@ from tickets.models import *
 from django.utils import timezone
 from datetime import timedelta
 
-
 # Create your tests here.
 User = get_user_model()
 
@@ -95,7 +94,7 @@ class ModelTests(TestCase):
 
         # Check that numbers are sequential
         for i in range(1, len(tickets)):
-            prev_num = int(tickets[i-1].ticket_no.split('-')[1])
+            prev_num = int(tickets[i - 1].ticket_no.split('-')[1])
             curr_num = int(tickets[i].ticket_no.split('-')[1])
             self.assertEqual(prev_num + 1, curr_num)
 

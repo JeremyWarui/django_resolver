@@ -1,13 +1,9 @@
-from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.urls import reverse
-from pygments.lexers.sql import re_psql_command
 from rest_framework import status
 from rest_framework.test import APITestCase, APIClient
-from tickets.models import *
+
 from tickets.serializers import *
-from django.utils import timezone
-from datetime import timedelta
 
 User = get_user_model()
 
@@ -849,12 +845,6 @@ class APITests(APITestCase):
             ticket=ticket,
             text='Comment from technician',
             author=self.technician
-        )
-
-        comment3 = Comment.objects.create(
-            ticket=ticket,
-            text='Comment from admin',
-            author=self.admin
         )
 
         # Create an unrelated user

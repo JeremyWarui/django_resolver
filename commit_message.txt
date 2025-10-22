@@ -1,0 +1,22 @@
+Refactor: Reorganize code structure and fix paginated API tests
+
+This commit includes several significant improvements to the codebase structure:
+
+1. Code reorganization:
+   - Move analytics functionality to dedicated modules
+   - Create organized directory structure under tickets/api/
+   - Separate concerns with folders for analytics, services, and views
+   - Use index files for cleaner imports
+
+2. Fix API tests for pagination:
+   - Update tests to handle paginated responses
+   - Replace direct array access with proper results filtering
+   - Update assertions to check response format correctly
+   - Fix all test failures related to paginated API responses
+
+3. Remove redundant files:
+   - Remove old analytics.py, analytics_views.py, and views.py
+   - Keep core models and serializers in original locations
+
+The refactoring improves maintainability and follows a more modular approach
+while ensuring all tests pass with the new structure.

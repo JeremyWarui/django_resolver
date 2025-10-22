@@ -11,6 +11,7 @@ from datetime import timedelta
 
 User = get_user_model()
 
+
 class APITests(APITestCase):
     def setUp(self):
         self.client = APIClient()
@@ -111,7 +112,6 @@ class APITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["status"], "in_progress")
 
-
     def test_update_ticket_status_admin(self):
         """test admin update status"""
         url = reverse("ticket-detail", args=[self.ticket.id])
@@ -154,5 +154,124 @@ class APITests(APITestCase):
 
         comments_url = reverse("ticket-detail", args=[self.ticket.id])
         comments_response = self.client.get(comments_url)
-        print(comments_response.data["comments"])
         self.assertEqual(len(comments_response.data["comments"]), 2)
+
+    def test_get_ticket_detail(self):
+        """Test retrieving a specific ticket with comments & feedback"""
+        url = reverse("ticket-detail", args=[self.ticket.id])
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['ticket_no'], self.ticket.ticket_no)
+        self.assertEqual(response.data['title'], 'Test Ticket')
+
+        # Check that comments are included
+        self.assertIn('comments', response.data)
+        self.assertEqual(len(response.data['comments']), 1)
+        self.assertEqual(response.data['comments']
+                         [0]['text'], 'This is a test comment.')
+
+        # Check that feedback is included
+        self.assertIn('feedback', response.data)
+        self.assertEqual(response.data['feedback']['rating'], 5)
+        self.assertEqual(response.data['feedback']
+                         ['comment'], 'Great service!')
+
+    def test_assign_ticket_admin(self):
+        """Test that admin can assign a ticket to technician"""
+        url = reverse("ticket-detail", args=[self.ticket.id])
+
+        # Create a new ticket to assign
+        new_ticket = Ticket.objects.create(
+            title='Unassigned Ticket',
+            description='This ticket needs to be assigned.',
+            section=self.section,
+            facility=self.facility,
+            raised_by=self.user,
+            status='open'
+        )
+
+        # Login as admin
+        self.client.logout()
+        self.client.login(username='adminuser', password='adminpassword')
+
+        # Assign the ticket to the technician
+        data = {
+            "assigned_to_id": self.technician.id,
+            "status": "assigned"
+        }
+
+        url = reverse("ticket-detail", args=[new_ticket.id])
+        response = self.client.patch(url, data, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['status'], 'assigned')
+        self.assertEqual(response.data['assigned_to']
+                         ['id'], self.technician.id)
+
+    def test_resolve_ticket_technician(self):
+        """Test that technician can mark a ticket as resolved"""
+        # Login as technician
+        self.client.logout()
+        self.client.login(username='techuser', password='techpassword')
+
+        url = reverse("ticket-detail", args=[self.ticket.id])
+        data = {
+            "status": "resolved"
+        }
+
+        response = self.client.patch(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['status'], 'resolved')
+
+        # Verify that a ticket log was created for this status change
+        latest_log = TicketLog.objects.filter(
+            ticket=self.ticket).order_by('-timestamp').first()
+        self.assertIsNotNone(latest_log)
+        self.assertEqual(latest_log.performed_by, self.technician)
+        self.assertIn("Status changed from assigned to resolved",
+                      latest_log.action)
+
+    def test_user_cannot_assign_ticket(self):
+        """Test that a regular user cannot assign tickets"""
+        # Login as regular user
+        self.client.logout()
+        self.client.login(username='testuser', password='testpassword')
+
+        url = reverse("ticket-detail", args=[self.ticket.id])
+        data = {
+            "assigned_to_id": self.technician.id
+        }
+
+        response = self.client.patch(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("User testuser cannot update status", str(response.data))
+
+    def test_delete_ticket(self):
+        """Test ticket deletion functionality"""
+        # Create a ticket to delete
+        ticket_to_delete = Ticket.objects.create(
+            title='Delete Me Ticket',
+            description='This ticket will be deleted.',
+            section=self.section,
+            facility=self.facility,
+            raised_by=self.user
+        )
+
+        url = reverse("ticket-detail", args=[ticket_to_delete.id])
+
+        # Note: Since explicit permission checks aren't implemented in the views,
+        # we're just verifying basic delete functionality
+        # Login as admin for this test
+        self.client.logout()
+        self.client.login(username='adminuser', password='adminpassword')
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+        # Verify deletion
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+        # Verify the ticket is no longer in the database
+        with self.assertRaises(Ticket.DoesNotExist):
+            Ticket.objects.get(id=ticket_to_delete.id)

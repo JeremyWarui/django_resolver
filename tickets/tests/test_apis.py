@@ -1,6 +1,7 @@
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.urls import reverse
+from pygments.lexers.sql import re_psql_command
 from rest_framework import status
 from rest_framework.test import APITestCase, APIClient
 from tickets.models import *
@@ -46,9 +47,19 @@ class APITests(APITestCase):
             password='techpassword',
             role='technician'
         )
+
+        self.admin = CustomUser.objects.create_user(
+            username='adminuser',
+            email='adminuser@example.com',
+            password='adminpassword',
+            role='admin'
+        )
+
         self.ticket.assigned_to = self.technician
         self.ticket.status = 'assigned'
         self.ticket.save()
+        self.technician.sections.set([1])
+        self.technician.save()
 
         self.comment = Comment.objects.create(
             ticket=self.ticket,
@@ -83,3 +94,65 @@ class APITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['title'], 'New Ticket')
         self.assertEqual(response.data['status'], 'open')
+
+    def test_update_ticket_status_technician(self):
+        """test to check technician update of ticket """
+        url = reverse("ticket-detail", args=[self.ticket.id])
+        # print(url)
+        data = {
+            "status": "in_progress"
+        }
+
+        self.client.logout()
+        self.client.login(username='techuser', password='techpassword')
+
+        response = self.client.patch(url, data, format="json")
+        # print(response, response.data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["status"], "in_progress")
+
+
+    def test_update_ticket_status_admin(self):
+        """test admin update status"""
+        url = reverse("ticket-detail", args=[self.ticket.id])
+        # print(url)
+        data = {
+            "status": "in_progress"
+        }
+        self.client.logout()
+        self.client.login(username='adminuser', password='adminpassword')
+
+        response = self.client.patch(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["status"], "in_progress")
+
+    def test_update_ticket_user_cant(self):
+        """ test that the user cant update status """
+        url = reverse("ticket-detail", args=[self.ticket.id])
+        # print(url)
+        data = {
+            "status": "in_progress"
+        }
+
+        self.client.logout()
+        self.client.login(username="testuser", password="testpassword")
+        response = self.client.patch(url, data, format="json")
+        # print(response.data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("User testuser cannot update status", str(response.data))
+
+    def test_user_can_add_comment(self):
+        """user can add comment"""
+        url = reverse("ticket-comments", args=[self.ticket.id])
+        data = {
+            "text": "This is a second comment"
+        }
+
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["text"], "This is a second comment")
+
+        comments_url = reverse("ticket-detail", args=[self.ticket.id])
+        comments_response = self.client.get(comments_url)
+        print(comments_response.data["comments"])
+        self.assertEqual(len(comments_response.data["comments"]), 2)

@@ -214,7 +214,7 @@ class APITests(APITestCase):
         # First update ticket status to in_progress (to match our valid transitions)
         self.ticket.status = 'in_progress'
         self.ticket.save()
-        
+
         # Login as technician
         self.client.logout()
         self.client.login(username='techuser', password='techpassword')
@@ -279,11 +279,11 @@ class APITests(APITestCase):
         # Verify the ticket is no longer in the database
         with self.assertRaises(Ticket.DoesNotExist):
             Ticket.objects.get(id=ticket_to_delete.id)
-            
+
     # ---------------------------------
     # Filtering Tests
     # ---------------------------------
-    
+
     def test_filter_tickets_by_status(self):
         """Test filtering tickets by status"""
         # Create a second ticket with different status
@@ -295,21 +295,21 @@ class APITests(APITestCase):
             raised_by=self.user,
             status='open'
         )
-        
+
         # Test filtering by assigned status
         url = reverse('ticket-list') + '?status=assigned'
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['status'], 'assigned')
-        
+
         # Test filtering by open status
         url = reverse('ticket-list') + '?status=open'
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['status'], 'open')
-        
+
     def test_filter_tickets_by_section(self):
         """Test filtering tickets by section"""
         # Create a new section
@@ -317,7 +317,7 @@ class APITests(APITestCase):
             name='Plumbing',
             description='Water systems and pipes'
         )
-        
+
         # Create a ticket for the new section
         plumbing_ticket = Ticket.objects.create(
             title='Water Leak',
@@ -327,25 +327,25 @@ class APITests(APITestCase):
             raised_by=self.user,
             status='open'
         )
-        
+
         # Test filtering by IT section
         url = reverse('ticket-list') + f'?section={self.section.id}'
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['section'], 'IT\n')
-        
+
         # Test filtering by Plumbing section
         url = reverse('ticket-list') + f'?section={plumbing.id}'
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['title'], 'Water Leak')
-        
+
     # ---------------------------------
     # Technician Assigned Tickets
     # ---------------------------------
-    
+
     def test_technician_can_list_assigned_tickets(self):
         """Test that technician can see only tickets assigned to them"""
         # Create a new technician
@@ -356,7 +356,7 @@ class APITests(APITestCase):
             role='technician'
         )
         second_tech.sections.set([self.section.id])
-        
+
         # Create a ticket assigned to second technician
         ticket2 = Ticket.objects.create(
             title='Second Tech Ticket',
@@ -367,31 +367,31 @@ class APITests(APITestCase):
             assigned_to=second_tech,
             status='assigned'
         )
-        
+
         # Login as first technician
         self.client.logout()
         self.client.login(username='techuser', password='techpassword')
-        
+
         # Filter tickets by assigned_to for the first technician
         url = reverse('ticket-list') + f'?assigned_to={self.technician.id}'
         response = self.client.get(url)
-        
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['title'], 'Test Ticket')
-        
+
         # Filter tickets by assigned_to for the second technician
         url = reverse('ticket-list') + f'?assigned_to={second_tech.id}'
         response = self.client.get(url)
-        
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['title'], 'Second Tech Ticket')
-        
+
     # ---------------------------------
     # Workflow Specific Tests
     # ---------------------------------
-    
+
     def test_ticket_lifecycle_workflow(self):
         """Test the complete ticket lifecycle from open to resolved"""
         # Create a new ticket with open status
@@ -403,44 +403,44 @@ class APITests(APITestCase):
             raised_by=self.user,
             status='open'
         )
-        
+
         # Step 1: Admin assigns the ticket to a technician (open → assigned)
         self.client.logout()
         self.client.login(username='adminuser', password='adminpassword')
-        
+
         url = reverse('ticket-detail', args=[lifecycle_ticket.id])
         data = {
             'assigned_to_id': self.technician.id
         }
-        
+
         response = self.client.patch(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['status'], 'assigned')
-        
+
         # Step 2: Technician updates status to in_progress (assigned → in_progress)
         self.client.logout()
         self.client.login(username='techuser', password='techpassword')
-        
+
         data = {
             'status': 'in_progress'
         }
-        
+
         response = self.client.patch(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['status'], 'in_progress')
-        
+
         # Step 3: Technician marks ticket as resolved (in_progress → resolved)
         data = {
             'status': 'resolved'
         }
-        
+
         response = self.client.patch(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['status'], 'resolved')
-        
+
         # Note: From reviewing the services.py code, it appears 'closed' status is not
         # implemented in the business logic, so we stop at 'resolved'
-        
+
     def test_changing_ticket_status(self):
         """Test that admin and technician can update ticket status appropriately"""
         # Create a ticket in assigned status
@@ -453,34 +453,34 @@ class APITests(APITestCase):
             assigned_to=self.technician,
             status='assigned'
         )
-        
+
         url = reverse('ticket-detail', args=[ticket.id])
-        
+
         # Test technician can update to in_progress
         self.client.logout()
         self.client.login(username='techuser', password='techpassword')
-        
+
         data = {
             'status': 'in_progress'
         }
-        
+
         response = self.client.patch(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['status'], 'in_progress')
-        
+
         # Test technician can update to resolved
         data = {
             'status': 'resolved'
         }
-        
+
         response = self.client.patch(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['status'], 'resolved')
-        
+
         # Test admin can also update status
         self.client.logout()
         self.client.login(username='adminuser', password='adminpassword')
-        
+
         # Create another ticket to test admin capabilities
         admin_test_ticket = Ticket.objects.create(
             title='Admin Status Test',
@@ -491,16 +491,16 @@ class APITests(APITestCase):
             assigned_to=self.technician,
             status='assigned'
         )
-        
+
         url = reverse('ticket-detail', args=[admin_test_ticket.id])
         data = {
             'status': 'in_progress'
         }
-        
+
         response = self.client.patch(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['status'], 'in_progress')
-    
+
     def test_status_transition_validation(self):
         """Test status transition validations for tickets"""
         # Create a ticket with open status
@@ -512,28 +512,28 @@ class APITests(APITestCase):
             raised_by=self.user,
             status='open'
         )
-        
+
         # First, assign a technician to the ticket
         self.technician.sections.add(self.section)
-        
+
         # Login as admin
         self.client.logout()
         self.client.login(username='adminuser', password='adminpassword')
-        
+
         # Verify ticket can be assigned to technician (valid transition)
-        url = reverse('ticket-detail', args=[open_ticket.id]) 
+        url = reverse('ticket-detail', args=[open_ticket.id])
         data = {
             'assigned_to_id': self.technician.id
         }
-        
+
         response = self.client.patch(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['status'], 'assigned')
-    
+
     # ---------------------------------
     # Edge Cases Tests
     # ---------------------------------
-    
+
     def test_assign_resolved_ticket_fails(self):
         """Test that a resolved ticket cannot be reassigned"""
         # Create a resolved ticket
@@ -546,7 +546,7 @@ class APITests(APITestCase):
             assigned_to=self.technician,
             status='resolved'
         )
-        
+
         # Create another technician
         tech2 = CustomUser.objects.create_user(
             username='tech2',
@@ -555,28 +555,28 @@ class APITests(APITestCase):
             role='technician'
         )
         tech2.sections.set([self.section.id])
-        
+
         # Try to reassign as admin
         self.client.logout()
         self.client.login(username='adminuser', password='adminpassword')
-        
+
         url = reverse('ticket-detail', args=[resolved_ticket.id])
         data = {
             'assigned_to_id': tech2.id
         }
-        
+
         response = self.client.patch(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        
+
         # Verify assignment didn't change
         resolved_ticket.refresh_from_db()
         self.assertEqual(resolved_ticket.assigned_to, self.technician)
-    
+
     def test_feedback_on_unresolved_ticket(self):
         """Test that feedback can only be submitted on resolved tickets"""
         # Create tickets with different statuses
         statuses = ['open', 'assigned', 'in_progress', 'pending']
-        
+
         for ticket_status in statuses:
             ticket = Ticket.objects.create(
                 title=f'{ticket_status.capitalize()} Feedback Test',
@@ -586,35 +586,35 @@ class APITests(APITestCase):
                 raised_by=self.user,
                 status=ticket_status
             )
-            
+
             # Assign if needed
             if ticket_status in ['assigned', 'in_progress', 'pending']:
                 ticket.assigned_to = self.technician
                 ticket.save()
-            
+
             # Try to submit feedback
             url = reverse('ticket-feedback', args=[ticket.id])
             data = {
                 'rating': 5,
                 'comment': 'Great service!'
             }
-            
+
             response = self.client.post(url, data, format='json')
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-            
+
     def test_invalid_data_handling(self):
         """Test handling of invalid data when creating tickets"""
         url = reverse('ticket-list')
-        
+
         # Test with missing required fields
         data = {
             'title': 'Incomplete Ticket'
             # Missing description, section_id, facility_id
         }
-        
+
         response = self.client.post(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        
+
         # Test with invalid section ID
         data = {
             'title': 'Invalid Section',
@@ -622,10 +622,10 @@ class APITests(APITestCase):
             'section_id': 9999,  # Non-existent section ID
             'facility_id': self.facility.id
         }
-        
+
         response = self.client.post(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        
+
         # Test with invalid facility ID
         data = {
             'title': 'Invalid Facility',
@@ -633,14 +633,14 @@ class APITests(APITestCase):
             'section_id': self.section.id,
             'facility_id': 9999  # Non-existent facility ID
         }
-        
+
         response = self.client.post(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-    
+
     # ---------------------------------
     # Additional Workflow Tests
     # ---------------------------------
-    
+
     def test_anonymous_user_cannot_create_ticket(self):
         """Test that unauthenticated users cannot create tickets"""
         # In the current implementation, authentication is not enforced in the views
@@ -651,11 +651,11 @@ class APITests(APITestCase):
             email='dummy@example.com',
             password='dummypass'
         )
-        
+
         # Login first to get CSRF token, then logout
         self.client.login(username='dummyuser', password='dummypass')
         self.client.logout()
-        
+
         url = reverse('ticket-list')
         data = {
             'title': 'Anonymous Ticket',
@@ -663,7 +663,7 @@ class APITests(APITestCase):
             'section_id': self.section.id,
             'facility_id': self.facility.id
         }
-        
+
         # The test will now validate that the request fails because AnonymousUser
         # cannot be assigned to Ticket.raised_by
         try:
@@ -672,7 +672,7 @@ class APITests(APITestCase):
         except ValueError as e:
             # Expected error
             self.assertIn("AnonymousUser", str(e))
-    
+
     def test_user_can_only_view_their_tickets(self):
         """Test that users can only view their own tickets"""
         # Create a second user
@@ -682,7 +682,7 @@ class APITests(APITestCase):
             password='password',
             role='user'
         )
-        
+
         # Create a ticket for the second user
         user2_ticket = Ticket.objects.create(
             title='User2 Ticket',
@@ -692,19 +692,19 @@ class APITests(APITestCase):
             raised_by=user2,
             status='open'
         )
-        
+
         # Login as the second user
         self.client.logout()
         self.client.login(username='user2', password='password')
-        
+
         # Filter tickets by raised_by
         url = reverse('ticket-list') + f'?raised_by={user2.id}'
         response = self.client.get(url)
-        
+
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['title'], 'User2 Ticket')
-    
+
     def test_feedback_one_per_ticket(self):
         """Test that a user can submit only one feedback per ticket"""
         # Create a resolved ticket without feedback
@@ -717,23 +717,23 @@ class APITests(APITestCase):
             assigned_to=self.technician,
             status='resolved'
         )
-        
+
         # Submit feedback
         url = reverse('ticket-feedback', args=[resolved_ticket.id])
         data = {
             'rating': 4,
             'comment': 'Good service!'
         }
-        
+
         response = self.client.post(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        
+
         # Try to submit a second feedback
         data = {
             'rating': 5,
             'comment': 'Great service!'
         }
-        
+
         # Since our model has a OneToOne relationship between Ticket and Feedback,
         # trying to create another will cause an integrity error
         try:
@@ -742,7 +742,7 @@ class APITests(APITestCase):
         except Exception as e:
             # Check if it's an IntegrityError from the database constraint
             self.assertIn("UNIQUE constraint failed", str(e))
-    
+
     def test_unrelated_user_cannot_comment(self):
         """Test that unrelated users cannot post comments on tickets"""
         # Create a second user
@@ -752,7 +752,7 @@ class APITests(APITestCase):
             password='password',
             role='user'
         )
-        
+
         # Create a ticket that doesn't belong to user2
         ticket = Ticket.objects.create(
             title='Not User2 Ticket',
@@ -762,25 +762,25 @@ class APITests(APITestCase):
             raised_by=self.user,
             status='open'
         )
-        
+
         # Login as user2
         self.client.logout()
         self.client.login(username='user2', password='password')
-        
+
         # Try to comment on the ticket
         url = reverse('ticket-comments', args=[ticket.id])
         data = {
             'text': 'This is a comment from user2.'
         }
-        
+
         # Note: If your implementation restricts commenting to only relevant users
         # (raised_by, assigned_to, admins), this should fail
         response = self.client.post(url, data, format='json')
-        
+
         # This test might need adjustment based on your business rules
         # Uncomment if you have such restrictions:
         # self.assertIn(response.status_code, [status.HTTP_400_BAD_REQUEST, status.HTTP_403_FORBIDDEN])
-        
+
     def test_admin_can_close_resolved_ticket(self):
         """Test that only admin can close tickets after resolution"""
         # Create a simplified test where we directly create a resolved ticket
@@ -794,38 +794,40 @@ class APITests(APITestCase):
             assigned_to=self.technician,
             status='resolved'
         )
-        
+
         # Try to close as technician (should fail)
         self.client.logout()
         self.client.login(username='techuser', password='techpassword')
-        
+
         url = reverse('ticket-detail', args=[resolved_ticket.id])
         data = {
             'status': 'closed'
         }
-        
+
         response = self.client.patch(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("cannot set ticket status to 'closed'", str(response.data))
-        
+        self.assertIn("cannot set ticket status to 'closed'",
+                      str(response.data))
+
         # Close as admin (should succeed)
         self.client.logout()
         self.client.login(username='adminuser', password='adminpassword')
-        
+
         # Let's inspect the validate_status_transition function directly
         from tickets.services import validate_status_transition
-        is_valid, message = validate_status_transition('resolved', 'closed', 'admin')
+        is_valid, message = validate_status_transition(
+            'resolved', 'closed', 'admin')
         print(f"Validation direct check: {is_valid}, Message: {message}")
-        
+
         # Try to close the ticket
         response = self.client.patch(url, data, format='json')
         print(f"Admin close response: {response.status_code}")
         print(f"Response data: {response.data}")
-        
+
         # Assert that it works now
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['status'], 'closed')
-        
+
     def test_cannot_modify_closed_ticket(self):
         """Test that closed tickets cannot be modified"""
         # Create a closed ticket
@@ -838,31 +840,31 @@ class APITests(APITestCase):
             assigned_to=self.technician,
             status='closed'
         )
-        
+
         url = reverse('ticket-detail', args=[closed_ticket.id])
-        
+
         # Try to modify as admin
         self.client.logout()
         self.client.login(username='adminuser', password='adminpassword')
-        
+
         # Try to change title
         data = {
             'title': 'Updated Closed Ticket'
         }
-        
+
         response = self.client.patch(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("Cannot modify a closed ticket", str(response.data))
-        
+
         # Try to change status
         data = {
             'status': 'in_progress'
         }
-        
+
         response = self.client.patch(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("Cannot modify a closed ticket", str(response.data))
-        
+
     def test_comment_on_closed_ticket(self):
         """Test that comments cannot be added to closed tickets"""
         # Create a closed ticket
@@ -875,17 +877,18 @@ class APITests(APITestCase):
             assigned_to=self.technician,
             status='closed'
         )
-        
+
         # Try to comment on the ticket
         url = reverse('ticket-comments', args=[closed_ticket.id])
         data = {
             'text': 'This is a comment on a closed ticket.'
         }
-        
+
         response = self.client.post(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("Cannot add comments to a closed ticket", str(response.data))
-        
+        self.assertIn("Cannot add comments to a closed ticket",
+                      str(response.data))
+
     def test_valid_status_transitions(self):
         """Test the valid status transitions for a ticket"""
         # Create a ticket with open status
@@ -897,50 +900,50 @@ class APITests(APITestCase):
             raised_by=self.user,
             status='open'
         )
-        
+
         url = reverse('ticket-detail', args=[ticket.id])
-        
+
         # Login as admin to assign ticket
         self.client.logout()
         self.client.login(username='adminuser', password='adminpassword')
-        
+
         # Test invalid transition: open → resolved (should fail)
         data = {
             'status': 'resolved'
         }
-        
+
         response = self.client.patch(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("Invalid status transition", str(response.data))
-        
+
         # Test valid transition: open → assigned
         data = {
             'assigned_to_id': self.technician.id,
             'status': 'assigned'
         }
-        
+
         response = self.client.patch(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['status'], 'assigned')
-        
+
         # Login as technician to update status
         self.client.logout()
         self.client.login(username='techuser', password='techpassword')
-        
+
         # Test valid transition: assigned → in_progress
         data = {
             'status': 'in_progress'
         }
-        
+
         response = self.client.patch(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['status'], 'in_progress')
-        
+
         # Test valid transition: in_progress → resolved
         data = {
             'status': 'resolved'
         }
-        
+
         response = self.client.patch(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['status'], 'resolved')

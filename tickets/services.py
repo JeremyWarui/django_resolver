@@ -27,16 +27,19 @@ def update_ticket(serializer, user):
     old_status = ticket.status
 
     # Get new data from serializer (not saved yet)
-    new_assigned_to = serializer.validated_data.get('assigned_to', old_assigned_to)
+    new_assigned_to = serializer.validated_data.get(
+        'assigned_to', old_assigned_to)
     new_status = serializer.validated_data.get('status', old_status)
 
     # Prevent any changes to closed tickets
     if old_status == "closed":
-        raise ValidationError("Cannot modify a closed ticket. Ticket is already finalized.")
+        raise ValidationError(
+            "Cannot modify a closed ticket. Ticket is already finalized.")
 
     # If status is changing, validate the transition
     if new_status != old_status:
-        is_valid, error_message = validate_status_transition(old_status, new_status, user.role)
+        is_valid, error_message = validate_status_transition(
+            old_status, new_status, user.role)
         if not is_valid:
             raise ValidationError(error_message)
 
@@ -55,7 +58,8 @@ def update_ticket(serializer, user):
             )
         # 3. Prevent assignment if ticket is closed or resolved (existing logic)
         if old_status in ["resolved", "closed"] and new_status != "closed":
-            raise ValidationError("Cannot assign a ticket that is resolved or closed.")
+            raise ValidationError(
+                "Cannot assign a ticket that is resolved or closed.")
 
         # prevent update of status by user
         user = user if user.is_authenticated else None
@@ -71,7 +75,8 @@ def update_ticket(serializer, user):
 
     # prevent assignment if ticket is closed or resolved
     if new_assigned_to != old_assigned_to and old_status in ["resolved", "closed"]:
-        raise ValidationError("Cannot assign a ticket that is resolved or closed.")
+        raise ValidationError(
+            "Cannot assign a ticket that is resolved or closed.")
 
     # Save updated fields
     updated_ticket = serializer.save()
@@ -101,12 +106,12 @@ def update_ticket(serializer, user):
 def validate_status_transition(old_status, new_status, user_role):
     """
     Validate if a ticket status transition is allowed based on business rules.
-    
+
     Args:
         old_status (str): Current status of the ticket
         new_status (str): Proposed new status
         user_role (str): Role of the user attempting the transition
-        
+
     Returns:
         tuple: (is_valid, message) - is_valid is a boolean, message is an error message if invalid
     """
@@ -119,7 +124,7 @@ def validate_status_transition(old_status, new_status, user_role):
         'resolved': ['closed'],
         'closed': []  # No transitions allowed from closed state
     }
-    
+
     # Define which roles can perform which transitions
     role_permissions = {
         'technician': ['open', 'assigned', 'in_progress', 'pending', 'resolved'],
@@ -127,32 +132,34 @@ def validate_status_transition(old_status, new_status, user_role):
         'manager': ['open', 'assigned', 'in_progress', 'pending', 'resolved', 'closed'],
         'user': []  # Regular users can't change status
     }
-    
+
     # Check if transition is valid
     if new_status not in valid_transitions.get(old_status, []):
         valid_options = ", ".join(valid_transitions.get(old_status, []))
         return False, f"Invalid status transition from '{old_status}' to '{new_status}'. Valid options: {valid_options}"
-    
+
     # Check if user role has permission for this new status
     if new_status not in role_permissions.get(user_role, []):
         return False, f"User with role '{user_role}' cannot set ticket status to '{new_status}'"
-    
+
     return True, ""
 
 # ---------------------------------------------
 #  COMMENT SERVICES
 # ---------------------------------------------
+
+
 def create_comment(serializer, user, ticket_id):
     """
     Attach author and ticket to a new comment.
     Log the action under TicketLog.
     """
     ticket = get_object_or_404(Ticket, id=ticket_id)
-    
+
     # Check if ticket is closed
     if ticket.status == "closed":
         raise ValidationError("Cannot add comments to a closed ticket.")
-        
+
     comment = serializer.save(author=user, ticket=ticket)
 
     TicketLog.objects.create(
@@ -180,7 +187,7 @@ def create_feedback(serializer, user, ticket_id):
     # Feedback can be provided on resolved tickets, but not on closed tickets
     if ticket.status == "closed":
         raise ValidationError("Cannot provide feedback on a closed ticket.")
-        
+
     if ticket.status != "resolved":
         raise ValidationError("The ticket has to be resolved to rate the job.")
 

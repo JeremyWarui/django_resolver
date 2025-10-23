@@ -305,6 +305,7 @@ class AdminAnalytics:
         avg_response_hours = None
         if avg_response_time:
             avg_response_hours = avg_response_time.total_seconds() / 3600
+            print(avg_response_hours)
 
         return {
             'total_tickets': total_tickets,

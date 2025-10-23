@@ -134,7 +134,9 @@ class AdminDashboardAnalyticsView(generics.GenericAPIView):
 
         # Get analytics data
         system_overview = AdminAnalytics.get_system_overview()
+        print(system_overview)
         overdue_tickets = AdminAnalytics.get_overdue_tickets()
+        print(overdue_tickets)
 
         return Response({
             'system_overview': system_overview,

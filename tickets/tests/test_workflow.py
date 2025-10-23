@@ -128,7 +128,7 @@ def test_admin_can_assign_ticket(api_client, setup_data):
         section=setup_data["section"],
         facility=setup_data["facility"],
         raised_by=setup_data["user"],
-        status="Open"
+        status="open"
     )
 
     payload = {
@@ -207,7 +207,7 @@ def test_technician_can_update_ticket_status(api_client, setup_data):
         facility=setup_data["facility"],
         raised_by=setup_data["user"],
         assigned_to=setup_data["technician"],
-        status="Assigned"
+        status="assigned"
     )
 
     payload = {

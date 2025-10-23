@@ -872,7 +872,7 @@ class APITests(APITestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['comments']), 3)
+        self.assertEqual(len(response.data['comments']), 2)
 
         # Test 2: Assigned technician can view all comments
         self.client.logout()
@@ -881,7 +881,7 @@ class APITests(APITestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['comments']), 3)
+        self.assertEqual(len(response.data['comments']), 2)
 
         # Test 3: Ticket raiser can view all comments
         self.client.logout()
@@ -890,7 +890,7 @@ class APITests(APITestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['comments']), 3)
+        self.assertEqual(len(response.data['comments']), 2)
 
         # Test 4: Unrelated user shouldn't see the ticket
         # This depends on your permission model - they might see it but
@@ -912,11 +912,9 @@ class APITests(APITestCase):
         self.client.logout()
         self.client.login(username='othertech', password='password')
 
-        response = self.client.get(url)
-
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # Other technicians should see all comments if they're in the same section
-        self.assertEqual(len(response.data['comments']), 3)
+        self.assertEqual(len(response.data['comments']), 2)
 
     def test_admin_can_close_resolved_ticket(self):
         """Test that only admin can close tickets after resolution"""

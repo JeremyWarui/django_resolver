@@ -4,7 +4,7 @@ Provides various statistics and metrics for dashboard and reporting.
 """
 from datetime import datetime, timedelta
 from django.utils import timezone
-from django.db.models import Count, Avg, Q, F, ExpressionWrapper, fields, FloatField
+from django.db.models import Count, Avg, Q, F, ExpressionWrapper, fields, FloatField, DurationField
 from django.db.models.functions import TruncDay, TruncWeek, TruncMonth
 
 from tickets.models import Ticket, CustomUser, Feedback, Facility, Section
@@ -273,8 +273,13 @@ class AdminAnalytics:
         """
         total_tickets = Ticket.objects.count()
         open_tickets = Ticket.objects.filter(status='open').count()
+        # Use only 'resolved' and 'closed' tickets with a valid resolved_at timestamp
         resolved_tickets = Ticket.objects.filter(
-            status__in=['resolved', 'closed']).count()
+            status__in=['resolved', 'closed'],
+            resolved_at__isnull=False
+        ).count()
+        # resolved_tickets = Ticket.objects.filter(
+        #     status__in=['resolved', 'closed']).count()
 
         # Calculate tickets by age
         now = timezone.now()
@@ -288,24 +293,30 @@ class AdminAnalytics:
         tickets_past_month = Ticket.objects.filter(
             created_at__gte=month_ago).count()
 
-        # Calculate average response time (from open to assigned)
-        response_time_expr = ExpressionWrapper(
-            F('updated_at') - F('created_at'),
-            output_field=FloatField()
+        # -----------------------------------------------------------
+        # Calculate average resolution time (created_at to resolved_at)
+        # -----------------------------------------------------------
+        resolution_time_expr = ExpressionWrapper(
+            F('resolved_at') - F('created_at'),
+            output_field=DurationField()
         )
 
-        avg_response_time = (
+        avg_resolution_time = (
             Ticket.objects.filter(
-                status__in=['assigned', 'in_progress', 'pending', 'resolved', 'closed'])
-            .annotate(response_time=response_time_expr)
-            .aggregate(avg=Avg('response_time'))['avg']
+                status__in=['resolved', 'closed'],
+                resolved_at__isnull=False  # Only include tickets that have been truly resolved
+            )
+            .annotate(resolution_time=resolution_time_expr)
+            .aggregate(avg=Avg('resolution_time'))['avg']
         )
+
+        # print(avg_resolution_time)
 
         # Convert to hours if not None
-        avg_response_hours = None
-        if avg_response_time:
-            avg_response_hours = avg_response_time.total_seconds() / 3600
-            print(avg_response_hours)
+        avg_resolution_hours = None
+        if avg_resolution_time:
+            avg_resolution_hours = avg_resolution_time.total_seconds() / 3600
+            # print(avg_resolution_hours)
 
         return {
             'total_tickets': total_tickets,
@@ -315,7 +326,7 @@ class AdminAnalytics:
             'new_tickets_24h': new_tickets,
             'tickets_past_week': tickets_past_week,
             'tickets_past_month': tickets_past_month,
-            'avg_response_time_hours': round(avg_response_hours, 2) if avg_response_hours else None,
+            'avg_resolution_time_hours': round(avg_resolution_hours, 2) if avg_resolution_hours else None,
         }
 
     @staticmethod
@@ -337,7 +348,7 @@ class AdminAnalytics:
             .annotate(
                 age_hours=ExpressionWrapper(
                     (timezone.now() - F('created_at')),
-                    output_field=FloatField()
+                    output_field=DurationField()
                 )
             )
         )

@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.conf import settings
+from django.utils import timezone
 
 
 # Create your models here.
@@ -92,6 +93,7 @@ class Ticket(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
     assigned_to = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -106,6 +108,31 @@ class Ticket(models.Model):
             last_ticket = Ticket.objects.all().order_by('-id').first()
             next_id = 1 if not last_ticket else last_ticket.id + 1
             self.ticket_no = f"TKT-{next_id:06d}"
+        # 2. Handle resolved_at timestamp logic
+        is_resolving_status = self.status in ['resolved', 'closed']
+
+            # Only check if the ticket already exists in the database (i.e., not a new creation)
+        if self.pk:
+            try:
+                # Retrieve the original ticket from the database
+                original = Ticket.objects.get(pk=self.pk)
+
+                # Check if the status is changing TO a resolving status
+                # AND if the ticket has NOT been resolved before (resolved_at is None)
+                if is_resolving_status and original.status not in ['resolved', 'closed']:
+                    if not self.resolved_at:  # Only set if it hasn't been set yet
+                        self.resolved_at = timezone.now()
+
+                # OPTIONAL: If the status changes from resolved/closed back to open, clear the timestamp
+                if not is_resolving_status and original.status in ['resolved', 'closed']:
+                    self.resolved_at = None
+
+            except Ticket.DoesNotExist:
+                # Should not happen in normal flow, but good practice
+                pass
+        # For a new ticket, if it's created with a resolved/closed status (rare), set the time
+        elif is_resolving_status:
+            self.resolved_at = timezone.now()
         super(Ticket, self).save(*args, **kwargs)
 
     def __str__(self):

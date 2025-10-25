@@ -145,7 +145,8 @@ class ModelTests(TestCase):
     def test_ticket_status_after_assignment(self):
         """test ticket status after assignment"""
         self.ticket.assigned_to = self.technician
-        self.ticket.save()
+        # Include performed_by for proper logging
+        self.ticket.save(performed_by=self.user)
         self.assertEqual(self.ticket.status, 'assigned')
 
     def test_ticket_creation_and_auto_increment_ticket_no(self):
@@ -212,7 +213,8 @@ class ModelTests(TestCase):
 
         for status in valid_statuses:
             new_ticket.status = status
-            new_ticket.save()
+            # Include performed_by for proper logging
+            new_ticket.save(performed_by=self.user)
             retrieved_ticket = Ticket.objects.get(pk=new_ticket.pk)
             self.assertEqual(retrieved_ticket.status, status)
 

@@ -108,37 +108,69 @@ class Ticket(models.Model):
         related_name='assigned_tickets'
     )
 
-    def save(self, *args, **kwargs):
-        """auto generate the ticket_no if not set"""
+    def save(self, *args, performed_by=None, **kwargs):
+        """auto generate the ticket_no if not set and handle status changes"""
+        # 1. Handle ticket number generation for new tickets
         if not self.ticket_no:
             last_ticket = Ticket.objects.all().order_by('-id').first()
             next_id = 1 if not last_ticket else last_ticket.id + 1
             self.ticket_no = f"TKT-{next_id:06d}"
-        # 2. Handle resolved_at timestamp logic
+
+        # 2. Handle resolved_at timestamp logic and logging
         is_resolving_status = self.status in ['resolved', 'closed']
 
-        # Only check if the ticket already exists in the database (i.e., not a new creation)
+        # Only check if the ticket already exists in the database
         if self.pk:
             try:
-                # Retrieve the original ticket from the database
                 original = Ticket.objects.get(pk=self.pk)
 
-                # Check if the status is changing TO a resolving status
-                # AND if the ticket has NOT been resolved before (resolved_at is None)
-                if is_resolving_status and original.status not in ['resolved', 'closed']:
-                    if not self.resolved_at:  # Only set if it hasn't been set yet
-                        self.resolved_at = timezone.now()
+                # Handle status change logging
+                if original.status != self.status:
+                    status_log = f"Status changed from '{original.status}' to '{self.status}'"
 
-                # OPTIONAL: If the status changes from resolved/closed back to open, clear the timestamp
-                if not is_resolving_status and original.status in ['resolved', 'closed']:
-                    self.resolved_at = None
+                    # Handle resolution timestamp
+                    if is_resolving_status and original.status not in ['resolved', 'closed']:
+                        if not self.resolved_at:
+                            self.resolved_at = timezone.now()
+                            status_log += f" (Resolution time: {self.resolved_at})"
+
+                    # Handle reopening
+                    elif not is_resolving_status and original.status in ['resolved', 'closed']:
+                        self.resolved_at = None
+                        status_log += " (Resolution time cleared)"
+
+                    # Create the log entry BEFORE saving
+                    log_entry = TicketLog(
+                        ticket=self,
+                        action=status_log,
+                        performed_by=performed_by
+                    )
+
+                    # Save the ticket first
+                    super(Ticket, self).save(*args, **kwargs)
+
+                    # Now save the log entry
+                    log_entry.save()
+                    return  # We've already saved above
 
             except Ticket.DoesNotExist:
-                # Should not happen in normal flow, but good practice
                 pass
-        # For a new ticket, if it's created with a resolved/closed status (rare), set the time
+
+        # For a new ticket with resolved/closed status (rare case)
         elif is_resolving_status:
             self.resolved_at = timezone.now()
+            # Save the ticket first
+            super(Ticket, self).save(*args, **kwargs)
+
+            # Log the initial resolved status
+            TicketLog.objects.create(
+                ticket=self,
+                action=f"Ticket created with '{self.status}' status (Resolution time: {self.resolved_at})",
+                performed_by=performed_by
+            )
+            return  # We've already saved above
+
+        # If we haven't returned yet, save the ticket
         super(Ticket, self).save(*args, **kwargs)
 
     def __str__(self):

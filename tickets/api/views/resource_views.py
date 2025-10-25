@@ -76,12 +76,16 @@ class TicketDetailView(RetrieveUpdateDestroyAPIView):
 # ----------------------------------
 
 class CommentListCreateView(ListCreateAPIView):
-    queryset = Comment.objects.all().order_by('created_at')
     serializer_class = CommentSerializer
     pagination_class = StandardResultsSetPagination
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['author', 'ticket']
+    filterset_fields = ['author']  # Removed 'ticket' since we filter by URL
     # permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """Filter comments by ticket_id from URL"""
+        ticket_id = self.kwargs.get("ticket_id")
+        return Comment.objects.filter(ticket_id=ticket_id).order_by('created_at')
 
     def perform_create(self, serializer):
         ticket_id = self.kwargs.get("ticket_id")
@@ -93,12 +97,17 @@ class CommentListCreateView(ListCreateAPIView):
 # ----------------------------------
 
 class FeedbackListCreateView(ListCreateAPIView):
-    queryset = Feedback.objects.all().order_by('-created_at')
     serializer_class = FeedbackSerializer
     pagination_class = StandardResultsSetPagination
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['rating', 'rated_by', 'ticket']
+    # Removed 'ticket' since we filter by URL
+    filterset_fields = ['rating', 'rated_by']
     # permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """Filter feedback by ticket_id from URL"""
+        ticket_id = self.kwargs.get("ticket_id")
+        return Feedback.objects.filter(ticket_id=ticket_id).order_by('-created_at')
 
     def perform_create(self, serializer):
         ticket_id = self.kwargs.get("ticket_id")

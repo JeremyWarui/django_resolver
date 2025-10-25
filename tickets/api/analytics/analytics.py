@@ -278,6 +278,8 @@ class AdminAnalytics:
             status__in=['resolved', 'closed'],
             resolved_at__isnull=False
         ).count()
+        # print(Ticket.objects.filter(status__in=["closed", "resolved"],))
+        print(resolved_tickets)
         # resolved_tickets = Ticket.objects.filter(
         #     status__in=['resolved', 'closed']).count()
 

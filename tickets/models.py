@@ -15,7 +15,8 @@ class CustomUser(AbstractUser):
         ('technician', 'Technician'),
         ('manager', 'Manager'),
     ]
-    role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='user')
+    role = models.CharField(
+        max_length=10, choices=ROLE_CHOICES, default='user')
 
     # add section - many-to-many relationship
     # allows to query section.objects.get(name-'IT').technicians.all()
@@ -93,7 +94,12 @@ class Ticket(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    resolved_at = models.DateTimeField(null=True, blank=True)
+    resolved_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        editable=False,  # Users can't edit this field directly
+        help_text='Automatically set when ticket status changes to resolved/closed'
+    )
     assigned_to = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -111,7 +117,7 @@ class Ticket(models.Model):
         # 2. Handle resolved_at timestamp logic
         is_resolving_status = self.status in ['resolved', 'closed']
 
-            # Only check if the ticket already exists in the database (i.e., not a new creation)
+        # Only check if the ticket already exists in the database (i.e., not a new creation)
         if self.pk:
             try:
                 # Retrieve the original ticket from the database
@@ -190,7 +196,8 @@ class TicketLog(models.Model):
         on_delete=models.CASCADE,
         related_name='logs'
     )
-    action = models.CharField(max_length=255)  # e.g., "Assigned to John", "Status changed to Pending"
+    # e.g., "Assigned to John", "Status changed to Pending"
+    action = models.CharField(max_length=255)
     performed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

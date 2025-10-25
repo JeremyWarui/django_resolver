@@ -4,11 +4,12 @@ from django.urls import reverse
 from rest_framework import status
 from tickets.models import Ticket, CustomUser
 from tickets.serializers import *
-from tickets import services
+from tickets.api.services import ticket_services as services
 from django.utils import timezone
 from datetime import timedelta
 
 # User = get_user_model()
+
 
 class SerializerTests(TestCase):
 
@@ -124,7 +125,8 @@ class SerializerTests(TestCase):
         self.assertTrue(serializer.is_valid(), serializer.errors)
 
         # comment = serializer.save()
-        comment = services.create_comment(serializer, self.technician, self.ticket.id)
+        comment = services.create_comment(
+            serializer, self.technician, self.ticket.id)
         self.assertEqual(comment.text, 'This is another comment.')
         self.assertEqual(comment.author, self.technician)
         self.assertEqual(comment.ticket, self.ticket)
@@ -143,7 +145,8 @@ class SerializerTests(TestCase):
 
         serializer = FeedbackSerializer(data=data)
         self.assertTrue(serializer.is_valid(), serializer.errors)
-        feedback = services.create_feedback(serializer, self.user, ticket_id=self.ticket.id)
+        feedback = services.create_feedback(
+            serializer, self.user, ticket_id=self.ticket.id)
         self.assertEqual(feedback.ticket, self.ticket)
         self.assertEqual(feedback.rated_by, self.user)
         self.assertEqual(feedback.rating, 4)

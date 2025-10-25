@@ -79,21 +79,34 @@ def update_ticket(serializer, user):
             "Cannot assign a ticket that is resolved or closed.")
 
     # Get the performer before saving
-    # Since we now require authentication in the view, we know user is authenticated
     performed_by = user
 
-    # Pass performed_by directly to serializer.save()
-    updated_ticket = serializer.save(performed_by=performed_by)
+    # Prevent serializer.save() from persisting status/assignment changes so
+    # we can perform those changes via model helpers that create logs.
+    serializer_status = None
+    serializer_assigned = None
+    if 'status' in serializer.validated_data:
+        serializer_status = serializer.validated_data.pop('status')
+    if 'assigned_to' in serializer.validated_data:
+        serializer_assigned = serializer.validated_data.pop('assigned_to')
 
-    # Log assignment changes if needed
+    # Save remaining fields
+    updated_ticket = serializer.save()
+
+    # Apply assignment change (if any) via model method which logs atomically
     if old_assigned_to != new_assigned_to:
-        TicketLog.objects.create(
-            ticket=updated_ticket,
-            performed_by=performed_by,
-            action=f"Assigned to {new_assigned_to or 'None'}"
-        )
+        updated_ticket.change_assignment(
+            new_assigned_to, performed_by=performed_by)
 
-    # Status changes are now logged automatically in the model's save method
+    # Apply status change (if any) via model method which logs atomically
+    if new_status != old_status:
+        updated_ticket.change_status(new_status, performed_by=performed_by)
+
+    # Restore popped values in serializer.validated_data for caller convenience
+    if serializer_status is not None:
+        serializer.validated_data['status'] = serializer_status
+    if serializer_assigned is not None:
+        serializer.validated_data['assigned_to'] = serializer_assigned
 
     return updated_ticket
 

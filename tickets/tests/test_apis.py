@@ -216,8 +216,7 @@ class APITests(APITestCase):
     def test_resolve_ticket_technician(self):
         """Test that technician can mark a ticket as resolved"""
         # First update ticket status to in_progress (to match our valid transitions)
-        self.ticket.status = 'in_progress'
-        self.ticket.save(performed_by=self.technician)
+        self.ticket.change_status('in_progress', performed_by=self.technician)
 
         # Login as technician
         self.client.logout()

@@ -431,9 +431,8 @@ def setup_consistency_data(db):
         status="resolved",
         created_at=now - timedelta(days=1)
     )
-    resolved_ticket.status = "resolved"
-    # This should set resolved_at through model logic
-    resolved_ticket.save(performed_by=technician)
+    # Ensure resolved_at is set via model helper and log
+    resolved_ticket.change_status("resolved", performed_by=technician)
 
     # Closed ticket with proper resolved_at
     closed_ticket = Ticket.objects.create(
@@ -447,9 +446,8 @@ def setup_consistency_data(db):
         status="closed",
         created_at=now - timedelta(days=1)
     )
-    closed_ticket.status = "closed"
-    # This should set resolved_at through model logic
-    closed_ticket.save(performed_by=technician)
+    # Ensure resolved_at is set via model helper and log
+    closed_ticket.change_status("closed", performed_by=technician)
 
     # In progress ticket
     Ticket.objects.create(

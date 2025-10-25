@@ -119,7 +119,8 @@ class FeedbackSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Feedback
-        fields = ['id', 'ticket', 'rated_by', 'rating', 'comment', 'created_at']
+        fields = ['id', 'ticket', 'rated_by',
+                  'rating', 'comment', 'created_at']
 
 
 # main  ticket serializer
@@ -173,3 +174,13 @@ class TicketSerializer(serializers.ModelSerializer):
             'comments',
             'feedback',
         ]
+
+    def update(self, instance, validated_data):
+        """Use default ModelSerializer update then let services call
+        model-level change methods to perform and log stateful changes.
+
+        We intentionally don't forward performed_by here; services should
+        call `change_status` / `change_assignment` on the model to perform
+        atomic state changes and logging.
+        """
+        return super().update(instance, validated_data)

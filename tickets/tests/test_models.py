@@ -145,8 +145,8 @@ class ModelTests(TestCase):
     def test_ticket_status_after_assignment(self):
         """test ticket status after assignment"""
         self.ticket.assigned_to = self.technician
-        # Include performed_by for proper logging
-        self.ticket.save(performed_by=self.user)
+        # Use model helper to change assignment and log atomically
+        self.ticket.change_assignment(self.technician, performed_by=self.user)
         self.assertEqual(self.ticket.status, 'assigned')
 
     def test_ticket_creation_and_auto_increment_ticket_no(self):
@@ -212,9 +212,8 @@ class ModelTests(TestCase):
                           'in_progress', 'pending', 'resolved', 'closed']
 
         for status in valid_statuses:
-            new_ticket.status = status
-            # Include performed_by for proper logging
-            new_ticket.save(performed_by=self.user)
+            # Use the model helper to change status and log atomically
+            new_ticket.change_status(status, performed_by=self.user)
             retrieved_ticket = Ticket.objects.get(pk=new_ticket.pk)
             self.assertEqual(retrieved_ticket.status, status)
 
@@ -257,3 +256,62 @@ class ModelTests(TestCase):
             author=self.technician
         )
         # self.assertEqual(self.ticket.comments_count(), 2)
+
+    def test_change_status_sets_resolved_at_and_logs(self):
+        """Ensure change_status sets resolved_at for resolving statuses and creates a log with performed_by."""
+        # Create a ticket that is currently in progress
+        ticket = Ticket.objects.create(
+            title='Resolve Test',
+            description='Testing change_status',
+            section=self.section,
+            facility=self.facility,
+            raised_by=self.user,
+            status='in_progress'
+        )
+
+        # No resolved_at initially
+        self.assertIsNone(ticket.resolved_at)
+
+        # Change to resolved and assert resolved_at is set and a log is created
+        ticket.change_status('resolved', performed_by=self.technician)
+        ticket.refresh_from_db()
+        self.assertIsNotNone(ticket.resolved_at)
+
+        latest_log = TicketLog.objects.filter(
+            ticket=ticket).order_by('-timestamp').first()
+        self.assertIsNotNone(latest_log)
+        self.assertEqual(latest_log.performed_by, self.technician)
+        self.assertIn('Status changed from', latest_log.action)
+
+        # Changing back to open should clear resolved_at and create a log
+        ticket.change_status('open', performed_by=self.user)
+        ticket.refresh_from_db()
+        self.assertIsNone(ticket.resolved_at)
+        latest_log = TicketLog.objects.filter(
+            ticket=ticket).order_by('-timestamp').first()
+        self.assertEqual(latest_log.performed_by, self.user)
+
+    def test_change_assignment_creates_log_and_updates_assigned_to(self):
+        """Ensure change_assignment updates assigned_to and creates a log with performed_by."""
+        ticket = Ticket.objects.create(
+            title='Assign Test',
+            description='Testing change_assignment',
+            section=self.section,
+            facility=self.facility,
+            raised_by=self.user,
+            status='open'
+        )
+
+        # Initially unassigned
+        self.assertIsNone(ticket.assigned_to)
+
+        # Assign to technician
+        ticket.change_assignment(self.technician, performed_by=self.user)
+        ticket.refresh_from_db()
+        self.assertEqual(ticket.assigned_to, self.technician)
+
+        latest_log = TicketLog.objects.filter(
+            ticket=ticket).order_by('-timestamp').first()
+        self.assertIsNotNone(latest_log)
+        self.assertEqual(latest_log.performed_by, self.user)
+        self.assertIn('Assigned to', latest_log.action)

@@ -109,69 +109,84 @@ class Ticket(models.Model):
     )
 
     def save(self, *args, performed_by=None, **kwargs):
-        """auto generate the ticket_no if not set and handle status changes"""
+        """Generate ticket number if missing. Status-change logging is handled
+        explicitly by model helper methods (`change_status`, `change_assignment`).
+
+        Keep save lightweight so services or model helpers can control when
+        logging happens atomically.
+        """
         # 1. Handle ticket number generation for new tickets
         if not self.ticket_no:
             last_ticket = Ticket.objects.all().order_by('-id').first()
             next_id = 1 if not last_ticket else last_ticket.id + 1
             self.ticket_no = f"TKT-{next_id:06d}"
 
-        # 2. Handle resolved_at timestamp logic and logging
-        is_resolving_status = self.status in ['resolved', 'closed']
-
-        # Only check if the ticket already exists in the database
-        if self.pk:
-            try:
-                original = Ticket.objects.get(pk=self.pk)
-
-                # Handle status change logging
-                if original.status != self.status:
-                    status_log = f"Status changed from '{original.status}' to '{self.status}'"
-
-                    # Handle resolution timestamp
-                    if is_resolving_status and original.status not in ['resolved', 'closed']:
-                        if not self.resolved_at:
-                            self.resolved_at = timezone.now()
-                            status_log += f" (Resolution time: {self.resolved_at})"
-
-                    # Handle reopening
-                    elif not is_resolving_status and original.status in ['resolved', 'closed']:
-                        self.resolved_at = None
-                        status_log += " (Resolution time cleared)"
-
-                    # Create the log entry BEFORE saving
-                    log_entry = TicketLog(
-                        ticket=self,
-                        action=status_log,
-                        performed_by=performed_by
-                    )
-
-                    # Save the ticket first
-                    super(Ticket, self).save(*args, **kwargs)
-
-                    # Now save the log entry
-                    log_entry.save()
-                    return  # We've already saved above
-
-            except Ticket.DoesNotExist:
-                pass
-
-        # For a new ticket with resolved/closed status (rare case)
-        elif is_resolving_status:
+        # If creating or saving a ticket that is already in a resolved state,
+        # ensure `resolved_at` is set so analytics that rely on this field
+        # (resolved_tickets counting) include these records. We avoid creating
+        # a TicketLog here because creation (fixtures) should not be treated
+        # as an explicit state-change event performed by a user.
+        if self.status in ['resolved', 'closed'] and not self.resolved_at:
             self.resolved_at = timezone.now()
-            # Save the ticket first
-            super(Ticket, self).save(*args, **kwargs)
 
-            # Log the initial resolved status
-            TicketLog.objects.create(
-                ticket=self,
-                action=f"Ticket created with '{self.status}' status (Resolution time: {self.resolved_at})",
-                performed_by=performed_by
-            )
-            return  # We've already saved above
-
-        # If we haven't returned yet, save the ticket
         super(Ticket, self).save(*args, **kwargs)
+
+    def change_status(self, new_status, performed_by=None):
+        """Atomically change ticket status, update resolved_at, and create a TicketLog.
+
+        This method centralizes status transition side-effects so services can
+        perform validation and then call this for an atomic update+log.
+        """
+        from django.db import transaction
+
+        original_status = self.status
+        if original_status == new_status:
+            return self
+
+        is_resolving = new_status in ['resolved', 'closed']
+
+        # Determine new resolved_at value
+        if is_resolving and original_status not in ['resolved', 'closed']:
+            new_resolved_at = timezone.now()
+        elif not is_resolving and original_status in ['resolved', 'closed']:
+            new_resolved_at = None
+        else:
+            new_resolved_at = self.resolved_at
+
+        status_log = f"Status changed from {original_status} to {new_status}"
+        if is_resolving and new_resolved_at:
+            status_log += f" (Resolution time: {new_resolved_at})"
+        elif not is_resolving and original_status in ['resolved', 'closed']:
+            status_log += " (Resolution time cleared)"
+
+        with transaction.atomic():
+            # Apply changes and persist
+            self.status = new_status
+            self.resolved_at = new_resolved_at
+            super(Ticket, self).save()
+            # Create the log entry
+            TicketLog.objects.create(
+                ticket=self, action=status_log, performed_by=performed_by)
+
+        return self
+
+    def change_assignment(self, new_assigned_to, performed_by=None):
+        """Atomically change assignment and create an assignment TicketLog."""
+        from django.db import transaction
+
+        original_assigned_to = self.assigned_to
+        if original_assigned_to == new_assigned_to:
+            return self
+
+        action = f"Assigned to {getattr(new_assigned_to, 'username', 'None')}"
+
+        with transaction.atomic():
+            self.assigned_to = new_assigned_to
+            super(Ticket, self).save()
+            TicketLog.objects.create(
+                ticket=self, action=action, performed_by=performed_by)
+
+        return self
 
     def __str__(self):
         return (f"{self.ticket_no}\n"

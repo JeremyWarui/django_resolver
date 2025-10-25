@@ -78,12 +78,14 @@ def update_ticket(serializer, user):
         raise ValidationError(
             "Cannot assign a ticket that is resolved or closed.")
 
-    # Save updated fields
-    updated_ticket = serializer.save()
+    # Get the performer before saving
+    # Since we now require authentication in the view, we know user is authenticated
+    performed_by = user
 
-    performed_by = user if user.is_authenticated else None
+    # Pass performed_by directly to serializer.save()
+    updated_ticket = serializer.save(performed_by=performed_by)
 
-    # Log assignment changes
+    # Log assignment changes if needed
     if old_assigned_to != new_assigned_to:
         TicketLog.objects.create(
             ticket=updated_ticket,
@@ -91,13 +93,7 @@ def update_ticket(serializer, user):
             action=f"Assigned to {new_assigned_to or 'None'}"
         )
 
-    # Log status changes
-    if old_status != new_status:
-        TicketLog.objects.create(
-            ticket=updated_ticket,
-            performed_by=performed_by,
-            action=f"Status changed from {old_status} to {new_status}"
-        )
+    # Status changes are now logged automatically in the model's save method
 
     return updated_ticket
 

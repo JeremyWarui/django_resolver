@@ -1,5 +1,5 @@
 """
-Tests for the analytics functionality.
+Tests for the analytics functionality, including data consistency and edge cases.
 """
 import pytest
 from datetime import timedelta
@@ -77,7 +77,7 @@ def setup_test_data():
             status="open"
         )
 
-    #print(Ticket.objects.all())
+    # print(Ticket.objects.all())
 
     # Create tickets for yesterday
     yesterday = now - timedelta(days=1)
@@ -94,7 +94,7 @@ def setup_test_data():
         # Update the created_at field to yesterday
         Ticket.objects.filter(id=ticket.id).update(created_at=yesterday)
 
-    #print(Ticket.objects.filter(created_at=yesterday))
+    # print(Ticket.objects.filter(created_at=yesterday))
 
     # Create tickets for last week
     last_week = now - timedelta(days=7)
@@ -111,7 +111,6 @@ def setup_test_data():
         # Update the created_at field to last week
         Ticket.objects.filter(id=ticket.id).update(created_at=last_week)
 
-
         # Create feedback for resolved tickets
         if i % 2 == 0:
             feedback = Feedback.objects.create(
@@ -124,8 +123,8 @@ def setup_test_data():
             Feedback.objects.filter(id=feedback.id).update(
                 created_at=last_week)
 
-    #print(Ticket.objects.filter(created_at=last_week))
-    #print(Ticket.objects.filter(facility=facility1))
+    # print(Ticket.objects.filter(created_at=last_week))
+    # print(Ticket.objects.filter(facility=facility1))
 
     return {
         "admin": admin,
@@ -144,26 +143,26 @@ def test_ticket_analytics_counts_by_timeframe(setup_test_data):
     """Test TicketAnalytics.get_ticket_counts_by_timeframe."""
     # Check today's tickets
     today_count = TicketAnalytics.get_ticket_counts_by_timeframe(days=1)
-    #print(today_count)
+    # print(today_count)
     assert today_count['count'] == 5
 
     # Check yesterday's tickets
     yesterday_count = TicketAnalytics.get_ticket_counts_by_timeframe(days=2)
-    #print(yesterday_count)
+    # print(yesterday_count)
     assert yesterday_count['count'] == 8  # 5 today + 3 yesterday
 
     # Check last week's tickets
     week_count = TicketAnalytics.get_ticket_counts_by_timeframe(days=10)
-    #print(week_count)
+    # print(week_count)
     assert week_count['count'] == 18  # 5 today + 3 yesterday + 10 last week
 
     # Check filtering by facility
     facility1_count = TicketAnalytics.get_ticket_counts_by_timeframe(
         days=10, facility_id=setup_test_data["facility1"].id)
-    #print(facility1_count)
+    # print(facility1_count)
     facility2_count = TicketAnalytics.get_ticket_counts_by_timeframe(
         days=10, facility_id=setup_test_data["facility2"].id)
-    #print(facility2_count)
+    # print(facility2_count)
 
     assert facility1_count['count'] == 10
     assert facility2_count["count"] == 8
@@ -219,6 +218,7 @@ def test_admin_analytics_system_overview(setup_test_data):
     assert overview['resolution_rate'] > 0
     assert overview['new_tickets_24h'] == 5  # Today's tickets
 
+
 @pytest.mark.django_db
 def test_admin_analytics_avg_response_time_hours(setup_test_data):
     """
@@ -234,13 +234,13 @@ def test_admin_analytics_avg_response_time_hours(setup_test_data):
 
     # Define the time difference for a precise 5-hour duration
     created_at = timezone.now() - timedelta(hours=10)
-    resolved_at = timezone.now() - timedelta(hours=5) # 5 hours after creation
+    resolved_at = timezone.now() - timedelta(hours=5)  # 5 hours after creation
 
     # 1. Create the ticket (status is initially 'open')
     test_ticket = Ticket.objects.create(
         title='Resolution Time Test',
         description='Testing average resolution time',
-        status='open', # Start open
+        status='open',  # Start open
         section=setup_test_data['section1'],
         facility=setup_test_data['facility1'],
         raised_by=setup_test_data['user'],
@@ -254,7 +254,7 @@ def test_admin_analytics_avg_response_time_hours(setup_test_data):
     Ticket.objects.filter(id=test_ticket.id).update(
         status='resolved',
         resolved_at=resolved_at,
-        updated_at=resolved_at # updated_at should also be set to this time
+        updated_at=resolved_at  # updated_at should also be set to this time
     )
 
     # Calculate the expected value (10 hours ago to 5 hours ago = 5 hours)
@@ -265,6 +265,7 @@ def test_admin_analytics_avg_response_time_hours(setup_test_data):
     assert overview_updated['avg_resolution_time_hours'] is not None
     # Assert that the calculated value is exactly 5.0 hours
     assert overview_updated['avg_resolution_time_hours'] == expected_hours
+
 
 @pytest.mark.django_db
 def test_admin_analytics_get_overdue_tickets(setup_test_data):
@@ -392,3 +393,365 @@ def test_technician_analytics_api_endpoint(setup_test_data, client):
     assert len(response.data['technician_performance']) == 1
     assert response.data['technician_performance'][0]['username'] == 'tech1'
 
+
+@pytest.fixture
+def setup_consistency_data(db):
+    """Create basic set of tickets with various statuses for consistency tests"""
+    # Create required related objects
+    section = Section.objects.create(name="Test Section")
+    facility = Facility.objects.create(name="Test Facility")
+    user = CustomUser.objects.create(username="testuser")
+    technician = CustomUser.objects.create(
+        username="techtester", role="technician")
+
+    # Create tickets with different statuses
+    now = timezone.now()
+
+    # Open ticket
+    Ticket.objects.create(
+        ticket_no="TKT-001",
+        title="Open Ticket",
+        description="Test",
+        section=section,
+        facility=facility,
+        raised_by=user,
+        status="open",
+        created_at=now - timedelta(days=2)
+    )
+
+    # Resolved ticket with proper resolved_at
+    resolved_ticket = Ticket.objects.create(
+        ticket_no="TKT-002",
+        title="Resolved Ticket",
+        description="Test",
+        section=section,
+        facility=facility,
+        raised_by=user,
+        assigned_to=technician,
+        status="resolved",
+        created_at=now - timedelta(days=1)
+    )
+    resolved_ticket.status = "resolved"
+    # This should set resolved_at through model logic
+    resolved_ticket.save(performed_by=technician)
+
+    # Closed ticket with proper resolved_at
+    closed_ticket = Ticket.objects.create(
+        ticket_no="TKT-003",
+        title="Closed Ticket",
+        description="Test",
+        section=section,
+        facility=facility,
+        raised_by=user,
+        assigned_to=technician,
+        status="closed",
+        created_at=now - timedelta(days=1)
+    )
+    closed_ticket.status = "closed"
+    # This should set resolved_at through model logic
+    closed_ticket.save(performed_by=technician)
+
+    # In progress ticket
+    Ticket.objects.create(
+        ticket_no="TKT-004",
+        title="In Progress Ticket",
+        description="Test",
+        section=section,
+        facility=facility,
+        raised_by=user,
+        assigned_to=technician,
+        status="in_progress",
+        created_at=now
+    )
+
+    return {
+        'section': section,
+        'facility': facility,
+        'user': user,
+        'technician': technician
+    }
+
+
+class TestAnalyticsConsistency:
+    """Test suite for verifying analytics data consistency"""
+
+    def test_resolved_tickets_count_consistency(self, setup_consistency_data):
+        """
+        Verify that the number of resolved tickets in analytics matches
+        the actual number of resolved/closed tickets with resolved_at timestamps
+        """
+        # Get analytics data
+        overview = AdminAnalytics.get_system_overview()
+        resolved_count_from_analytics = overview['resolved_tickets']
+
+        # Get actual data - both conditions must be met
+        actual_resolved_count = Ticket.objects.filter(
+            status__in=['resolved', 'closed'],
+            resolved_at__isnull=False
+        ).count()
+
+        # Also get just status-based count for comparison
+        status_based_count = Ticket.objects.filter(
+            status__in=['resolved', 'closed']
+        ).count()
+
+        # Verify consistency
+        assert resolved_count_from_analytics == actual_resolved_count, (
+            f"Analytics shows {resolved_count_from_analytics} resolved tickets, "
+            f"but there are {actual_resolved_count} tickets that are both "
+            f"resolved/closed AND have resolved_at timestamps"
+        )
+
+        # Verify that all resolved/closed tickets have resolved_at
+        assert actual_resolved_count == status_based_count, (
+            f"Found {status_based_count} tickets marked as resolved/closed "
+            f"but only {actual_resolved_count} have resolved_at timestamps. "
+            "All resolved/closed tickets should have resolved_at set."
+        )
+
+    def test_open_tickets_count_consistency(self, setup_consistency_data):
+        """
+        Verify that the number of open tickets in analytics matches
+        the actual number of tickets with 'open' status
+        """
+        # Get analytics data
+        overview = AdminAnalytics.get_system_overview()
+        open_count_from_analytics = overview['open_tickets']
+
+        # Get actual count
+        actual_open_count = Ticket.objects.filter(status='open').count()
+
+        assert open_count_from_analytics == actual_open_count, (
+            f"Analytics shows {open_count_from_analytics} open tickets, "
+            f"but there are actually {actual_open_count} tickets with 'open' status"
+        )
+
+    def test_resolution_rate_consistency(self, setup_consistency_data):
+        """
+        Verify that the resolution rate calculation is consistent with
+        the ratio of resolved tickets to total tickets
+        """
+        # Get analytics data
+        overview = AdminAnalytics.get_system_overview()
+        resolution_rate_from_analytics = overview['resolution_rate']
+
+        # Calculate actual rate
+        total_tickets = Ticket.objects.count()
+        resolved_tickets = Ticket.objects.filter(
+            status__in=['resolved', 'closed'],
+            resolved_at__isnull=False
+        ).count()
+
+        expected_rate = (resolved_tickets / total_tickets *
+                         100) if total_tickets else 0
+        expected_rate = round(expected_rate, 2)
+
+        assert resolution_rate_from_analytics == expected_rate, (
+            f"Analytics shows {resolution_rate_from_analytics}% resolution rate, "
+            f"but actual calculation gives {expected_rate}%"
+        )
+
+    def test_resolution_time_consistency(self, setup_consistency_data):
+        """
+        Verify that resolution time calculations are consistent with
+        the actual time differences in the database
+        """
+        # Get analytics data
+        overview = AdminAnalytics.get_system_overview()
+        avg_resolution_hours = overview['avg_resolution_time_hours']
+
+        # Get resolved tickets
+        resolved_tickets = Ticket.objects.filter(
+            status__in=['resolved', 'closed'],
+            resolved_at__isnull=False
+        )
+
+        # Calculate actual average resolution time
+        total_hours = 0
+        for ticket in resolved_tickets:
+            resolution_time = ticket.resolved_at - ticket.created_at
+            total_hours += resolution_time.total_seconds() / 3600
+
+        expected_avg_hours = (
+            round(total_hours / resolved_tickets.count(), 2)
+            if resolved_tickets.exists() else None
+        )
+
+        assert avg_resolution_hours == expected_avg_hours, (
+            f"Analytics shows average resolution time of {avg_resolution_hours} hours, "
+            f"but actual calculation gives {expected_avg_hours} hours"
+        )
+
+    def test_tickets_by_age_consistency(self, setup_consistency_data):
+        """
+        Verify that ticket age calculations are consistent with
+        the actual creation dates in the database
+        """
+        # Get analytics data
+        overview = AdminAnalytics.get_system_overview()
+
+        # Test last 24 hours
+        now = timezone.now()
+        day_ago = now - timedelta(days=1)
+        actual_new_tickets = Ticket.objects.filter(
+            created_at__gte=day_ago).count()
+        assert overview['new_tickets_24h'] == actual_new_tickets, (
+            "Mismatch in number of tickets created in last 24 hours"
+        )
+
+        # Test last week
+        week_ago = now - timedelta(days=7)
+        actual_week_tickets = Ticket.objects.filter(
+            created_at__gte=week_ago).count()
+        assert overview['tickets_past_week'] == actual_week_tickets, (
+            "Mismatch in number of tickets created in last week"
+        )
+
+        # Test last month
+        month_ago = now - timedelta(days=30)
+        actual_month_tickets = Ticket.objects.filter(
+            created_at__gte=month_ago).count()
+        assert overview['tickets_past_month'] == actual_month_tickets, (
+            "Mismatch in number of tickets created in last month"
+        )
+
+
+@pytest.mark.django_db
+class TestAnalyticsEdgeCases:
+    """Test suite for edge cases in analytics functionality"""
+
+    def test_empty_database_analytics(self, db):
+        """Test analytics behavior with no data in the database"""
+        # Clean the database
+        Ticket.objects.all().delete()
+        CustomUser.objects.all().delete()
+        Section.objects.all().delete()
+        Facility.objects.all().delete()
+
+        # Test ticket analytics with empty database
+        ticket_counts = TicketAnalytics.get_ticket_counts_by_timeframe()
+        assert ticket_counts['count'] == 0, "Empty database should return 0 tickets"
+
+        status_counts = TicketAnalytics.get_ticket_counts_by_status()
+        assert len(
+            status_counts) == 0, "Empty database should return no status counts"
+
+        facility_dist = TicketAnalytics.get_tickets_by_facility()
+        assert len(
+            facility_dist) == 0, "Empty database should return no facility distribution"
+
+        # Test technician analytics with empty database
+        tech_performance = TechnicianAnalytics.get_technician_performance()
+        assert len(
+            tech_performance) == 0, "Empty database should return no technician performance data"
+
+        tech_ratings = TechnicianAnalytics.get_technician_ratings_by_section()
+        assert len(
+            tech_ratings) == 0, "Empty database should return no technician ratings"
+
+        # Test admin analytics with empty database
+        overview = AdminAnalytics.get_system_overview()
+        assert overview['total_tickets'] == 0, "Empty database should show 0 total tickets"
+        assert overview['resolution_rate'] == 0, "Empty database should show 0% resolution rate"
+        assert overview['avg_resolution_time_hours'] is None, "Empty database should show None for avg resolution time"
+
+        overdue = AdminAnalytics.get_overdue_tickets()
+        assert len(overdue) == 0, "Empty database should show no overdue tickets"
+
+    def test_single_ticket_analytics(self, db):
+        """Test analytics behavior with just one ticket"""
+        # Create minimum required objects
+        section = Section.objects.create(name="Test Section")
+        facility = Facility.objects.create(name="Test Facility")
+        user = CustomUser.objects.create_user(
+            username="testuser",
+            password="password",
+            role="user"
+        )
+
+        # Create a single ticket
+        ticket = Ticket.objects.create(
+            title="Single Ticket",
+            description="Test",
+            section=section,
+            facility=facility,
+            raised_by=user,
+            status="open"
+        )
+
+        # Test ticket analytics
+        ticket_counts = TicketAnalytics.get_ticket_counts_by_timeframe()
+        assert ticket_counts['count'] == 1, "Should count single ticket"
+
+        status_counts = TicketAnalytics.get_ticket_counts_by_status()
+        assert len(status_counts) == 1, "Should show one status count"
+        assert status_counts[0]['status'] == 'open', "Should show correct status"
+
+        # Test admin analytics
+        overview = AdminAnalytics.get_system_overview()
+        assert overview['total_tickets'] == 1, "Should show 1 total ticket"
+        assert overview['open_tickets'] == 1, "Should show 1 open ticket"
+        assert overview['resolved_tickets'] == 0, "Should show 0 resolved tickets"
+        assert overview['resolution_rate'] == 0, "Should show 0% resolution rate"
+
+    def test_invalid_technician_analytics(self, db):
+        """Test technician analytics with invalid or edge case scenarios"""
+        # Create a technician with no assigned tickets
+        tech = CustomUser.objects.create_user(
+            username="lonelytechnician",
+            password="password",
+            role="technician"
+        )
+
+        # Test technician analytics
+        tech_performance = TechnicianAnalytics.get_technician_performance(
+            tech.id)
+        assert len(tech_performance) == 1, "Should return data for technician"
+        assert tech_performance[0]['total_tickets'] == 0, "Should show 0 total tickets"
+        assert tech_performance[0]['resolved_tickets'] == 0, "Should show 0 resolved tickets"
+        assert tech_performance[0]['resolution_percentage'] == 0, "Should show 0% resolution rate"
+
+    def test_boundary_conditions(self, db):
+        """Test analytics with boundary conditions like extremely old tickets"""
+        section = Section.objects.create(name="Test Section")
+        facility = Facility.objects.create(name="Test Facility")
+        user = CustomUser.objects.create_user(
+            username="testuser",
+            password="password",
+            role="user"
+        )
+
+        # Create a very old ticket
+        old_date = timezone.now() - timedelta(days=365*10)  # 10 years ago
+        old_ticket = Ticket.objects.create(
+            title="Very Old Ticket",
+            description="Test",
+            section=section,
+            facility=facility,
+            raised_by=user,
+            status="open"
+        )
+        # Update the creation date manually
+        Ticket.objects.filter(id=old_ticket.id).update(
+            created_at=old_date,
+            updated_at=old_date
+        )
+
+        # Test ticket analytics
+        ticket_counts = TicketAnalytics.get_ticket_counts_by_timeframe(
+            days=365*10+1)
+        assert ticket_counts['count'] == 1, "Should count very old ticket when timeframe is sufficient"
+
+        ticket_counts = TicketAnalytics.get_ticket_counts_by_timeframe(days=1)
+        assert ticket_counts['count'] == 0, "Should not count very old ticket in recent timeframe"
+
+        # Test admin analytics with old ticket
+        overview = AdminAnalytics.get_system_overview()
+        assert overview['total_tickets'] == 1, "Should count very old ticket in total"
+        assert overview['new_tickets_24h'] == 0, "Should not count very old ticket in last 24h"
+
+        # Test overdue tickets with old ticket
+        overdue = AdminAnalytics.get_overdue_tickets()
+        assert len(
+            overdue) == 1, "Very old open ticket should be counted as overdue"
+        assert overdue[0]['age_hours'] > 24, "Age hours should be greater than 24 for old ticket"

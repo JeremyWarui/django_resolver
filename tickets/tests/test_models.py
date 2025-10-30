@@ -1,7 +1,7 @@
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.urls import reverse
-from django.db import IntegrityError
+from django.db import IntegrityError, connection
 from tickets.models import *
 from django.utils import timezone
 from datetime import timedelta
@@ -12,7 +12,11 @@ User = get_user_model()
 
 class ModelTests(TestCase):
 
+
     def setUp(self):
+        # Reset Postgres sequence so IDs start from 1 again
+        with connection.cursor() as cursor:
+            cursor.execute("ALTER SEQUENCE tickets_ticket_id_seq RESTART WITH 1;")
         self.user = CustomUser.objects.create_user(
             username='testuser',
             email='testuser@example.com',
@@ -160,10 +164,12 @@ class ModelTests(TestCase):
             raised_by=self.user,
             status='open'
         )
+        prev_number = int(initial_ticket_no.split('-')[-1])
+        new_number = int(new_ticket.ticket_no.split('-')[-1])
         self.assertTrue(new_ticket.ticket_no != initial_ticket_no)
         self.assertTrue(new_ticket.ticket_no.startswith('TKT-'))
         self.assertTrue(len(new_ticket.ticket_no) == 10)
-        self.assertTrue(new_ticket.ticket_no.endswith("002"))
+        self.assertEqual(new_number, prev_number + 1)
 
     def test_user_role_validation(self):
         """Test that user roles are validated properly"""

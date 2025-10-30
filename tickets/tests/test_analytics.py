@@ -1,15 +1,14 @@
 """
 Tests for the analytics functionality, including data consistency and edge cases.
 """
-import pytest
 from datetime import timedelta
-from django.utils import timezone
-from django.urls import reverse
-from rest_framework import status
-from rest_framework.test import APIClient
 
-from tickets.models import Ticket, CustomUser, Feedback, Section, Facility
+import pytest
+from django.urls import reverse
+from django.utils import timezone
+
 from tickets.api.analytics.analytics import TicketAnalytics, TechnicianAnalytics, AdminAnalytics
+from tickets.models import Ticket, CustomUser, Feedback, Section, Facility
 
 
 @pytest.fixture

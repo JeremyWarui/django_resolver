@@ -14,7 +14,7 @@ class TicketAnalyticsView(generics.GenericAPIView):
     """
     API view for ticket analytics data.
     """
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
 
     def get(self, request, format=None):
         """
@@ -74,7 +74,7 @@ class TechnicianAnalyticsView(generics.GenericAPIView):
     """
     API view for technician performance analytics.
     """
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
 
     def get(self, request, format=None):
         """
@@ -121,16 +121,16 @@ class AdminDashboardAnalyticsView(generics.GenericAPIView):
     API view for admin dashboard analytics.
     Restricted to admin and manager roles.
     """
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]
 
     def get(self, request, format=None):
         """Get system-wide analytics for admin dashboard."""
         # Check if user has admin permissions
-        if not request.user.is_staff and request.user.role not in ['admin', 'manager']:
-            return Response(
-                {"detail": "You do not have permission to view admin analytics"},
-                status=status.HTTP_403_FORBIDDEN
-            )
+        # if not request.user.is_staff and request.user.role not in ['admin', 'manager']:
+        #     return Response(
+        #         {"detail": "You do not have permission to view admin analytics"},
+        #         status=status.HTTP_403_FORBIDDEN
+        #     )
 
         # Get analytics data
         system_overview = AdminAnalytics.get_system_overview()

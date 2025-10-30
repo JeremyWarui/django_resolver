@@ -200,6 +200,17 @@ def create_feedback(serializer, user, ticket_id):
     if ticket.status != "resolved":
         raise ValidationError("The ticket has to be resolved to rate the job.")
 
+    # Prevent duplicate feedback for the same ticket. The Feedback model
+    # uses a OneToOneField to Ticket which will raise a DB IntegrityError on
+    # duplicate inserts. Instead of letting that bubble up as a 500 error,
+    # proactively check and raise a DRF ValidationError so the API returns
+    # a 400 response with a clear message.
+    from tickets.models import Feedback
+
+    if Feedback.objects.filter(ticket=ticket).exists():
+        raise ValidationError(
+            "Feedback has already been submitted for this ticket.")
+
     feedback = serializer.save(rated_by=user, ticket=ticket)
 
     TicketLog.objects.create(

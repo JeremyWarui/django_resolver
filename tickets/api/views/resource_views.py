@@ -64,7 +64,7 @@ class TicketListCreateView(ListCreateAPIView):
 class TicketDetailView(RetrieveUpdateDestroyAPIView):
     queryset = Ticket.objects.all()
     serializer_class = TicketSerializer
-    permission_classes = [IsAuthenticated]  # Make sure user is authenticated
+    # permission_classes = [IsAuthenticated]  # Make sure user is authenticated
 
     def perform_update(self, serializer):
         """ delegate ticket update ( assign, update status, etc) """

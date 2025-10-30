@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.urls import reverse
+from django.db import connection
 from rest_framework import status
 from rest_framework.test import APITestCase, APIClient
 
@@ -10,6 +11,10 @@ User = get_user_model()
 
 class APITests(APITestCase):
     def setUp(self):
+        # Reset Postgres sequence so IDs start from 1 again
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "ALTER SEQUENCE tickets_ticket_id_seq RESTART WITH 1;")
         self.client = APIClient()
         self.user = CustomUser.objects.create_user(
             username='testuser',
@@ -55,7 +60,9 @@ class APITests(APITestCase):
         self.ticket.assigned_to = self.technician
         self.ticket.status = 'assigned'
         self.ticket.save()
-        self.technician.sections.set([1])
+        # Use the actual created section id instead of hardcoding 1
+        # (hardcoding can fail if sequences or fixtures change the PKs).
+        self.technician.sections.set([self.section.id])
         self.technician.save()
 
         self.comment = Comment.objects.create(

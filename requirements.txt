@@ -1,8 +1,0 @@
-pytest
-asgiref==3.10.0
-Django==5.2.7
-django-filter==25.2
-django-restframework==0.0.1
-djangorestframework==3.16.1
-Markdown==3.9
-sqlparse==0.5.3

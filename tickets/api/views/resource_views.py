@@ -8,6 +8,8 @@ from tickets.api.services.ticket_services import (
 )
 from tickets.api.pagination import StandardResultsSetPagination
 from tickets.models import Section, Facility, Ticket, Comment, Feedback, CustomUser
+from django.utils import timezone
+from datetime import timedelta
 
 
 # --------------------------------
@@ -55,6 +57,31 @@ class TicketListCreateView(ListCreateAPIView):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['status', 'section', 'assigned_to', 'raised_by']
     # permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """
+        Optionally filter tickets by:
+        - assigned_to__isnull: for unassigned tickets
+        - is_overdue: for tickets older than 7 days in active states
+        """
+        queryset = super().get_queryset()
+        
+        # Handle unassigned filter
+        assigned_to_isnull = self.request.query_params.get('assigned_to__isnull', None)
+        if assigned_to_isnull and assigned_to_isnull.lower() == 'true':
+            queryset = queryset.filter(assigned_to__isnull=True)
+        
+        # Handle overdue filter
+        is_overdue = self.request.query_params.get('is_overdue', None)
+        if is_overdue and is_overdue.lower() == 'true':
+            # Define overdue as tickets >7 days old in active states
+            seven_days_ago = timezone.now() - timedelta(days=7)
+            queryset = queryset.filter(
+                created_at__lt=seven_days_ago,
+                status__in=['open', 'assigned', 'in_progress']
+            )
+        
+        return queryset
 
     def perform_create(self, serializer):
         """Delegate ticket creation to service layer """

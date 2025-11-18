@@ -18,6 +18,12 @@ from tickets.api.analytics.index import (
     AdminDashboardAnalyticsView
 )
 
+# Import report views
+from tickets.api.reports.views import (
+    GenerateReportView,
+    ReportTypesView
+)
+
 urlpatterns = [
     # SECTION
     path('sections/', SectionListCreateView.as_view(), name='section-list'),
@@ -55,4 +61,10 @@ urlpatterns = [
          TechnicianAnalyticsView.as_view(), name='analytics-technicians'),
     path('analytics/admin-dashboard/',
          AdminDashboardAnalyticsView.as_view(), name='analytics-admin'),
+    
+    # REPORT ENDPOINTS
+    path('reports/generate/',
+         GenerateReportView.as_view(), name='report-generate'),
+    path('reports/types/',
+         ReportTypesView.as_view(), name='report-types'),
 ]

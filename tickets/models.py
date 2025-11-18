@@ -107,6 +107,12 @@ class Ticket(models.Model):
         null=True,
         related_name='assigned_tickets'
     )
+    pending_reason = models.TextField(
+        max_length=500,
+        blank=True,
+        null=True,
+        help_text='Reason provided when ticket status is changed to pending (e.g., waiting for parts)'
+    )
 
     def save(self, *args, performed_by=None, **kwargs):
         """Generate ticket number if missing. Status-change logging is handled

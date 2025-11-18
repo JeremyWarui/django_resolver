@@ -1,11 +1,7 @@
-# from django.contrib.auth.models import User
 from rest_framework import serializers
 from .models import *
 
 
-# from django.contrib.auth import get_user_model
-
-# User = get_user_model()
 class FacilitySerializer(serializers.ModelSerializer):
     class Meta:
         model = Facility
@@ -46,7 +42,7 @@ class UserSerializer(serializers.ModelSerializer):
         username = base_username
         counter = 1
 
-        # to ensure the username is unique lets add a digit
+        # Ensure username is unique
         while CustomUser.objects.filter(username=username).exists():
             username = f"{username}-{counter}"
             counter += 1
@@ -64,11 +60,8 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 
-# minimal serializer for ticket to avoid circular dependency during nested serialization
 class TinyTicketSerializer(serializers.ModelSerializer):
-    """ minimal version ticket serializer to be used by
-        Comments serializer and Feedback serializer
-    """
+    """Minimal ticket serializer to avoid circular dependency during nested serialization."""
 
     class Meta:
         model = Ticket
@@ -76,21 +69,9 @@ class TinyTicketSerializer(serializers.ModelSerializer):
 
 
 class CommentSerializer(serializers.ModelSerializer):
-    # Write-only field for author ID
-    # author_id = serializers.PrimaryKeyRelatedField(
-    #     queryset=CustomUser.objects.all(), source='author', write_only=True)
-    # write ony field for ticket ID
-    # ticket_id = serializers.PrimaryKeyRelatedField(
-    #     queryset=Ticket.objects.all(), source='ticket', write_only=True)
-    """
-        redefined to ensure the author_id and ticket_id are
-        defined or retrieved from the current user and current ticket
-        that is being commented on
-    """
+    """Serializer for ticket comments. Author and ticket are set from context."""
 
-    # read-only field for author username
     author = serializers.StringRelatedField(read_only=True)
-    # ticket = serializers.StringRelatedField(read_only=True)
     ticket = TinyTicketSerializer(read_only=True)
 
     class Meta:
@@ -99,21 +80,8 @@ class CommentSerializer(serializers.ModelSerializer):
 
 
 class FeedbackSerializer(serializers.ModelSerializer):
-    # # Write-only field for rated_by ID
-    # rated_by_id = serializers.PrimaryKeyRelatedField(
-    #     queryset=CustomUser.objects.all(), source='rated_by', write_only=True)
-    # # write only field for ticket ID
-    # ticket_id = serializers.PrimaryKeyRelatedField(
-    #     queryset=Ticket.objects.all(), source='ticket', write_only=True)
+    """Serializer for ticket feedback. Rated_by and ticket are set from context."""
 
-    """
-    rated_by_id and ticket_id to be extracted from the API or the views
-    such as the current user and current ticket id
-    request.user and ticket.id = pk
-
-    """
-
-    # ticket = serializers.StringRelatedField(read_only=True)
     ticket = TinyTicketSerializer(read_only=True)
     rated_by = serializers.StringRelatedField(read_only=True)
 
@@ -123,14 +91,8 @@ class FeedbackSerializer(serializers.ModelSerializer):
                   'rating', 'comment', 'created_at']
 
 
-# main  ticket serializer
 class TicketSerializer(serializers.ModelSerializer):
-    # write only field for IDS
-    # raised_by_id = serializers.PrimaryKeyRelatedField(
-    #     queryset=CustomUser.objects.all(), source='raised_by', write_only=True)
-    """
-    no longer set raised_by_id. to be done by the views using context
-    """
+    """Main ticket serializer with nested relationships."""
 
     assigned_to_id = serializers.SlugRelatedField(
         slug_field='id',
@@ -148,11 +110,9 @@ class TicketSerializer(serializers.ModelSerializer):
     facility_id = serializers.PrimaryKeyRelatedField(
         queryset=Facility.objects.all(), source='facility', write_only=True, label='Facility ID')
 
-    # read only fields for related names
     section = serializers.StringRelatedField(read_only=True)
     facility = serializers.StringRelatedField(read_only=True)
     raised_by = serializers.StringRelatedField(read_only=True)
-    # assigned_to = serializers.StringRelatedField(read_only=True)
     assigned_to = UserSerializer(read_only=True)
     comments = CommentSerializer(many=True, read_only=True)
     feedback = FeedbackSerializer(read_only=True)
@@ -171,6 +131,7 @@ class TicketSerializer(serializers.ModelSerializer):
             'assigned_to_id', 'assigned_to',
             'created_at',
             'updated_at',
+            'pending_reason',
             'comments',
             'feedback',
         ]

@@ -94,8 +94,7 @@ class FeedbackSerializer(serializers.ModelSerializer):
 class TicketSerializer(serializers.ModelSerializer):
     """Main ticket serializer with nested relationships."""
 
-    assigned_to_id = serializers.SlugRelatedField(
-        slug_field='id',
+    assigned_to_id = serializers.PrimaryKeyRelatedField(
         queryset=CustomUser.objects.filter(role='technician'),
         source='assigned_to',
         allow_null=True,
@@ -104,16 +103,29 @@ class TicketSerializer(serializers.ModelSerializer):
         label="Assigned_To ID"
     )
 
+    # Add field to show available technicians for the ticket's section
+    available_technicians = serializers.SerializerMethodField(read_only=True)
+
     section_id = serializers.PrimaryKeyRelatedField(
         queryset=Section.objects.all(), source='section', write_only=True, label='Section ID')
 
+    # Read-only section_id for frontend consumption
+    section_id_value = serializers.IntegerField(
+        source='section.id', read_only=True)
+
     facility_id = serializers.PrimaryKeyRelatedField(
         queryset=Facility.objects.all(), source='facility', write_only=True, label='Facility ID')
+
+    # Read-only facility_id for frontend consumption
+    facility_id_value = serializers.IntegerField(
+        source='facility.id', read_only=True)
 
     section = serializers.StringRelatedField(read_only=True)
     facility = serializers.StringRelatedField(read_only=True)
     raised_by = serializers.StringRelatedField(read_only=True)
     assigned_to = UserSerializer(read_only=True)
+    # Simple string representation for assigned_to in list views
+    assigned_to_name = serializers.SerializerMethodField(read_only=True)
     comments = CommentSerializer(many=True, read_only=True)
     feedback = FeedbackSerializer(read_only=True)
 
@@ -125,16 +137,55 @@ class TicketSerializer(serializers.ModelSerializer):
             'title',
             'description',
             'status',
-            'section_id', 'section',
-            'facility_id', 'facility',
+            'section_id', 'section', 'section_id_value',
+            'facility_id', 'facility', 'facility_id_value',
             'raised_by',
-            'assigned_to_id', 'assigned_to',
+            'assigned_to_id', 'assigned_to', 'assigned_to_name',
+            'available_technicians',
             'created_at',
             'updated_at',
             'pending_reason',
             'comments',
             'feedback',
         ]
+
+    def get_fields(self):
+        """Conditionally include heavy fields based on context."""
+        fields = super().get_fields()
+
+        # Remove heavy nested fields in list views
+        if self.context.get('skip_available_technicians', False):
+            # Remove full assigned_to object in list views, keep simple name
+            if 'assigned_to' in fields:
+                fields.pop('assigned_to')
+            if 'comments' in fields:
+                fields.pop('comments')
+            if 'feedback' in fields:
+                fields.pop('feedback')
+
+        return fields
+
+    def get_assigned_to_name(self, obj):
+        """Return simple string name for assigned technician in list views."""
+        if obj.assigned_to:
+            return f"{obj.assigned_to.first_name} {obj.assigned_to.last_name}"
+        return None
+
+    def get_available_technicians(self, obj):
+        """Return list of technicians who can be assigned to this ticket.
+        Skip this expensive operation in list views for performance.
+        """
+        # Skip in list views to improve performance
+        if self.context.get('skip_available_technicians', False):
+            return []
+
+        if obj.section:
+            technicians = CustomUser.objects.filter(
+                role='technician',
+                sections=obj.section
+            ).values('id', 'username', 'first_name', 'last_name')
+            return list(technicians)
+        return []
 
     def update(self, instance, validated_data):
         """Use default ModelSerializer update then let services call

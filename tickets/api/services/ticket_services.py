@@ -1,7 +1,22 @@
 from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import ValidationError, PermissionDenied
 
-from tickets.models import Ticket, TicketLog
+from tickets.models import Ticket, TicketLog, CustomUser
+
+
+def get_system_user():
+    """Get or create a system user for unauthenticated requests."""
+    user, _ = CustomUser.objects.get_or_create(
+        username='system',
+        defaults={
+            'first_name': 'System',
+            'last_name': 'User',
+            'email': 'system@example.com',
+            'role': 'admin',
+            'is_staff': True,
+        }
+    )
+    return user
 
 
 # ---------------------
@@ -10,6 +25,10 @@ from tickets.models import Ticket, TicketLog
 
 def create_ticket(serializer, user):
     """Logic for creating a ticket."""
+    # Handle unauthenticated users
+    if user is None or not user.is_authenticated:
+        user = get_system_user()
+
     ticket = serializer.save(raised_by=user)
 
     TicketLog.objects.create(
@@ -22,6 +41,10 @@ def create_ticket(serializer, user):
 
 def update_ticket(serializer, user):
     """Logic for updating a ticket (assignments, status, etc.)"""
+    # Handle unauthenticated users
+    if user is None or not user.is_authenticated:
+        user = get_system_user()
+
     ticket = serializer.instance
     old_assigned_to = ticket.assigned_to
     old_status = ticket.status
@@ -61,11 +84,10 @@ def update_ticket(serializer, user):
             raise ValidationError(
                 "Cannot assign a ticket that is resolved or closed.")
 
-        # prevent update of status by user
-        user = user if user.is_authenticated else None
-        if user.role not in ["technician", "admin"]:
+        # Validate user role for status updates (user is already guaranteed to exist)
+        if user.role not in ["technician", "admin", "manager"]:
             raise ValidationError(
-                f"User {user.username} cannot update status. Their role is not 'technician' or 'admin'."
+                f"User {user.username} cannot update status. Their role is not 'technician', 'admin', or 'manager'."
             )
 
     # Auto-change status if newly assigned and was open

@@ -1,9 +1,11 @@
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework import generics
 from tickets.serializers import SectionSerializer, FacilitySerializer, TicketSerializer
 from tickets.serializers import CommentSerializer, FeedbackSerializer, UserSerializer
 from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import OrderingFilter
 from tickets.api.services.ticket_services import (
     create_ticket, update_ticket, create_comment, create_feedback
 )
@@ -37,18 +39,17 @@ class SectionListCreateView(ListCreateAPIView):
 
             if page_obj is not None:
                 serializer = self.get_serializer(page_obj, many=True)
-                return self.get_paginated_response(serializer.data)
+                # Return data dict, not Response object (can't pickle Response)
+                return self.get_paginated_response(serializer.data).data
 
             serializer = self.get_serializer(queryset, many=True)
-            return Response(serializer.data)
+            return serializer.data
 
         # Cache for 1 hour (3600 seconds)
-        cached_response = get_or_set_cache(
+        cached_data = get_or_set_cache(
             cache_key, fetch_sections, timeout=3600)
 
-        if isinstance(cached_response, Response):
-            return cached_response
-        return Response(cached_response)
+        return Response(cached_data)
 
 
 class SectionDetailView(RetrieveUpdateDestroyAPIView):
@@ -80,18 +81,17 @@ class FacilityListCreateView(ListCreateAPIView):
 
             if page_obj is not None:
                 serializer = self.get_serializer(page_obj, many=True)
-                return self.get_paginated_response(serializer.data)
+                # Return data dict, not Response object (can't pickle Response)
+                return self.get_paginated_response(serializer.data).data
 
             serializer = self.get_serializer(queryset, many=True)
-            return Response(serializer.data)
+            return serializer.data
 
         # Cache for 1 hour (3600 seconds)
-        cached_response = get_or_set_cache(
+        cached_data = get_or_set_cache(
             cache_key, fetch_facilities, timeout=3600)
 
-        if isinstance(cached_response, Response):
-            return cached_response
-        return Response(cached_response)
+        return Response(cached_data)
 
 
 class FacilityDetailView(RetrieveUpdateDestroyAPIView):
@@ -105,20 +105,28 @@ class FacilityDetailView(RetrieveUpdateDestroyAPIView):
 # ----------------------------------
 
 class TicketListCreateView(ListCreateAPIView):
-    queryset = Ticket.objects.all().order_by('-created_at')
+    queryset = Ticket.objects.all().order_by('-updated_at')
     serializer_class = TicketSerializer
     pagination_class = StandardResultsSetPagination
-    filter_backends = [DjangoFilterBackend]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ['status', 'section', 'assigned_to', 'raised_by']
+    ordering_fields = ['created_at', 'updated_at', 'status']
+    ordering = ['-updated_at']  # Default ordering
     # permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         """
+        Optimized queryset with select_related and prefetch_related.
         Optionally filter tickets by:
         - assigned_to__isnull: for unassigned tickets
         - is_overdue: for tickets older than 7 days in active states
         """
-        queryset = super().get_queryset()
+        queryset = Ticket.objects.select_related(
+            'section',
+            'facility',
+            'raised_by',
+            'assigned_to'
+        ).order_by('-updated_at')
 
         # Handle unassigned filter
         assigned_to_isnull = self.request.query_params.get(
@@ -137,6 +145,14 @@ class TicketListCreateView(ListCreateAPIView):
             )
 
         return queryset
+
+    def get_serializer_context(self):
+        """Add flag to skip expensive fields in list views."""
+        context = super().get_serializer_context()
+        # Skip available_technicians calculation in list views for performance
+        context['skip_available_technicians'] = True
+        return context
+        return context
 
     def list(self, request, *args, **kwargs):
         """
@@ -172,20 +188,17 @@ class TicketListCreateView(ListCreateAPIView):
 
             if page_obj is not None:
                 serializer = self.get_serializer(page_obj, many=True)
-                return self.get_paginated_response(serializer.data)
+                # Return data dict, not Response object (can't pickle Response)
+                return self.get_paginated_response(serializer.data).data
 
             serializer = self.get_serializer(queryset, many=True)
-            return Response(serializer.data)
+            return serializer.data
 
         # Cache for 2 minutes (120 seconds) for dashboard queries
-        cached_response = get_or_set_cache(
+        cached_data = get_or_set_cache(
             cache_key, fetch_ticket_list, timeout=120)
 
-        # If cached_response is already a Response object, return it
-        # Otherwise wrap it in a Response
-        if isinstance(cached_response, Response):
-            return cached_response
-        return Response(cached_response)
+        return Response(cached_data)
 
     def perform_create(self, serializer):
         """Delegate ticket creation to service layer """
@@ -193,9 +206,18 @@ class TicketListCreateView(ListCreateAPIView):
 
 
 class TicketDetailView(RetrieveUpdateDestroyAPIView):
-    queryset = Ticket.objects.all()
+    queryset = Ticket.objects.select_related(
+        'section', 'facility', 'raised_by', 'assigned_to'
+    ).prefetch_related('comments', 'comments__author', 'feedback').all()
     serializer_class = TicketSerializer
     # permission_classes = [IsAuthenticated]  # Make sure user is authenticated
+
+    def get_serializer_context(self):
+        """Include available_technicians in detail views."""
+        context = super().get_serializer_context()
+        # Do NOT skip available_technicians in detail views
+        context['skip_available_technicians'] = False
+        return context
 
     def perform_update(self, serializer):
         """ delegate ticket update ( assign, update status, etc) """
@@ -283,21 +305,47 @@ class UserListCreateView(ListCreateAPIView):
 
             if page_obj is not None:
                 serializer = self.get_serializer(page_obj, many=True)
-                return self.get_paginated_response(serializer.data)
+                # Return data dict, not Response object (can't pickle Response)
+                return self.get_paginated_response(serializer.data).data
 
             serializer = self.get_serializer(queryset, many=True)
-            return Response(serializer.data)
+            return serializer.data
 
         # Cache for 15 minutes (900 seconds)
-        cached_response = get_or_set_cache(
+        cached_data = get_or_set_cache(
             cache_key, fetch_user_list, timeout=900)
 
-        if isinstance(cached_response, Response):
-            return cached_response
-        return Response(cached_response)
+        return Response(cached_data)
 
 
 class UserDetailView(RetrieveUpdateDestroyAPIView):
     queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
     # permission_classes = [IsAuthenticated]
+
+
+# --------------------------------
+# TECHNICIANS BY SECTION API
+# ----------------------------------
+
+class TechniciansBySectionView(generics.ListAPIView):
+    """
+    Get technicians filtered by section.
+    Used when assigning tickets to show only relevant technicians.
+
+    Query params:
+    - section_id: Filter technicians by section (required for assignment)
+    """
+    serializer_class = UserSerializer
+    # permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """Filter technicians by section if provided."""
+        queryset = CustomUser.objects.filter(role='technician')
+
+        # Filter by section if provided
+        section_id = self.request.query_params.get('section_id')
+        if section_id:
+            queryset = queryset.filter(sections__id=section_id)
+
+        return queryset.distinct().order_by('username')

@@ -37,6 +37,9 @@ class Section(models.Model):
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(max_length=200, blank=True)
 
+    class Meta:
+        ordering = ['name']
+
     def __str__(self):
         return f"{self.name}\n"
 
@@ -60,6 +63,10 @@ class Facility(models.Model):
     )
     status = models.CharField(max_length=50, default="active")
     location = models.CharField(max_length=100, blank=True, null=True)
+
+    class Meta:
+        ordering = ['name']
+        verbose_name_plural = 'Facilities'
 
     def __str__(self):
         return f"{self.name}\n"
@@ -113,6 +120,17 @@ class Ticket(models.Model):
         null=True,
         help_text='Reason provided when ticket status is changed to pending (e.g., waiting for parts)'
     )
+
+    class Meta:
+        ordering = ['-updated_at']
+        indexes = [
+            models.Index(fields=['-updated_at'], name='ticket_updated_at_idx'),
+            models.Index(fields=['status'], name='ticket_status_idx'),
+            models.Index(fields=['assigned_to'],
+                         name='ticket_assigned_to_idx'),
+            models.Index(fields=['status', '-updated_at'],
+                         name='ticket_status_updated_idx'),
+        ]
 
     def save(self, *args, performed_by=None, **kwargs):
         """Generate ticket number if missing. Status-change logging is handled

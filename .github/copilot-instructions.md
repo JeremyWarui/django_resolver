@@ -98,6 +98,14 @@ Ticket.objects.filter(status='pending').values('ticket_no', 'pending_reason')
 - Use `StandardResultsSetPagination` (10/page) by default
 - Filtering: `?status=open&section=1&assigned_to__isnull=true&is_overdue=true`
 
+### Technician Assignment
+```
+/api/technicians/?section_id={id}  # Get technicians filtered by section for assignment
+```
+- Tickets include `available_technicians` field showing who can be assigned
+- Only technicians belonging to ticket's section can be assigned
+- Frontend should use this endpoint to populate assignment dropdowns
+
 ### Analytics Endpoints
 ```
 /api/analytics/tickets/?timeframe=week&facility_id=1&group_by=day&days=30

@@ -14,7 +14,8 @@ from .resource_views import (
     CommentListCreateView,
     FeedbackListCreateView,
     UserListCreateView,
-    UserDetailView
+    UserDetailView,
+    TechniciansBySectionView,
 )
 
 __all__ = [

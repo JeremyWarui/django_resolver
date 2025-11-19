@@ -9,6 +9,7 @@ from tickets.api.views.index import (
     CommentListCreateView,
     FeedbackListCreateView,
     UserListCreateView, UserDetailView,
+    TechniciansBySectionView,
 )
 
 # Import analytics views
@@ -48,6 +49,10 @@ urlpatterns = [
     path('users/', UserListCreateView.as_view(), name='user-list'),
     path('users/<int:pk>/', UserDetailView.as_view(), name='user-detail'),
 
+    # TECHNICIANS BY SECTION
+    path('technicians/', TechniciansBySectionView.as_view(),
+         name='technicians-by-section'),
+
     # NESTED TICKET RESOURCES
     path('tickets/<int:ticket_id>/comments/',
          CommentListCreateView.as_view(), name='ticket-comments'),
@@ -61,7 +66,7 @@ urlpatterns = [
          TechnicianAnalyticsView.as_view(), name='analytics-technicians'),
     path('analytics/admin-dashboard/',
          AdminDashboardAnalyticsView.as_view(), name='analytics-admin'),
-    
+
     # REPORT ENDPOINTS
     path('reports/generate/',
          GenerateReportView.as_view(), name='report-generate'),

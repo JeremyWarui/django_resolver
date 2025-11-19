@@ -1,5 +1,6 @@
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 from tickets.serializers import SectionSerializer, FacilitySerializer, TicketSerializer
 from tickets.serializers import CommentSerializer, FeedbackSerializer, UserSerializer
 from django_filters.rest_framework import DjangoFilterBackend
@@ -8,6 +9,7 @@ from tickets.api.services.ticket_services import (
 )
 from tickets.api.pagination import StandardResultsSetPagination
 from tickets.models import Section, Facility, Ticket, Comment, Feedback, CustomUser
+from tickets.api.cache_utils import CacheKeyBuilder, get_or_set_cache
 from django.utils import timezone
 from datetime import timedelta
 
@@ -21,6 +23,32 @@ class SectionListCreateView(ListCreateAPIView):
     serializer_class = SectionSerializer
     pagination_class = StandardResultsSetPagination
     # permission_classes = [IsAuthenticated]
+
+    def list(self, request, *args, **kwargs):
+        """
+        Override list to add caching for sections lookup.
+        Cache for 1 hour since sections rarely change.
+        """
+        cache_key = CacheKeyBuilder.sections_list()
+
+        def fetch_sections():
+            queryset = self.filter_queryset(self.get_queryset())
+            page_obj = self.paginate_queryset(queryset)
+
+            if page_obj is not None:
+                serializer = self.get_serializer(page_obj, many=True)
+                return self.get_paginated_response(serializer.data)
+
+            serializer = self.get_serializer(queryset, many=True)
+            return Response(serializer.data)
+
+        # Cache for 1 hour (3600 seconds)
+        cached_response = get_or_set_cache(
+            cache_key, fetch_sections, timeout=3600)
+
+        if isinstance(cached_response, Response):
+            return cached_response
+        return Response(cached_response)
 
 
 class SectionDetailView(RetrieveUpdateDestroyAPIView):
@@ -38,6 +66,32 @@ class FacilityListCreateView(ListCreateAPIView):
     serializer_class = FacilitySerializer
     pagination_class = StandardResultsSetPagination
     # permission_classes = [IsAuthenticated]
+
+    def list(self, request, *args, **kwargs):
+        """
+        Override list to add caching for facilities lookup.
+        Cache for 1 hour since facilities rarely change.
+        """
+        cache_key = CacheKeyBuilder.facilities_list()
+
+        def fetch_facilities():
+            queryset = self.filter_queryset(self.get_queryset())
+            page_obj = self.paginate_queryset(queryset)
+
+            if page_obj is not None:
+                serializer = self.get_serializer(page_obj, many=True)
+                return self.get_paginated_response(serializer.data)
+
+            serializer = self.get_serializer(queryset, many=True)
+            return Response(serializer.data)
+
+        # Cache for 1 hour (3600 seconds)
+        cached_response = get_or_set_cache(
+            cache_key, fetch_facilities, timeout=3600)
+
+        if isinstance(cached_response, Response):
+            return cached_response
+        return Response(cached_response)
 
 
 class FacilityDetailView(RetrieveUpdateDestroyAPIView):
@@ -65,12 +119,13 @@ class TicketListCreateView(ListCreateAPIView):
         - is_overdue: for tickets older than 7 days in active states
         """
         queryset = super().get_queryset()
-        
+
         # Handle unassigned filter
-        assigned_to_isnull = self.request.query_params.get('assigned_to__isnull', None)
+        assigned_to_isnull = self.request.query_params.get(
+            'assigned_to__isnull', None)
         if assigned_to_isnull and assigned_to_isnull.lower() == 'true':
             queryset = queryset.filter(assigned_to__isnull=True)
-        
+
         # Handle overdue filter
         is_overdue = self.request.query_params.get('is_overdue', None)
         if is_overdue and is_overdue.lower() == 'true':
@@ -80,8 +135,57 @@ class TicketListCreateView(ListCreateAPIView):
                 created_at__lt=seven_days_ago,
                 status__in=['open', 'assigned', 'in_progress']
             )
-        
+
         return queryset
+
+    def list(self, request, *args, **kwargs):
+        """
+        Override list to add caching for common dashboard queries.
+        Cache for 2 minutes to balance freshness and performance.
+        """
+        # Extract filter parameters
+        status = request.query_params.get('status')
+        section = request.query_params.get('section')
+        assigned_to = request.query_params.get('assigned_to')
+        raised_by = request.query_params.get('raised_by')
+        is_overdue = request.query_params.get('is_overdue')
+        assigned_to_isnull = request.query_params.get('assigned_to__isnull')
+        page = request.query_params.get('page', 1)
+        page_size = request.query_params.get('page_size', 10)
+
+        # Build cache key
+        cache_key = CacheKeyBuilder.ticket_list(
+            status=status,
+            section=section,
+            assigned_to=assigned_to,
+            raised_by=raised_by,
+            is_overdue=is_overdue,
+            assigned_to_isnull=assigned_to_isnull,
+            page=page,
+            page_size=page_size
+        )
+
+        # Get cached response or compute
+        def fetch_ticket_list():
+            queryset = self.filter_queryset(self.get_queryset())
+            page_obj = self.paginate_queryset(queryset)
+
+            if page_obj is not None:
+                serializer = self.get_serializer(page_obj, many=True)
+                return self.get_paginated_response(serializer.data)
+
+            serializer = self.get_serializer(queryset, many=True)
+            return Response(serializer.data)
+
+        # Cache for 2 minutes (120 seconds) for dashboard queries
+        cached_response = get_or_set_cache(
+            cache_key, fetch_ticket_list, timeout=120)
+
+        # If cached_response is already a Response object, return it
+        # Otherwise wrap it in a Response
+        if isinstance(cached_response, Response):
+            return cached_response
+        return Response(cached_response)
 
     def perform_create(self, serializer):
         """Delegate ticket creation to service layer """
@@ -153,6 +257,44 @@ class UserListCreateView(ListCreateAPIView):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['role', 'sections']
     # permission_classes = [IsAuthenticated]
+
+    def list(self, request, *args, **kwargs):
+        """
+        Override list to add caching for user queries (especially technician lists).
+        Cache for 15 minutes for role-based queries.
+        """
+        # Extract filter parameters
+        role = request.query_params.get('role')
+        sections = request.query_params.get('sections')
+        page = request.query_params.get('page', 1)
+        page_size = request.query_params.get('page_size', 10)
+
+        # Build cache key
+        cache_key = CacheKeyBuilder.user_list(
+            role=role,
+            sections=sections,
+            page=page,
+            page_size=page_size
+        )
+
+        def fetch_user_list():
+            queryset = self.filter_queryset(self.get_queryset())
+            page_obj = self.paginate_queryset(queryset)
+
+            if page_obj is not None:
+                serializer = self.get_serializer(page_obj, many=True)
+                return self.get_paginated_response(serializer.data)
+
+            serializer = self.get_serializer(queryset, many=True)
+            return Response(serializer.data)
+
+        # Cache for 15 minutes (900 seconds)
+        cached_response = get_or_set_cache(
+            cache_key, fetch_user_list, timeout=900)
+
+        if isinstance(cached_response, Response):
+            return cached_response
+        return Response(cached_response)
 
 
 class UserDetailView(RetrieveUpdateDestroyAPIView):

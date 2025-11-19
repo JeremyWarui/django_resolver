@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: django-resolver
+    runtime: python
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn resolver.wsgi:application"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.0
+      - key: DATABASE_URL
+        fromDatabase:
+          name: resolver_db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: False
+      - key: ALLOWED_HOSTS
+        sync: false
+
+databases:
+  - name: resolver_db
+    databaseName: neondb
+    user: neondb_owner

@@ -141,6 +141,30 @@ All paginated endpoints return:
 }
 ```
 
+## Performance Optimizations
+
+### Database Indexes
+- `Ticket` model has 4 indexes for optimal query performance:
+  - `ticket_updated_at_idx` - Single field index on `-updated_at` (default ordering)
+  - `ticket_status_idx` - Single field index on `status` (frequently filtered)
+  - `ticket_assigned_to_idx` - Single field index on `assigned_to` (assignment queries)
+  - `ticket_status_updated_idx` - Composite index on `(status, -updated_at)` (common filter combo)
+- Default ordering: `Ticket.Meta.ordering = ['-updated_at']` (most recent updates first)
+- Performance impact: 66x faster (4.7s → 0.07s for 100 tickets)
+
+### Conditional Serialization
+- **List views** use simplified serialization for performance:
+  - Skip `comments`, `feedback`, `available_technicians` (expensive nested queries)
+  - Use `assigned_to_name` (simple string) instead of full `assigned_to` object
+  - Context flag: `skip_available_technicians=True` in `get_serializer_context()`
+- **Detail views** include full nested objects and relationships
+- Controlled via `get_fields()` override in `TicketSerializer`
+
+### Query Optimization
+- Use `select_related()` for foreign keys: `section`, `facility`, `raised_by`, `assigned_to`
+- Only use `prefetch_related()` in detail views (comments, feedback)
+- OrderingFilter enabled with fields: `created_at`, `updated_at`, `status`
+
 ## Caching Strategy (Redis - Implemented)
 
 ### Active Caching Areas
@@ -156,6 +180,12 @@ All paginated endpoints return:
 3. **Lookup data** - Rarely changes, heavily accessed
    - `/api/sections/` - 1 hour TTL
    - `/api/facilities/` - 1 hour TTL
+
+### Important: Cache Data Format
+- **Always cache data dictionaries, never DRF Response objects**
+- Cache callbacks should return `response.data` (dict), not `Response(data)`
+- Fresh Response objects are created after cache retrieval
+- Reason: Response objects cannot be pickled for Redis storage
 
 ### Cache Key Patterns (via CacheKeyBuilder)
 ```python
@@ -225,8 +255,12 @@ REDIS_URL=redis://127.0.0.1:6379/1  # Development
 - ❌ Don't bypass services - always call service functions from views
 - ❌ Don't create `TicketLog` manually - use `ticket.change_status()` or `ticket.change_assignment()`
 - ❌ Don't forget to invalidate relevant caches after create/update/delete operations
+- ❌ Don't cache DRF Response objects - cache the `.data` dict and wrap in fresh Response
+- ❌ Don't remove database indexes without profiling performance impact first
 - ✅ Use `performed_by` parameter in model helpers for audit trail
 - ✅ When implementing caching, consider cache invalidation in service layer
+- ✅ Use conditional serialization (skip_available_technicians) in list views for performance
+- ✅ Add database indexes on frequently filtered/ordered fields
 
 ## Key Files Reference
 - `tickets/api/README.md`: API architecture deep-dive

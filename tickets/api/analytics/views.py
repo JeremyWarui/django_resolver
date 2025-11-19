@@ -8,11 +8,13 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser
 
 from tickets.models import Ticket, CustomUser, Feedback, Section, Facility
 from tickets.api.analytics.analytics import TicketAnalytics, TechnicianAnalytics, AdminAnalytics
+from tickets.api.cache_utils import CacheKeyBuilder, get_or_set_cache
 
 
 class TicketAnalyticsView(generics.GenericAPIView):
     """
     API view for ticket analytics data.
+    Cached for 5 minutes to reduce database load on dashboards.
     """
     # permission_classes = [IsAuthenticated]
 
@@ -34,6 +36,15 @@ class TicketAnalyticsView(generics.GenericAPIView):
         group_by = request.query_params.get('group_by', 'day')
         days = int(request.query_params.get('days', 30))
 
+        # Build cache key
+        cache_key = CacheKeyBuilder.analytics_tickets(
+            timeframe=timeframe,
+            facility_id=facility_id,
+            section_id=section_id,
+            group_by=group_by,
+            days=days
+        )
+
         # Map timeframe to days
         days_map = {
             'day': 1,
@@ -43,36 +54,42 @@ class TicketAnalyticsView(generics.GenericAPIView):
 
         time_days = days_map.get(timeframe, 1)
 
-        # Get analytics data
-        ticket_counts = TicketAnalytics.get_ticket_counts_by_timeframe(
-            days=time_days,
-            facility_id=facility_id,
-            section_id=section_id
-        )
+        # Get analytics data with caching (5 minutes TTL)
+        def fetch_analytics():
+            ticket_counts = TicketAnalytics.get_ticket_counts_by_timeframe(
+                days=time_days,
+                facility_id=facility_id,
+                section_id=section_id
+            )
 
-        status_counts = TicketAnalytics.get_ticket_counts_by_status(
-            facility_id=facility_id,
-            section_id=section_id
-        )
+            status_counts = TicketAnalytics.get_ticket_counts_by_status(
+                facility_id=facility_id,
+                section_id=section_id
+            )
 
-        trend_data = TicketAnalytics.get_ticket_trend_data(
-            days=days, group_by=group_by)
+            trend_data = TicketAnalytics.get_ticket_trend_data(
+                days=days, group_by=group_by)
 
-        facility_distribution = TicketAnalytics.get_tickets_by_facility()
-        section_distribution = TicketAnalytics.get_tickets_by_section()
+            facility_distribution = TicketAnalytics.get_tickets_by_facility()
+            section_distribution = TicketAnalytics.get_tickets_by_section()
 
-        return Response({
-            'ticket_counts': ticket_counts,
-            'status_counts': status_counts,
-            'trend_data': trend_data,
-            'facility_distribution': facility_distribution,
-            'section_distribution': section_distribution
-        })
+            return {
+                'ticket_counts': ticket_counts,
+                'status_counts': status_counts,
+                'trend_data': trend_data,
+                'facility_distribution': facility_distribution,
+                'section_distribution': section_distribution
+            }
+
+        data = get_or_set_cache(
+            cache_key, fetch_analytics, timeout=300)  # 5 min
+        return Response(data)
 
 
 class TechnicianAnalyticsView(generics.GenericAPIView):
     """
     API view for technician performance analytics.
+    Cached for 10 minutes per technician to optimize dashboard performance.
     """
     # permission_classes = [IsAuthenticated]
 
@@ -99,29 +116,38 @@ class TechnicianAnalyticsView(generics.GenericAPIView):
                         status=status.HTTP_403_FORBIDDEN
                     )
 
-        # Get analytics data
-        performance_data = TechnicianAnalytics.get_technician_performance(
-            technician_id)
+        # Build cache key
+        cache_key = CacheKeyBuilder.analytics_technician(technician_id)
 
-        # Get section ratings if requesting all technicians
-        section_ratings = None
-        if not technician_id:
-            section_ratings = TechnicianAnalytics.get_technician_ratings_by_section()
+        # Get analytics data with caching (10 minutes TTL for technician stats)
+        def fetch_technician_analytics():
+            performance_data = TechnicianAnalytics.get_technician_performance(
+                technician_id)
 
-        response_data = {
-            'technician_performance': performance_data
-        }
+            # Get section ratings if requesting all technicians
+            section_ratings = None
+            if not technician_id:
+                section_ratings = TechnicianAnalytics.get_technician_ratings_by_section()
 
-        if section_ratings:
-            response_data['section_ratings'] = section_ratings
+            response_data = {
+                'technician_performance': performance_data
+            }
 
-        return Response(response_data)
+            if section_ratings:
+                response_data['section_ratings'] = section_ratings
+
+            return response_data
+
+        data = get_or_set_cache(
+            cache_key, fetch_technician_analytics, timeout=600)  # 10 min
+        return Response(data)
 
 
 class AdminDashboardAnalyticsView(generics.GenericAPIView):
     """
     API view for admin dashboard analytics.
     Restricted to admin and manager roles.
+    Cached for 5 minutes to provide real-time insights with optimized performance.
     """
     # permission_classes = [IsAuthenticated]
 
@@ -135,11 +161,19 @@ class AdminDashboardAnalyticsView(generics.GenericAPIView):
         #             status=status.HTTP_403_FORBIDDEN
         #         )
 
-        # Get analytics data
-        system_overview = AdminAnalytics.get_system_overview()
-        overdue_tickets = AdminAnalytics.get_overdue_tickets()
+        # Build cache key
+        cache_key = CacheKeyBuilder.analytics_admin()
 
-        return Response({
-            'system_overview': system_overview,
-            'overdue_tickets': overdue_tickets
-        })
+        # Get analytics data with caching (5 minutes TTL for admin dashboard)
+        def fetch_admin_analytics():
+            system_overview = AdminAnalytics.get_system_overview()
+            overdue_tickets = AdminAnalytics.get_overdue_tickets()
+
+            return {
+                'system_overview': system_overview,
+                'overdue_tickets': overdue_tickets
+            }
+
+        data = get_or_set_cache(
+            cache_key, fetch_admin_analytics, timeout=300)  # 5 min
+        return Response(data)

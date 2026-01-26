@@ -2,8 +2,8 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from .models import *
 
-
 # Register your models here.
+
 
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
@@ -11,14 +11,10 @@ class CustomUserAdmin(UserAdmin):
     list_display = ("username", "email", "role", "is_staff", "is_active")
     list_filter = ("role", "is_staff", "is_active", "sections")
     fieldsets = UserAdmin.fieldsets + (
-        ('Role and Sections', {
-            'fields': ('role', 'sections')
-        }),
+        ("Role and Sections", {"fields": ("role", "sections")}),
     )
     add_fieldsets = UserAdmin.add_fieldsets + (
-        ('Role and Sections', {
-            'fields': ('role', 'sections')
-        }),
+        ("Role and Sections", {"fields": ("role", "sections")}),
     )
     search_fields = ("username", "email", "role")
     ordering = ("username",)
@@ -28,7 +24,7 @@ class CustomUserAdmin(UserAdmin):
 @admin.register(Section)
 class SectionAdmin(admin.ModelAdmin):
     list_display = ("name", "description", "get_technicians")
-    search_fields = ('name', 'description', 'technicians__username')
+    search_fields = ("name", "description", "technicians__username")
 
     def get_technicians(self, obj):
         """Return list of technicians in this section"""
@@ -57,7 +53,7 @@ class TicketAdmin(admin.ModelAdmin):
         "status",
         "assigned_to",
         "created_at",
-        "updated_at"
+        "updated_at",
     )
     list_filter = ("section", "facility", "status", "raised_by", "assigned_to")
     search_fields = (
@@ -65,7 +61,7 @@ class TicketAdmin(admin.ModelAdmin):
         "facility",
         "status",
         "assigned_to__username",
-        "raised_by__username"
+        "raised_by__username",
     )
 
 

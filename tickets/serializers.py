@@ -5,7 +5,7 @@ from .models import *
 class FacilitySerializer(serializers.ModelSerializer):
     class Meta:
         model = Facility
-        fields = ['id', 'name', 'type', 'status', 'location']
+        fields = ["id", "name", "type", "status", "location"]
 
 
 class SectionSerializer(serializers.ModelSerializer):
@@ -13,30 +13,36 @@ class SectionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Section
-        fields = ['id', 'name', 'description', 'technicians']
+        fields = ["id", "name", "description", "technicians"]
 
 
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     username = serializers.CharField(read_only=True)
     sections = serializers.PrimaryKeyRelatedField(
-        many=True,
-        queryset=Section.objects.all(),
-        required=False
+        many=True, queryset=Section.objects.all(), required=False
     )
 
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'first_name',
-                  'last_name', 'email', 'password', 'role', 'sections']
+        fields = [
+            "id",
+            "username",
+            "first_name",
+            "last_name",
+            "email",
+            "password",
+            "role",
+            "sections",
+        ]
 
     def create(self, validated_data):
-        first_name = validated_data.get('first_name')
-        last_name = validated_data.get('last_name')
-        email = validated_data.get('email', '')
-        password = validated_data['password']
-        role = validated_data.get('role', 'user')
-        sections = validated_data.pop('sections', [])
+        first_name = validated_data.get("first_name")
+        last_name = validated_data.get("last_name")
+        email = validated_data.get("email", "")
+        password = validated_data["password"]
+        role = validated_data.get("role", "user")
+        sections = validated_data.pop("sections", [])
 
         base_username = f"{first_name.lower()}.{last_name.lower()}"
         username = base_username
@@ -65,7 +71,7 @@ class TinyTicketSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Ticket
-        fields = ['id', 'ticket_no']
+        fields = ["id", "ticket_no"]
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -76,7 +82,7 @@ class CommentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Comment
-        fields = ['id', 'ticket', 'text', 'author', 'created_at']
+        fields = ["id", "ticket", "text", "author", "created_at"]
 
 
 class FeedbackSerializer(serializers.ModelSerializer):
@@ -87,38 +93,43 @@ class FeedbackSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Feedback
-        fields = ['id', 'ticket', 'rated_by',
-                  'rating', 'comment', 'created_at']
+        fields = ["id", "ticket", "rated_by", "rating", "comment", "created_at"]
 
 
 class TicketSerializer(serializers.ModelSerializer):
     """Main ticket serializer with nested relationships."""
 
     assigned_to_id = serializers.PrimaryKeyRelatedField(
-        queryset=CustomUser.objects.filter(role='technician'),
-        source='assigned_to',
+        queryset=CustomUser.objects.filter(role="technician"),
+        source="assigned_to",
         allow_null=True,
         required=False,
         write_only=True,
-        label="Assigned_To ID"
+        label="Assigned_To ID",
     )
 
     # Add field to show available technicians for the ticket's section
     available_technicians = serializers.SerializerMethodField(read_only=True)
 
     section_id = serializers.PrimaryKeyRelatedField(
-        queryset=Section.objects.all(), source='section', write_only=True, label='Section ID')
+        queryset=Section.objects.all(),
+        source="section",
+        write_only=True,
+        label="Section ID",
+    )
 
     # Read-only section_id for frontend consumption
-    section_id_value = serializers.IntegerField(
-        source='section.id', read_only=True)
+    section_id_value = serializers.IntegerField(source="section.id", read_only=True)
 
     facility_id = serializers.PrimaryKeyRelatedField(
-        queryset=Facility.objects.all(), source='facility', write_only=True, label='Facility ID')
+        queryset=Facility.objects.all(),
+        source="facility",
+        write_only=True,
+        label="Facility ID",
+    )
 
     # Read-only facility_id for frontend consumption
-    facility_id_value = serializers.IntegerField(
-        source='facility.id', read_only=True)
+    facility_id_value = serializers.IntegerField(source="facility.id", read_only=True)
 
     section = serializers.StringRelatedField(read_only=True)
     facility = serializers.StringRelatedField(read_only=True)
@@ -132,21 +143,27 @@ class TicketSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ticket
         fields = [
-            'id',
-            'ticket_no',
-            'title',
-            'description',
-            'status',
-            'section_id', 'section', 'section_id_value',
-            'facility_id', 'facility', 'facility_id_value',
-            'raised_by',
-            'assigned_to_id', 'assigned_to', 'assigned_to_name',
-            'available_technicians',
-            'created_at',
-            'updated_at',
-            'pending_reason',
-            'comments',
-            'feedback',
+            "id",
+            "ticket_no",
+            "title",
+            "description",
+            "status",
+            "section_id",
+            "section",
+            "section_id_value",
+            "facility_id",
+            "facility",
+            "facility_id_value",
+            "raised_by",
+            "assigned_to_id",
+            "assigned_to",
+            "assigned_to_name",
+            "available_technicians",
+            "created_at",
+            "updated_at",
+            "pending_reason",
+            "comments",
+            "feedback",
         ]
 
     def get_fields(self):
@@ -154,14 +171,14 @@ class TicketSerializer(serializers.ModelSerializer):
         fields = super().get_fields()
 
         # Remove heavy nested fields in list views
-        if self.context.get('skip_available_technicians', False):
+        if self.context.get("skip_available_technicians", False):
             # Remove full assigned_to object in list views, keep simple name
-            if 'assigned_to' in fields:
-                fields.pop('assigned_to')
-            if 'comments' in fields:
-                fields.pop('comments')
-            if 'feedback' in fields:
-                fields.pop('feedback')
+            if "assigned_to" in fields:
+                fields.pop("assigned_to")
+            if "comments" in fields:
+                fields.pop("comments")
+            if "feedback" in fields:
+                fields.pop("feedback")
 
         return fields
 
@@ -176,14 +193,13 @@ class TicketSerializer(serializers.ModelSerializer):
         Skip this expensive operation in list views for performance.
         """
         # Skip in list views to improve performance
-        if self.context.get('skip_available_technicians', False):
+        if self.context.get("skip_available_technicians", False):
             return []
 
         if obj.section:
             technicians = CustomUser.objects.filter(
-                role='technician',
-                sections=obj.section
-            ).values('id', 'username', 'first_name', 'last_name')
+                role="technician", sections=obj.section
+            ).values("id", "username", "first_name", "last_name")
             return list(technicians)
         return []
 

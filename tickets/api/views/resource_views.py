@@ -112,7 +112,7 @@ class TicketListCreateView(ListCreateAPIView):
     filterset_fields = ['status', 'section', 'assigned_to', 'raised_by']
     ordering_fields = ['created_at', 'updated_at', 'status']
     ordering = ['-updated_at']  # Default ordering
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         """
@@ -149,9 +149,12 @@ class TicketListCreateView(ListCreateAPIView):
     def get_serializer_context(self):
         """Add flag to skip expensive fields in list views."""
         context = super().get_serializer_context()
-        # Skip available_technicians calculation in list views for performance
-        context['skip_available_technicians'] = True
-        return context
+        # Skip available_technicians calculation only in list views for performance
+        # Include it in create/detail responses
+        if self.request.method == 'GET':
+            context['skip_available_technicians'] = True
+        else:
+            context['skip_available_technicians'] = False
         return context
 
     def list(self, request, *args, **kwargs):
@@ -337,6 +340,7 @@ class TechniciansBySectionView(generics.ListAPIView):
     - section_id: Filter technicians by section (required for assignment)
     """
     serializer_class = UserSerializer
+    pagination_class = None  # Return unpaginated list for dropdown/assignment UI
     # permission_classes = [IsAuthenticated]
 
     def get_queryset(self):

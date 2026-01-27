@@ -25,9 +25,9 @@ def get_system_user():
 
 def create_ticket(serializer, user):
     """Logic for creating a ticket."""
-    # Handle unauthenticated users
+    # Reject unauthenticated users
     if user is None or not user.is_authenticated:
-        user = get_system_user()
+        raise PermissionDenied("Authentication required to create tickets.")
 
     ticket = serializer.save(raised_by=user)
 
@@ -41,9 +41,9 @@ def create_ticket(serializer, user):
 
 def update_ticket(serializer, user):
     """Logic for updating a ticket (assignments, status, etc.)"""
-    # Handle unauthenticated users
+    # Reject unauthenticated users
     if user is None or not user.is_authenticated:
-        user = get_system_user()
+        raise PermissionDenied("Authentication required to update tickets.")
 
     ticket = serializer.instance
     old_assigned_to = ticket.assigned_to
@@ -59,16 +59,30 @@ def update_ticket(serializer, user):
         raise ValidationError(
             "Cannot modify a closed ticket. Ticket is already finalized.")
 
-    # If status is changing, validate the transition
+    # Check if user is trying to assign (even if to same technician)
+    if 'assigned_to' in serializer.validated_data:
+        # Check if the acting user has permission to assign tickets
+        if user.role not in ["technician", "admin", "manager"]:
+            raise PermissionDenied(
+                f"User {user.username} cannot assign tickets. Only technicians, admins, and managers can assign tickets."
+            )
+
+    # If status is changing, validate the transition and role permissions
     if new_status != old_status:
+        # Validate user role for status updates
+        if user.role not in ["technician", "admin", "manager"]:
+            raise ValidationError(
+                f"User {user.username} cannot update status. Their role is not 'technician', 'admin', or 'manager'."
+            )
+
         is_valid, error_message = validate_status_transition(
             old_status, new_status, user.role)
         if not is_valid:
             raise ValidationError(error_message)
 
-    if new_assigned_to:
-        # 1. Check if the assigned user's role is 'technician'
-        # Assuming your User model has a 'role' field
+    # Validate assignment details if being changed
+    if new_assigned_to and new_assigned_to != old_assigned_to:
+        # Check if the assigned user's role is 'technician'
         if new_assigned_to.role != 'technician':
             raise ValidationError(
                 f"User {new_assigned_to.username} cannot be assigned. Their role is not 'technician'."
@@ -79,26 +93,16 @@ def update_ticket(serializer, user):
             raise ValidationError(
                 f"Technician {new_assigned_to.username} does not belong to section {ticket.section.name}."
             )
-        # 3. Prevent assignment if ticket is closed or resolved (existing logic)
-        if old_status in ["resolved", "closed"] and new_status != "closed":
+
+        # Prevent assignment if ticket is closed or resolved
+        if old_status in ["resolved", "closed"]:
             raise ValidationError(
                 "Cannot assign a ticket that is resolved or closed.")
-
-        # Validate user role for status updates (user is already guaranteed to exist)
-        if user.role not in ["technician", "admin", "manager"]:
-            raise ValidationError(
-                f"User {user.username} cannot update status. Their role is not 'technician', 'admin', or 'manager'."
-            )
 
     # Auto-change status if newly assigned and was open
     if old_assigned_to is None and new_assigned_to and old_status == 'open':
         new_status = 'assigned'
         serializer.validated_data['status'] = 'assigned'
-
-    # prevent assignment if ticket is closed or resolved
-    if new_assigned_to != old_assigned_to and old_status in ["resolved", "closed"]:
-        raise ValidationError(
-            "Cannot assign a ticket that is resolved or closed.")
 
     # Get the performer before saving
     performed_by = user

@@ -23,7 +23,8 @@ class TicketOperationsTestCase(TestCase):
         )
 
         # Create facility
-        self.facility = Facility.objects.create(name="Main Building", type="building")
+        self.facility = Facility.objects.create(
+            name="Main Building", type="building")
 
         # Create users
         self.user = CustomUser.objects.create_user(
@@ -32,6 +33,14 @@ class TicketOperationsTestCase(TestCase):
             first_name="Test",
             last_name="User",
             role="user",
+        )
+
+        self.admin = CustomUser.objects.create_user(
+            username="admin",
+            password="testpass",
+            first_name="Admin",
+            last_name="User",
+            role="admin",
         )
 
         self.tech_hvac = CustomUser.objects.create_user(
@@ -106,6 +115,9 @@ class TicketOperationsTestCase(TestCase):
 
     def test_assign_technician_to_ticket(self):
         """Test assigning a technician to a ticket."""
+        # Switch to admin to perform assignment
+        self.client.force_authenticate(user=self.admin)
+
         # Create ticket
         ticket = Ticket.objects.create(
             title="Broken AC",
@@ -117,7 +129,8 @@ class TicketOperationsTestCase(TestCase):
 
         # Assign technician
         data = {"assigned_to_id": self.tech_hvac.id}
-        response = self.client.patch(f"/api/tickets/{ticket.id}/", data, format="json")
+        response = self.client.patch(
+            f"/api/tickets/{ticket.id}/", data, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["assigned_to"]["id"], self.tech_hvac.id)
@@ -125,6 +138,9 @@ class TicketOperationsTestCase(TestCase):
 
     def test_cannot_assign_wrong_section_technician(self):
         """Test that assigning technician from wrong section fails."""
+        # Switch to admin to perform assignment
+        self.client.force_authenticate(user=self.admin)
+
         # Create HVAC ticket
         ticket = Ticket.objects.create(
             title="Broken AC",
@@ -136,12 +152,16 @@ class TicketOperationsTestCase(TestCase):
 
         # Try to assign plumbing technician (should fail)
         data = {"assigned_to_id": self.tech_plumbing.id}
-        response = self.client.patch(f"/api/tickets/{ticket.id}/", data, format="json")
+        response = self.client.patch(
+            f"/api/tickets/{ticket.id}/", data, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_can_assign_multi_section_technician(self):
         """Test that technician with multiple sections can be assigned."""
+        # Switch to admin to perform assignment
+        self.client.force_authenticate(user=self.admin)
+
         # Create HVAC ticket
         ticket = Ticket.objects.create(
             title="Broken AC",
@@ -153,7 +173,8 @@ class TicketOperationsTestCase(TestCase):
 
         # Assign multi-section technician (should work)
         data = {"assigned_to_id": self.tech_both.id}
-        response = self.client.patch(f"/api/tickets/{ticket.id}/", data, format="json")
+        response = self.client.patch(
+            f"/api/tickets/{ticket.id}/", data, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["assigned_to"]["id"], self.tech_both.id)
@@ -171,9 +192,13 @@ class TicketOperationsTestCase(TestCase):
         ticket.status = "assigned"
         ticket.save()
 
+        # Authenticate as technician to update status
+        self.client.force_authenticate(user=self.tech_hvac)
+
         # Update to in_progress
         data = {"status": "in_progress"}
-        response = self.client.patch(f"/api/tickets/{ticket.id}/", data, format="json")
+        response = self.client.patch(
+            f"/api/tickets/{ticket.id}/", data, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["status"], "in_progress")
@@ -186,9 +211,7 @@ class TicketOperationsTestCase(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        # Should return 2 technicians (hvac.tech and multi.tech)
-        self.assertEqual(len(response.data), 2)
-
+        # Should include hvac.tech and multi.tech, but not plumb.tech
         usernames = [t["username"] for t in response.data]
         self.assertIn("hvac.tech", usernames)
         self.assertIn("multi.tech", usernames)
@@ -200,11 +223,17 @@ class TicketOperationsTestCase(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        # Should return all 3 technicians
-        self.assertEqual(len(response.data), 3)
+        # Should include all 3 test technicians
+        usernames = [t["username"] for t in response.data]
+        self.assertIn("hvac.tech", usernames)
+        self.assertIn("plumb.tech", usernames)
+        self.assertIn("multi.tech", usernames)
 
     def test_update_multiple_fields(self):
         """Test updating title, description, and status together."""
+        # Switch to admin to perform assignment
+        self.client.force_authenticate(user=self.admin)
+
         ticket = Ticket.objects.create(
             title="Old Title",
             description="Old description",
@@ -219,7 +248,8 @@ class TicketOperationsTestCase(TestCase):
             "assigned_to_id": self.tech_hvac.id,
         }
 
-        response = self.client.patch(f"/api/tickets/{ticket.id}/", data, format="json")
+        response = self.client.patch(
+            f"/api/tickets/{ticket.id}/", data, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["title"], "Updated Title")

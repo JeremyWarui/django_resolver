@@ -7,4 +7,4 @@ class TicketsConfig(AppConfig):
 
     def ready(self):
         """Import signal handlers when app is ready."""
-        import tickets.api.signals  # noqa
+        import tickets.api.utils.signals  # noqa

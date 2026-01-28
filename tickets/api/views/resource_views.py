@@ -9,9 +9,9 @@ from rest_framework.filters import OrderingFilter
 from tickets.api.services.ticket_services import (
     create_ticket, update_ticket, create_comment, create_feedback
 )
-from tickets.api.pagination import StandardResultsSetPagination
+from tickets.api.utils.pagination import StandardResultsSetPagination
 from tickets.models import Section, Facility, Ticket, Comment, Feedback, CustomUser
-from tickets.api.cache_utils import CacheKeyBuilder, get_or_set_cache
+from tickets.api.utils.cache_utils import CacheKeyBuilder, get_or_set_cache
 from django.utils import timezone
 from datetime import timedelta
 

@@ -1,96 +1,156 @@
-# Django Resolver API Structure
+# Tickets API Module
 
-This document outlines the organization of the Django Resolver project's API structure.
+This module contains the API layer for Django Resolver, organized using a layered architecture pattern.
 
 ## Directory Structure
 
-```plaintext
-tickets/
-├── api/                          # Main API package
-│   ├── __init__.py
-│   ├── urls.py                   # Main API URL routing
-│   ├── pagination.py             # Custom pagination classes
-│   ├── analytics/                # Analytics components
-│   │   ├── __init__.py
-│   │   ├── analytics.py          # Core analytics logic
-│   │   ├── views.py              # Analytics API views
-│   │   └── index.py              # Exports for easier imports
-│   ├── services/                 # Business logic services
-│   │   ├── __init__.py
-│   │   └── ticket_services.py    # Ticket-related business logic
-│   └── views/                    # API views
-│       ├── __init__.py
-│       ├── resource_views.py     # CRUD API views for resources
-│       └── index.py              # Exports for easier imports
-├── models.py                     # Data models
-├── serializers.py                # DRF serializers
-└── urls.py                       # Main app URL routing (includes API)
+```
+tickets/api/
+├── __init__.py
+├── urls.py                          # Main API URL routing
+├── analytics/                       # Analytics endpoints
+│   ├── analytics.py                # Business logic for analytics
+│   ├── views.py                    # API views for analytics
+│   └── index.py                    # Clean imports
+├── reports/                         # Report generation
+│   ├── report_generator.py         # PDF/CSV generation logic
+│   └── views.py                    # Report API views
+├── services/                        # Business logic layer
+│   └── ticket_services.py          # Ticket operations and validations
+├── utils/                           # Shared utilities
+│   ├── cache_utils.py              # Caching patterns and invalidation
+│   ├── pagination.py               # Custom pagination classes
+│   └── signals.py                  # Django signals for cache invalidation
+└── views/                           # API views (presentation layer)
+    ├── resource_views.py           # CRUD views for resources
+    └── index.py                    # Clean imports
 ```
 
-## Architecture Overview
+## Architecture Principles
 
-The Django Resolver project follows a clean architecture approach with separate layers for:
+### Layered Architecture
+The API follows a strict layered architecture:
 
-1. **Models**: Data structures and database schema
-2. **Views**: API endpoints and request/response handling
-3. **Services**: Business logic and validation rules
-4. **Analytics**: Data analysis and reporting functionality
+1. **Views Layer** (`views/`, `analytics/views.py`, `reports/views.py`)
+   - Handles HTTP request/response
+   - Delegates to services for business logic
+   - Thin controllers with minimal logic
 
-## API Structure
+2. **Services Layer** (`services/`)
+   - Contains all business logic
+   - Validates status transitions
+   - Enforces role permissions
+   - Handles complex operations
 
-### Resource APIs
+3. **Models Layer** (in `tickets/models.py`)
+   - Data schema and simple model methods
+   - Helper methods for atomic operations
 
-The standard REST API endpoints for CRUD operations on resources:
+4. **Utilities** (`utils/`)
+   - Shared functionality across layers
+   - Caching, pagination, signals
 
-- `/api/sections/`
-- `/api/facilities/`
-- `/api/tickets/`
-- `/api/comments/`
-- `/api/feedback/`
-- `/api/users/`
+### Key Architectural Rules
 
-### Analytics APIs
+❌ **DON'T:**
+- Put business logic in views
+- Create `TicketLog` entries manually
+- Modify closed tickets without checking
+- Bypass services layer
 
-Specialized endpoints for analytics and reporting:
+✅ **DO:**
+- Use services for all business logic
+- Call model helper methods for status changes
+- Validate permissions in services
+- Cache expensive queries
 
-- `/api/analytics/tickets/`
-- `/api/analytics/technicians/`
-- `/api/analytics/admin-dashboard/`
+## Module Details
 
-## Key Components
+### Analytics (`analytics/`)
+- **Purpose:** Provide aggregated data for dashboards
+- **Caching:** 5-10 minute TTL for heavy queries
+- **Files:**
+  - `analytics.py`: Data aggregation logic
+  - `views.py`: API endpoints
 
-### Views
+### Reports (`reports/`)
+- **Purpose:** Generate PDF and CSV reports
+- **Features:** Ticket reports, technician performance
+- **Files:**
+  - `report_generator.py`: Report generation logic
+  - `views.py`: Report download endpoints
 
-- **Resource Views**: Standard CRUD operations using DRF generic views
-- **Analytics Views**: Custom analytics endpoints providing aggregated data
+### Services (`services/`)
+- **Purpose:** Centralized business logic
+- **Pattern:** Service functions called by views
+- **Files:**
+  - `ticket_services.py`: Ticket CRUD, validation, status transitions
 
-### Services
+### Utils (`utils/`)
+- **Purpose:** Shared utilities
+- **Files:**
+  - `cache_utils.py`: `CacheKeyBuilder`, `CacheInvalidator`, caching decorators
+  - `pagination.py`: `StandardResultsSetPagination` with metadata
+  - `signals.py`: Automatic cache invalidation on model changes
 
-- **Ticket Services**: Business logic for ticket workflow, status transitions, etc.
-- **Analytics Services**: Logic for generating reports and analyzing system data
+### Views (`views/`)
+- **Purpose:** API endpoints for resources
+- **Pattern:** DRF generics for CRUD operations
+- **Files:**
+  - `resource_views.py`: All CRUD endpoints
+  - `index.py`: Clean imports for URLs
 
-### Pagination
+## Common Patterns
 
-Custom pagination classes for consistent API response formats:
+### Adding a New Endpoint
 
-- **StandardResultsSetPagination**: Default pagination (10 items per page)
-- **LargeResultsSetPagination**: For endpoints returning larger datasets (50 items)
+1. **Add Service Function** (if business logic needed)
+```python
+# services/ticket_services.py
+def my_business_logic(ticket, user):
+    # Validation
+    # Business rules
+    # Return result
+```
 
-## Future Expansion
+2. **Create View**
+```python
+# views/resource_views.py
+class MyView(generics.ListAPIView):
+    def get_queryset(self):
+        # Delegate to service if needed
+        return my_service_function()
+```
 
-This structure is designed to accommodate future expansion:
+3. **Add URL Route**
+```python
+# urls.py
+path('my-endpoint/', MyView.as_view(), name='my-endpoint'),
+```
 
-1. **Authentication**: Add a dedicated `auth/` package for authentication logic
-2. **Permissions**: Create a specialized permissions system in a `permissions/` package
-3. **Events**: Implement event-based architecture in a new `events/` package
-4. **Webhooks**: Add webhook functionality for integrations
+### Adding Caching
 
-## Best Practices
+```python
+from tickets.api.utils.cache_utils import CacheKeyBuilder, get_or_set_cache
 
-When working with this codebase:
+# In view
+cache_key = CacheKeyBuilder.my_cache_key(param1, param2)
+data = get_or_set_cache(cache_key, lambda: expensive_function(), timeout=300)
+```
 
-1. Maintain separation of concerns between layers
-2. Add business logic to services, not views
-3. Keep views focused on request/response handling
-4. Use the index files for cleaner imports
-5. Add new functionality in the appropriate package
+### Cache Invalidation
+
+Handled automatically via signals in `utils/signals.py`. When models change, relevant caches are cleared.
+
+## Testing
+
+Test files mirror the structure:
+- `tests/test_apis.py` - API endpoint tests
+- `tests/test_workflow.py` - Business logic tests
+- `tests/test_caching.py` - Caching behavior tests
+
+## See Also
+
+- [API Architecture Documentation](../../docs/architecture/api_architecture.md)
+- [Caching Guide](../../docs/architecture/CACHING_GUIDE.md)
+- [Analytics API](../../docs/api/analytics_README.md)

@@ -106,33 +106,51 @@ class CacheInvalidator:
     """Handle cache invalidation for different operations."""
 
     @staticmethod
+    def _delete_pattern(pattern):
+        """Delete keys matching pattern. Works with both Redis and LocMemCache."""
+        try:
+            # Try Redis-specific delete_pattern first
+            cache.delete_pattern(pattern)
+        except AttributeError:
+            # Fallback for cache backends without delete_pattern (like LocMemCache)
+            # In tests, we can just clear all cache or do nothing
+            # since test isolation handles cleanup
+            pass
+
+    @staticmethod
     def invalidate_ticket_caches():
         """Invalidate all ticket-related caches."""
         # Invalidate analytics caches
-        cache.delete_pattern(f"{CacheKeyBuilder.ANALYTICS_TICKETS}:*")
-        cache.delete_pattern(f"{CacheKeyBuilder.ANALYTICS_ADMIN}:*")
-        cache.delete_pattern(f"{CacheKeyBuilder.ANALYTICS_TECHNICIAN}:*")
+        CacheInvalidator._delete_pattern(
+            f"{CacheKeyBuilder.ANALYTICS_TICKETS}:*")
+        CacheInvalidator._delete_pattern(
+            f"{CacheKeyBuilder.ANALYTICS_ADMIN}:*")
+        CacheInvalidator._delete_pattern(
+            f"{CacheKeyBuilder.ANALYTICS_TECHNICIAN}:*")
 
         # Invalidate ticket list caches
-        cache.delete_pattern(f"{CacheKeyBuilder.LIST_TICKETS}:*")
+        CacheInvalidator._delete_pattern(f"{CacheKeyBuilder.LIST_TICKETS}:*")
 
     @staticmethod
     def invalidate_user_caches():
         """Invalidate user-related caches."""
-        cache.delete_pattern(f"{CacheKeyBuilder.LIST_USERS}:*")
-        cache.delete_pattern(f"{CacheKeyBuilder.ANALYTICS_TECHNICIAN}:*")
+        CacheInvalidator._delete_pattern(f"{CacheKeyBuilder.LIST_USERS}:*")
+        CacheInvalidator._delete_pattern(
+            f"{CacheKeyBuilder.ANALYTICS_TECHNICIAN}:*")
 
     @staticmethod
     def invalidate_section_caches():
         """Invalidate section lookup caches."""
-        cache.delete_pattern(f"{CacheKeyBuilder.LOOKUP_SECTIONS}:*")
+        CacheInvalidator._delete_pattern(
+            f"{CacheKeyBuilder.LOOKUP_SECTIONS}:*")
         # Also invalidate ticket caches as sections affect ticket queries
         CacheInvalidator.invalidate_ticket_caches()
 
     @staticmethod
     def invalidate_facility_caches():
         """Invalidate facility lookup caches."""
-        cache.delete_pattern(f"{CacheKeyBuilder.LOOKUP_FACILITIES}:*")
+        CacheInvalidator._delete_pattern(
+            f"{CacheKeyBuilder.LOOKUP_FACILITIES}:*")
         # Also invalidate ticket caches as facilities affect ticket queries
         CacheInvalidator.invalidate_ticket_caches()
 

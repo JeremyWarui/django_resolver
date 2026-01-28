@@ -4,6 +4,7 @@
 
 # Python artifacts
 __pycache__/
+.pytest_cache/
 api/__pycache__/
 views/__pycache__/
 tests/__pycache__/

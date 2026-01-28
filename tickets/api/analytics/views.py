@@ -8,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser
 
 from tickets.models import Ticket, CustomUser, Feedback, Section, Facility
 from tickets.api.analytics.analytics import TicketAnalytics, TechnicianAnalytics, AdminAnalytics
-from tickets.api.cache_utils import CacheKeyBuilder, get_or_set_cache
+from tickets.api.utils.cache_utils import CacheKeyBuilder, get_or_set_cache
 
 
 class TicketAnalyticsView(generics.GenericAPIView):

@@ -5,7 +5,7 @@ Automatically invalidates relevant caches when models are created, updated, or d
 from django.db.models.signals import post_save, post_delete, m2m_changed
 from django.dispatch import receiver
 from tickets.models import Ticket, CustomUser, Section, Facility, Comment, Feedback
-from tickets.api.cache_utils import CacheInvalidator
+from tickets.api.utils.cache_utils import CacheInvalidator
 
 
 # ============================================

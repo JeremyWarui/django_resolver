@@ -3,20 +3,32 @@ Test cache implementation for Django Resolver.
 Run with: python manage.py test tickets.tests.test_caching
 """
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.core.cache import cache
 from tickets.models import Ticket, CustomUser, Section, Facility
-from tickets.api.cache_utils import CacheKeyBuilder, CacheInvalidator
+from tickets.api.utils.cache_utils import CacheKeyBuilder, CacheInvalidator
+
+# Use LocMemCache for testing - doesn't require Redis to be running
+TEST_CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'test-cache',
+    }
+}
 
 
+@override_settings(CACHES=TEST_CACHES)
 class CacheKeyBuilderTestCase(TestCase):
     """Test cache key generation."""
 
     def test_analytics_tickets_key_generation(self):
         """Test ticket analytics cache key generation."""
-        key1 = CacheKeyBuilder.analytics_tickets(timeframe="week", facility_id=1)
-        key2 = CacheKeyBuilder.analytics_tickets(timeframe="week", facility_id=1)
-        key3 = CacheKeyBuilder.analytics_tickets(timeframe="day", facility_id=1)
+        key1 = CacheKeyBuilder.analytics_tickets(
+            timeframe="week", facility_id=1)
+        key2 = CacheKeyBuilder.analytics_tickets(
+            timeframe="week", facility_id=1)
+        key3 = CacheKeyBuilder.analytics_tickets(
+            timeframe="day", facility_id=1)
 
         # Same parameters should generate same key
         self.assertEqual(key1, key2)
@@ -53,6 +65,7 @@ class CacheKeyBuilderTestCase(TestCase):
         self.assertTrue(key1.startswith("list:tickets:"))
 
 
+@override_settings(CACHES=TEST_CACHES)
 class CacheInvalidationTestCase(TestCase):
     """Test cache invalidation logic."""
 
@@ -115,6 +128,7 @@ class CacheInvalidationTestCase(TestCase):
         # This is a basic test structure
 
 
+@override_settings(CACHES=TEST_CACHES)
 class CacheFunctionalityTestCase(TestCase):
     """Test actual caching functionality."""
 
@@ -166,12 +180,13 @@ class CacheFunctionalityTestCase(TestCase):
         self.assertIsNone(cache.get("test:2"))
 
 
+@override_settings(CACHES=TEST_CACHES)
 class CacheUtilsTestCase(TestCase):
     """Test cache utility functions."""
 
     def test_get_or_set_cache_miss(self):
         """Test get_or_set_cache on cache miss."""
-        from tickets.api.cache_utils import get_or_set_cache
+        from tickets.api.utils.cache_utils import get_or_set_cache
 
         cache_key = "test:get_or_set"
         call_count = [0]
@@ -195,7 +210,7 @@ class CacheUtilsTestCase(TestCase):
 
     def test_get_or_set_cache_hit(self):
         """Test get_or_set_cache on cache hit."""
-        from tickets.api.cache_utils import get_or_set_cache
+        from tickets.api.utils.cache_utils import get_or_set_cache
 
         cache_key = "test:preloaded"
         cache.set(cache_key, "cached_value", timeout=60)

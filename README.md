@@ -334,6 +334,40 @@ django_resolver/
 }
 ```
 
+## � Documentation
+
+Comprehensive documentation is available in the [docs/](docs/) directory:
+
+### Quick Links
+
+- **[Documentation Index](docs/INDEX.md)** - Complete documentation navigation
+- **[Frontend API Guide](docs/api/FRONTEND_API_GUIDE.md)** - Complete API reference
+- **[Setup Guide](docs/setup/REDIS_SETUP.md)** - Redis installation and configuration
+- **[Caching Guide](docs/architecture/CACHING_GUIDE.md)** - Performance optimization with caching
+- **[Deployment Guide](docs/deployment/RENDER_REDIS_GUIDE.md)** - Production deployment
+- **[Testing Guide](docs/testing/README.md)** - Running and writing tests
+
+### Documentation Structure
+
+```
+docs/
+├── INDEX.md                          # Documentation navigation hub
+├── api/                              # API documentation
+│   ├── FRONTEND_API_GUIDE.md        # Complete API reference
+│   └── analytics_README.md          # Analytics endpoints
+├── architecture/                     # Architecture and design
+│   ├── api_architecture.md          # Layered architecture details
+│   ├── CACHING_GUIDE.md             # Caching patterns
+│   └── TICKET_FEATURES_SUMMARY.md   # Feature specifications
+├── deployment/                       # Deployment guides
+│   └── RENDER_REDIS_GUIDE.md        # Cloud deployment
+├── setup/                            # Setup and installation
+│   └── REDIS_SETUP.md               # Redis configuration
+└── testing/                          # Testing documentation
+    ├── README.md                     # Test organization
+    └── SAMPLE_QUERIES.md            # Django ORM examples
+```
+
 ## 📄 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
@@ -346,5 +380,5 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ---
 
 **Version**: 1.0.0  
-**Last Updated**: October 2025  
+**Last Updated**: January 2026  
 **Status**: Active Development

@@ -25,8 +25,8 @@ Welcome to the comprehensive documentation for Django Resolver - a Django REST A
 
 ### 🧪 Testing
 
-- **[Testing Guide](testing/README.md)** - Test organization and running tests
-- **[Sample Queries](testing/SAMPLE_QUERIES.md)** - 20+ pre-built Django ORM query examples
+- **[Testing Guide](testing/TESTING.md)** - Complete testing documentation including test organization, running tests, and using BaseTicketTestCase
+- **[Sample Queries](testing/SAMPLE_QUERIES.md)** - 20+ pre-built Django ORM query examples for exploring fixture data
 
 ### 📋 Reference
 
@@ -46,8 +46,8 @@ docs/
 ├── architecture/                     # Architecture and design docs
 │   └── LAYERS.md                    # API layered architecture
 └── testing/                          # Testing documentation
-    ├── README.md                     # Test guide
-    └── SAMPLE_QUERIES.md            # Query examples
+    ├── TESTING.md                    # Complete testing guide
+    └── SAMPLE_QUERIES.md             # Query examples
 ```
 
 ## 🔍 Finding Documentation
@@ -58,30 +58,33 @@ docs/
 1. [Main README](../README.md) - Installation steps
 
 **Building Frontend Integration:**
-1. [Frontend API Guide](api/FRONTEND_API_GUIDE.md) - All endpoints
-2. [Analytics API](api/analytics_README.md) - Analytics queries
+1. [API Guide](api/GUIDE.md) - All endpoints
+2. [Analytics API](api/ANALYTICS.md) - Analytics queries
 
 **Understanding Architecture:**
-1. [API Architecture](architecture/api_architecture.md) - Code organization
+1. [API Layers](architecture/LAYERS.md) - Code organization
 2. [Project Structure](PROJECT_STRUCTURE.md) - Complete directory overview
 
 **Deploying to Production:**
 1. [Render Config](../render.yaml) - Cloud deployment configuration
 
 **Writing Tests:**
-1. [Testing Guide](testing/README.md) - Test structure
-2. [Sample Queries](testing/SAMPLE_QUERIES.md) - Query examples
+1. [Testing Guide](testing/TESTING.md) - Complete test documentation including BaseTicketTestCase usage
+2. [Sample Queries](testing/SAMPLE_QUERIES.md) - Query examples for exploring data
 
 ### By Component
 
 **Tickets Module:**
 - [API Guide](api/GUIDE.md) - Complete ticket management API
+- [Testing Guide](testing/TESTING.md) - Test organization and execution
 
 **Analytics:**
 - [Analytics API](api/ANALYTICS.md) - Analytics endpoints and usage
 
 ## 🆘 Common Issues
-
+TESTING.md)  
+**Database Queries:** See [Sample Queries](testing/SAMPLE_QUERIES.md)  
+**API Integration:** See [API Guide](api/GUID
 **Test Failures:** See [Testing Guide](testing/README.md)
 
 ## 📝 Contributing

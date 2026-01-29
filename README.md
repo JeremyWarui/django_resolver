@@ -1,376 +1,181 @@
 # Django Resolver - Ticket Management System
 
-A comprehensive Django REST API application for managing maintenance tickets, facilities, and user feedback. This system enables organizations to efficiently track and resolve maintenance issues across different facilities and departments.
+A Django REST API for managing maintenance tickets, facilities, and user feedback. Designed for organizations with up to 100 users.
 
-## 🚀 Features
-
-### Core Functionality
-
-- **Ticket Management**: Create, track, and resolve maintenance tickets with auto-generated ticket numbers
-- **User Management**: Role-based access control (User, Admin, Technician, Manager)
-- **Facility Management**: Organize tickets by facilities and sections
-- **Comment System**: Real-time communication on tickets
-- **Feedback System**: Rate and review completed tickets
-- **Audit Logging**: Track all ticket activities for compliance
-
-### API Features
-
-- **RESTful API**: Full CRUD operations for all resources
-- **Filtering & Search**: Filter tickets by status, facility, section, etc.
-- **Django Admin**: Comprehensive admin interface for data management
-- **Auto-generated Ticket Numbers**: Sequential ticket numbering (TKT-000001, TKT-000002, etc.)
-
-### Business Logic
-
-- **Overdue Detection**: Automatically identify tickets older than 24 hours
-- **Status Tracking**: Complete ticket lifecycle management
-- **User Role Management**: Different permission levels for different user types
-
-## 🛠️ Technology Stack
-
-- **Backend**: Django 4.2.7, Django REST Framework 3.14.0
-- **Database**: SQLite (development), PostgreSQL ready
-- **Authentication**: Django's built-in authentication system
-- **API Documentation**: Built-in Django REST Framework browsable API
-- **Admin Interface**: Django Admin with custom configurations
-
-## 📋 Requirements
-
-```txt
-Django==4.2.7
-djangorestframework==3.14.0
-django-filter==23.3
-python-decouple==3.8
-```
+**Stack**: Django 5.2.7 | DRF 3.16.1 | PostgreSQL | pytest (89 tests, 86% coverage)
 
 ## 🚀 Quick Start
 
-### 1. Clone the Repository
-
 ```bash
-git clone <repository-url>
-cd django_resolver
-```
-
-### 2. Set Up Virtual Environment
-
-```bash
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-```
-
-### 3. Install Dependencies
-
-```bash
+# Setup
+git clone <repository-url> && cd django_resolver
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-```
 
-### 4. Environment Configuration
-
-Create a `.env` file in the project root:
-
-```env
-SECRET_KEY=your-secret-key-here
+# Configure .env
+DATABASE_URL=postgresql://user:password@localhost:5432/django_resolver
+SECRET_KEY=your-secret-key
 DEBUG=True
-ALLOWED_HOSTS=localhost,127.0.0.1
-DATABASE_URL=sqlite:///db.sqlite3
-```
 
-### 5. Database Setup
-
-```bash
-python manage.py makemigrations
+# Initialize
 python manage.py migrate
-```
-
-### 6. Create Superuser
-
-```bash
+python manage.py loaddata tickets/fixtures/tickets_initial_data.json  # 118 sample records
 python manage.py createsuperuser
-```
-
-### 7. Run Development Server
-
-```bash
 python manage.py runserver
 ```
 
-The application will be available at `http://127.0.0.1:8000/`
+**Access**: http://127.0.0.1:8000 | **Admin**: http://127.0.0.1:8000/admin
 
-## 📚 API Documentation
+## ✨ Key Features
 
-### Base URL
+- **Ticket Management**: Auto-numbered tickets (TKT-XXXXXX), status workflow, assignment rules
+- **Role-Based Access**: User | Admin | Technician | Manager with granular permissions
+- **Advanced Filtering**: Status, facility, section, technician, overdue (>7 days)
+- **Analytics**: Ticket trends, technician performance, system metrics
+- **Reports**: PDF/CSV generation for tickets and analytics
+- **Audit Trail**: Complete activity logging with `TicketLog`
+
+## 📡 API Overview
+
+**Base**: `http://127.0.0.1:8000/api/`
+
+### Core Endpoints
 
 ```
-http://127.0.0.1:8000/api/
+Tickets:      GET/POST /tickets/          GET/PATCH/DELETE /tickets/{id}/
+Technicians:  GET /technicians/?section_id={id}
+Users:        GET/POST /users/            GET/PATCH/DELETE /users/{id}/
+Facilities:   GET/POST /facilities/       GET/PATCH/DELETE /facilities/{id}/
+Sections:     GET/POST /sections/         GET/PATCH/DELETE /sections/{id}/
+Comments:     GET/POST /tickets/{id}/comments/
+Feedback:     GET/POST /tickets/{id}/feedback/
+Analytics:    GET /analytics/tickets/     GET /analytics/technicians/
+              GET /analytics/admin-dashboard/
+Reports:      GET /reports/types/         GET /reports/generate/
 ```
 
-### Available Endpoints
-
-#### Tickets
-
-- `GET /api/tickets/` - List all tickets
-- `POST /api/tickets/` - Create new ticket
-- `GET /api/tickets/{id}/` - Get ticket details
-- `PUT /api/tickets/{id}/` - Update ticket
-- `DELETE /api/tickets/{id}/` - Delete ticket
-
-**Filtering Options:**
-
-- `?status=open` - Filter by status
-- `?facility=1` - Filter by facility
-- `?section=1` - Filter by section
-- `?raised_by=1` - Filter by user
-
-#### Users
-
-- `GET /api/users/` - List all users
-- `POST /api/users/` - Create new user
-- `GET /api/users/{id}/` - Get user details
-
-#### Facilities
-
-- `GET /api/facilities/` - List all facilities
-- `POST /api/facilities/` - Create new facility
-- `GET /api/facilities/{id}/` - Get facility details
-
-#### Sections
-
-- `GET /api/sections/` - List all sections
-- `POST /api/sections/` - Create new section
-
-#### Comments
-
-- `GET /api/comments/` - List all comments
-- `POST /api/comments/` - Add comment to ticket
-
-#### Feedback
-
-- `GET /api/feedback/` - List all feedback
-- `POST /api/feedback/` - Submit feedback for ticket
-
-### Example API Usage
-
-#### Create a Ticket
+### Common Filters
 
 ```bash
-curl -X POST http://127.0.0.1:8000/api/tickets/ \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Broken Air Conditioner",
-    "description": "AC unit in room 101 is not cooling",
-    "section": 1,
-    "facility": 1,
-    "raised_by": 1,
-    "status": "open"
-  }'
+# Tickets
+?status=open|assigned|in_progress|pending|resolved|closed
+?assigned_to__isnull=true        # Unassigned tickets
+?is_overdue=true                 # Tickets >7 days old
+?section=1&facility=1            # By location
+?ordering=-updated_at            # Sort by field
+
+# Users
+?role=technician|admin|manager|user
+
+# Technicians (for assignment)
+?section_id=1                    # Technicians in specific section
 ```
 
-#### Filter Tickets by Status
+### Quick Examples
 
 ```bash
-curl "http://127.0.0.1:8000/api/tickets/?status=open"
+# Create ticket
+curl -X POST http://127.0.0.1:8000/api/tickets/ -H "Content-Type: application/json" \
+  -d '{"title":"AC Broken","description":"Room 101","section_id":1,"facility_id":1}'
+
+# Assign ticket
+curl -X PATCH http://127.0.0.1:8000/api/tickets/5/ -H "Content-Type: application/json" \
+  -d '{"assigned_to_id":3,"status":"assigned"}'
+
+# Get overdue tickets
+curl "http://127.0.0.1:8000/api/tickets/?is_overdue=true"
+
+# Weekly analytics
+curl "http://127.0.0.1:8000/api/analytics/tickets/?timeframe=week"
 ```
-
-## 🗄️ Database Schema
-
-### Models Overview
-
-#### CustomUser
-
-- Extends Django's AbstractUser
-- Roles: User, Admin, Technician, Manager
-- Additional fields for role-based access
-
-#### Ticket
-
-- Auto-generated ticket numbers (TKT-XXXXXX)
-- Status tracking (Open, Assigned, In Progress, Resolved, Closed)
-- Linked to facilities, sections, and users
-- Automatic overdue detection
-
-#### Facility
-
-- Types: Building, ICT Equipment, Laundry, Kitchen, Residential
-- Status and location tracking
-
-#### Section
-
-- Maintenance departments (IT, Plumbing, Electrical, etc.)
-- Linked to facilities
-
-#### Comment
-
-- Thread-based discussions on tickets
-- Author tracking and timestamps
-
-#### Feedback Model
-
-- 1-5 star rating system
-- One feedback per ticket
-- Comments and rating tracking
-
-#### TicketLog
-
-- Audit trail for all ticket actions
-- User tracking for accountability
 
 ## 🧪 Testing
 
-The project includes comprehensive test coverage:
-
-### Run All Tests
-
 ```bash
-python manage.py test tickets
+pytest tickets/tests/                               # Run all tests
+pytest tickets/tests/ --cov=tickets                 # With coverage
+pytest tickets/tests/test_apis.py::APITests -v     # Specific tests
 ```
 
-### Run Specific Tests
+**Test Suite**: 6 files, 89 tests, 86% coverage  
+**Base Class**: `BaseTicketTestCase` for shared fixtures
 
-```bash
-# Model tests
-python manage.py test tickets.tests.ModelTests
+## 🏗️ Architecture
 
-# API tests
-python manage.py test tickets.tests.APITests
-
-# Integration tests
-python manage.py test tickets.tests.IntegrationTests
-```
-
-### Test Categories
-
-- **Model Tests**: Database operations, business logic, validations
-- **Serializer Tests**: Data serialization, user creation, validation
-- **API Tests**: CRUD operations, filtering, response codes
-- **Integration Tests**: Complete workflows, end-to-end scenarios
-
-## 🔧 Admin Interface
-
-Access the Django admin at `http://127.0.0.1:8000/admin/`
-
-**Features:**
-
-- User management with role assignments
-- Ticket management with advanced filtering
-- Facility and section organization
-- Comment and feedback moderation
-- Audit log viewing
-
-## 🏗️ Project Structure
+**Layered Design**: Models → Services → Views
 
 ```
-django_resolver/
-├── manage.py
-├── requirements.txt
-├── README.md
-├── resolver/              # Main project settings
-│   ├── __init__.py
-│   ├── settings.py
-│   ├── urls.py
-│   ├── wsgi.py
-│   └── asgi.py
-└── tickets/               # Main application
-    ├── __init__.py
-    ├── admin.py          # Admin configurations
-    ├── apps.py
-    ├── models.py         # Database models
-    ├── serializers.py    # API serializers
-    ├── views.py          # API views
-    ├── urls.py           # URL routing
-    ├── tests.py          # Test cases
-    └── migrations/       # Database migrations
+tickets/
+├── models.py                  # 7 models (CustomUser, Ticket, Facility, etc.)
+├── serializers.py             # 7 DRF serializers
+├── api/
+│   ├── views/resource_views.py    # CRUD endpoints
+│   ├── services/ticket_services.py # Business logic
+│   ├── analytics/              # Metrics & reporting
+│   └── reports/                # PDF/CSV generation
+└── tests/                      # 89 tests with BaseTicketTestCase
 ```
+
+**Key Patterns**:
+- Business logic in `services/`, NOT views
+- Atomic state changes via model helpers (`change_status`, `change_assignment`)
+- Single composite DB index: `(status, -updated_at)` for 66x query speedup
+
+## 📚 Documentation
+
+**Full Documentation**: [docs/INDEX.md](docs/INDEX.md)
+
+| Guide | Description |
+|-------|-------------|
+| [API Reference](docs/api/GUIDE.md) | Complete endpoint documentation with examples |
+| [Analytics API](docs/api/ANALYTICS.md) | Query parameters and response schemas |
+| [Testing Guide](docs/testing/TESTING.md) | Running tests, BaseTicketTestCase usage |
+| [Sample Queries](docs/testing/SAMPLE_QUERIES.md) | 20+ Django ORM examples |
+| [Architecture](docs/architecture/LAYERS.md) | Layered architecture details |
+
+## 🗄️ Database Models
+
+| Model | Key Features |
+|-------|-------------|
+| **CustomUser** | Roles: user, admin, technician, manager. Auto-generated usernames |
+| **Ticket** | Auto-numbered (TKT-XXXXXX), status workflow, composite index |
+| **Facility** | Building, ICT, laundry, kitchen, residential types |
+| **Section** | IT, Plumbing, Electrical, HVAC, etc. Linked to technicians |
+| **Comment** | Thread-based discussions, blocked on closed tickets |
+| **Feedback** | 1-5 star rating, one per ticket, resolved tickets only |
+| **TicketLog** | Audit trail with automatic creation via model helpers |
+
+**Status Workflow**: `open → assigned → in_progress → pending ⇄ resolved → closed`
+
+## 🎯 Design Decisions
+
+**Why PostgreSQL?** Superior indexing, concurrency, production-ready  
+**Why no caching?** 100-user scale doesn't need it (~0.07s queries with proper indexing)  
+**Why single index?** Composite `(status, -updated_at)` covers most common query pattern  
+**Why layered architecture?** Testable business logic, clear separation of concerns
+
+## 🚀 Performance
+
+- **Response times**: <100ms for most endpoints
+- **Database optimization**: `select_related()`, `prefetch_related()`, composite index
+- **Query speedup**: 66x faster (4.7s → 0.07s) with index
+- **Test execution**: ~30s for 89 tests using `setUpTestData()`
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-### Development Guidelines
-
-- Follow PEP 8 style guidelines
-- Write tests for new features
-- Update documentation for API changes
-- Use meaningful commit messages
-
-## 📝 API Response Examples
-
-### Ticket List Response
-
-```json
-[
-  {
-    "id": 1,
-    "ticket_no": "TKT-000001",
-    "title": "Broken Air Conditioner",
-    "description": "AC unit in room 101 is not cooling",
-    "status": "open",
-    "section": "HVAC Department",
-    "facility": "Main Building",
-    "raised_by": "john.doe",
-    "assigned_to": null,
-    "created_at": "2025-10-02T10:30:00Z",
-    "updated_at": "2025-10-02T10:30:00Z",
-    "comments": [],
-    "feedback": null
-  }
-]
+```bash
+git checkout -b feature/amazing-feature
+# Follow PEP 8, write tests (85%+ coverage), update docs
+git commit -m 'Add amazing feature'
+git push origin feature/amazing-feature
 ```
 
-### User Creation Response
-
-```json
-{
-  "id": 2,
-  "username": "jane.smith",
-  "first_name": "Jane",
-  "last_name": "Smith",
-  "email": "jane.smith@example.com",
-  "role": "technician"
-}
-```
-
-## � Documentation
-
-Comprehensive documentation is available in the [docs/](docs/) directory:
-
-### Quick Links
-
-- **[Documentation Index](docs/INDEX.md)** - Complete documentation navigation
-- **[API Guide](docs/api/GUIDE.md)** - Complete API reference
-- **[Testing Guide](docs/testing/README.md)** - Running and writing tests
-
-### Documentation Structure
-
-```
-docs/
-├── INDEX.md                          # Documentation navigation hub
-├── api/                              # API documentation
-│   ├── GUIDE.md                     # Complete API reference
-│   └── ANALYTICS.md                 # Analytics endpoints
-├── architecture/                     # Architecture and design
-│   ├── LAYERS.md                    # Layered architecture details
-│   └── TICKET_FEATURES_SUMMARY.md   # Feature specifications
-└── testing/                          # Testing documentation
-    ├── README.md                     # Test organization
-    └── SAMPLE_QUERIES.md            # Django ORM examples
-```
+**Guidelines**: Business logic in services | Use model helpers for state changes | Inherit from `BaseTicketTestCase`
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🙏 Acknowledgments
-
-- Django and Django REST Framework communities
-- Open source libraries used in this project
+MIT License - see [LICENSE](LICENSE)
 
 ---
 
-**Version**: 1.0.0  
-**Last Updated**: January 2026  
-**Status**: Active Development
+**Version**: 1.0.0 | **Status**: Production Ready (≤100 users) | **Updated**: January 2026

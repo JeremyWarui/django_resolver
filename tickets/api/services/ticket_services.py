@@ -1,7 +1,7 @@
 from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import ValidationError, PermissionDenied
 
-from tickets.models import Ticket, TicketLog, CustomUser
+from tickets.models import Ticket, TicketLog, CustomUser, Comment, Feedback
 
 
 def get_system_user():
@@ -23,7 +23,7 @@ def get_system_user():
 # TICKET SERVICES
 # ---------------------
 
-def create_ticket(serializer, user):
+def create_ticket(serializer, user) -> Ticket:
     """Logic for creating a ticket."""
     # Reject unauthenticated users
     if user is None or not user.is_authenticated:
@@ -184,7 +184,7 @@ def validate_status_transition(old_status, new_status, user_role):
 # ---------------------------------------------
 
 
-def create_comment(serializer, user, ticket_id):
+def create_comment(serializer, user, ticket_id) -> Comment:
     """
     Attach author and ticket to a new comment.
     Log the action under TicketLog.
@@ -209,7 +209,7 @@ def create_comment(serializer, user, ticket_id):
 # ---------------------------------------------
 #  FEEDBACK SERVICES
 # ---------------------------------------------
-def create_feedback(serializer, user, ticket_id):
+def create_feedback(serializer, user, ticket_id) -> Feedback:
     """
     Ensure only the ticket raiser can provide feedback.
     Attach user and ticket, log the action.

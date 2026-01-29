@@ -1,10 +1,13 @@
-from django.urls import reverse
-from rest_framework import status
-from tickets.models import Ticket, Comment
-from tickets.serializers import *
+from typing import Any
+
+from tickets.serializers import (
+    TicketSerializer,
+    CommentSerializer,
+    UserSerializer,
+    FeedbackSerializer,
+)
+from tickets.models import CustomUser
 from tickets.api.services import ticket_services as services
-from django.utils import timezone
-from datetime import timedelta
 from tickets.tests.base import BaseTicketTestCase
 
 
@@ -22,7 +25,7 @@ class SerializerTests(BaseTicketTestCase):
     def test_ticket_serializer(self):
         """test ticket serializer"""
         serializer = TicketSerializer(instance=self.ticket)
-        data = serializer.data
+        data: Any = serializer.data
 
         self.assertEqual(data["title"], "Test Ticket")
         self.assertEqual(data["status"], "assigned")
@@ -33,7 +36,7 @@ class SerializerTests(BaseTicketTestCase):
     def test_comment_serializer(self):
         """test comment serializer"""
         serializer = CommentSerializer(instance=self.comment)
-        data = serializer.data
+        data: Any = serializer.data
 
         self.assertEqual(data["text"], "This is a comment.")
         self.assertEqual(data["author"], self.user.username)
@@ -42,7 +45,7 @@ class SerializerTests(BaseTicketTestCase):
     def test_custom_user_serializer(self):
         """test custom user serializer"""
         serializer = UserSerializer(instance=self.user)
-        data = serializer.data
+        data: Any = serializer.data
 
         self.assertEqual(data["username"], "testuser")
         self.assertEqual(data["email"], "testuser@example.com")
@@ -60,7 +63,7 @@ class SerializerTests(BaseTicketTestCase):
         serializer = UserSerializer(data=data)
         self.assertTrue(serializer.is_valid(), serializer.errors)
 
-        user = serializer.save()
+        user: CustomUser = serializer.save()
         self.assertEqual(user.username, "john.doe")
         self.assertEqual(user.email, "johndoe@test.com")
 
@@ -93,9 +96,9 @@ class SerializerTests(BaseTicketTestCase):
         serializer = CommentSerializer(data=data)
         self.assertTrue(serializer.is_valid(), serializer.errors)
 
-        # comment = serializer.save()
         comment = services.create_comment(
-            serializer, self.technician, self.ticket.id)
+            serializer, self.technician, self.ticket.id
+        )
         self.assertEqual(comment.text, "This is another comment.")
         self.assertEqual(comment.author, self.technician)
         self.assertEqual(comment.ticket, self.ticket)

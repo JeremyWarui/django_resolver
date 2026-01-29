@@ -15,6 +15,7 @@ Usage:
 
 from django.test import TestCase
 from django.db import connection
+from rest_framework.test import APIClient
 from tickets.models import (
     CustomUser,
     Section,
@@ -198,7 +199,7 @@ class BaseAPITestCase(BaseTicketTestCase):
     Extended base class for API tests with authenticated client.
 
     Provides everything from BaseTicketTestCase plus:
-        - self.client: APIClient instance (from DRF)
+        - self.api_client: APIClient instance (from DRF)
         - Automatically authenticates as self.user
 
     Usage:
@@ -206,17 +207,17 @@ class BaseAPITestCase(BaseTicketTestCase):
 
         class MyAPITests(BaseAPITestCase):
             def test_api_endpoint(self):
-                response = self.client.get('/api/tickets/')
+                response = self.api_client.get('/api/tickets/')
                 self.assertEqual(response.status_code, 200)
     """
 
+    api_client: APIClient  # Type hint for Pylance
+
     def setUp(self):
         """Set up API client and authenticate."""
-        from rest_framework.test import APIClient
-
-        self.client = APIClient()
+        self.api_client = APIClient()
         # Authenticate as regular user by default
-        self.client.force_authenticate(user=self.user)
+        self.api_client.force_authenticate(user=self.user)
 
     def authenticate_as(self, user):
         """
@@ -227,10 +228,10 @@ class BaseAPITestCase(BaseTicketTestCase):
 
         Example:
             self.authenticate_as(self.admin)
-            response = self.client.delete(f'/api/tickets/{ticket.id}/')
+            response = self.api_client.delete(f'/api/tickets/{ticket.id}/')
         """
-        self.client.force_authenticate(user=user)
+        self.api_client.force_authenticate(user=user)
 
     def unauthenticate(self):
         """Remove authentication (test unauthorized access)."""
-        self.client.force_authenticate(user=None)
+        self.api_client.force_authenticate(user=None)

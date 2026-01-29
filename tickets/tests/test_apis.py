@@ -13,8 +13,7 @@ class APITests(APITestCase):
     def setUp(self):
         # Reset Postgres sequence so IDs start from 1 again
         with connection.cursor() as cursor:
-            cursor.execute(
-                "ALTER SEQUENCE tickets_ticket_id_seq RESTART WITH 1;")
+            cursor.execute("ALTER SEQUENCE tickets_ticket_id_seq RESTART WITH 1;")
         self.client = APIClient()
         self.user = CustomUser.objects.create_user(
             username="testuser", email="testuser@example.com", password="testpassword"
@@ -71,8 +70,7 @@ class APITests(APITestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # Check for paginated response
-        self.assertIn("results", response.data,
-                      "Response is not paginated as expected")
+        self.assertIn("results", response.data, "Response is not paginated as expected")
         results = response.data["results"]
         # Check that we have at least one ticket
         self.assertGreaterEqual(len(results), 1)
@@ -168,8 +166,7 @@ class APITests(APITestCase):
         # Check that feedback is included
         self.assertIn("feedback", response.data)
         self.assertEqual(response.data["feedback"]["rating"], 5)
-        self.assertEqual(response.data["feedback"]
-                         ["comment"], "Great service!")
+        self.assertEqual(response.data["feedback"]["comment"], "Great service!")
 
     def test_assign_ticket_admin(self):
         """Test that admin can assign a ticket to technician"""
@@ -197,8 +194,7 @@ class APITests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["status"], "assigned")
-        self.assertEqual(response.data["assigned_to"]
-                         ["id"], self.technician.id)
+        self.assertEqual(response.data["assigned_to"]["id"], self.technician.id)
 
     def test_resolve_ticket_technician(self):
         """Test that technician can mark a ticket as resolved"""
@@ -218,13 +214,11 @@ class APITests(APITestCase):
 
         # Verify that a ticket log was created for this status change
         latest_log = (
-            TicketLog.objects.filter(
-                ticket=self.ticket).order_by("-timestamp").first()
+            TicketLog.objects.filter(ticket=self.ticket).order_by("-timestamp").first()
         )
         self.assertIsNotNone(latest_log)
         self.assertEqual(latest_log.performed_by, self.technician)
-        self.assertIn(
-            "Status changed from in_progress to resolved", latest_log.action)
+        self.assertIn("Status changed from in_progress to resolved", latest_log.action)
 
     def test_user_cannot_assign_ticket(self):
         """Test that a regular user cannot assign tickets"""
@@ -288,8 +282,7 @@ class APITests(APITestCase):
         url = reverse("ticket-list") + "?status=assigned"
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn("results", response.data,
-                      "Response is not paginated as expected")
+        self.assertIn("results", response.data, "Response is not paginated as expected")
         results = response.data["results"]
         # Check that we have filtered results correctly
         self.assertGreaterEqual(len(results), 1)
@@ -301,8 +294,7 @@ class APITests(APITestCase):
         url = reverse("ticket-list") + "?status=open"
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn("results", response.data,
-                      "Response is not paginated as expected")
+        self.assertIn("results", response.data, "Response is not paginated as expected")
         results = response.data["results"]
         # Check that all tickets have the 'open' status
         for ticket in results:
@@ -329,8 +321,7 @@ class APITests(APITestCase):
         url = reverse("ticket-list") + f"?section={self.section.id}"
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn("results", response.data,
-                      "Response is not paginated as expected")
+        self.assertIn("results", response.data, "Response is not paginated as expected")
         results = response.data["results"]
         self.assertGreaterEqual(len(results), 1)
         # Check that all tickets are from the IT section
@@ -341,8 +332,7 @@ class APITests(APITestCase):
         url = reverse("ticket-list") + f"?section={plumbing.id}"
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn("results", response.data,
-                      "Response is not paginated as expected")
+        self.assertIn("results", response.data, "Response is not paginated as expected")
         results = response.data["results"]
         self.assertGreaterEqual(len(results), 1)
         # Find the Water Leak ticket in the results
@@ -386,8 +376,7 @@ class APITests(APITestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn("results", response.data,
-                      "Response is not paginated as expected")
+        self.assertIn("results", response.data, "Response is not paginated as expected")
         results = response.data["results"]
         # Find tickets for the first technician
         first_tech_tickets = [
@@ -400,8 +389,7 @@ class APITests(APITestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn("results", response.data,
-                      "Response is not paginated as expected")
+        self.assertIn("results", response.data, "Response is not paginated as expected")
         results = response.data["results"]
         # Find tickets for the second technician
         second_tech_tickets = [
@@ -695,8 +683,7 @@ class APITests(APITestCase):
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn("results", response.data,
-                      "Response is not paginated as expected")
+        self.assertIn("results", response.data, "Response is not paginated as expected")
         results = response.data["results"]
         # Look for User2's ticket in the results
         user2_tickets = [
@@ -886,8 +873,7 @@ class APITests(APITestCase):
 
         response = self.client.patch(url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("cannot set ticket status to 'closed'",
-                      str(response.data))
+        self.assertIn("cannot set ticket status to 'closed'", str(response.data))
 
         # Close as admin (should succeed)
         self.client.logout()
@@ -896,8 +882,7 @@ class APITests(APITestCase):
         # Let's inspect the validate_status_transition function directly
         from tickets.api.services.ticket_services import validate_status_transition
 
-        is_valid, message = validate_status_transition(
-            "resolved", "closed", "admin")
+        is_valid, message = validate_status_transition("resolved", "closed", "admin")
         print(f"Validation direct check: {is_valid}, Message: {message}")
 
         # Try to close the ticket
@@ -1019,8 +1004,7 @@ class APITests(APITestCase):
 
         response = self.client.post(url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("Cannot add comments to a closed ticket",
-                      str(response.data))
+        self.assertIn("Cannot add comments to a closed ticket", str(response.data))
 
     def test_valid_status_transitions(self):
         """Test the valid status transitions for a ticket"""

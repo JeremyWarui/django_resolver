@@ -8,25 +8,18 @@ Welcome to the comprehensive documentation for Django Resolver - a Django REST A
 
 - **[Main README](../README.md)** - Project overview, quick start guide, and installation
 - **[Project Structure](PROJECT_STRUCTURE.md)** - Complete directory structure and organization
-- **[Setup Guide](setup/REDIS_SETUP.md)** - Redis installation and configuration
 
 ### 🔌 API Documentation
 
-- **[Frontend API Guide](api/FRONTEND_API_GUIDE.md)** - Complete API reference for frontend developers
-- **[Analytics API](api/analytics_README.md)** - Analytics endpoints and usage
+- **[API Guide](api/GUIDE.md)** - Complete API reference for frontend developers
+- **[Analytics API](api/ANALYTICS.md)** - Analytics endpoints and usage
 
 ### 🏗️ Architecture & Design
 
-- **[API Architecture](architecture/api_architecture.md)** - Layered architecture and design patterns
-- **[Analytics Strategy](architecture/analytics_strategy.md)** - Analytics implementation approach
-- **[Caching Guide](architecture/CACHING_GUIDE.md)** - Comprehensive caching implementation and strategy
-- **[Caching Summary](architecture/CACHING_SUMMARY.md)** - Quick reference for caching patterns
-- **[Backend Filter Updates](architecture/backend_filter_update.md)** - Filter implementation details
-- **[Ticket Features](architecture/TICKET_FEATURES_SUMMARY.md)** - Feature specifications
+- **[API Layers](architecture/LAYERS.md)** - Layered architecture and design patterns
 
 ### 🚢 Deployment
 
-- **[Render Redis Guide](deployment/RENDER_REDIS_GUIDE.md)** - Deploy with Redis on Render
 - **[Build Configuration](../build.sh)** - Build script for deployment
 - **[Render Config](../render.yaml)** - Render deployment configuration
 
@@ -46,20 +39,12 @@ Welcome to the comprehensive documentation for Django Resolver - a Django REST A
 ```
 docs/
 ├── INDEX.md                          # This file - documentation navigation
-├── setup/                            # Installation and setup guides
-│   └── REDIS_SETUP.md               # Redis configuration
+├── PROJECT_STRUCTURE.md              # Complete project structure overview
 ├── api/                              # API documentation
-│   ├── FRONTEND_API_GUIDE.md        # Complete API reference
-│   └── analytics_README.md          # Analytics endpoints
+│   ├── GUIDE.md                     # Complete API reference
+│   └── ANALYTICS.md                 # Analytics endpoints
 ├── architecture/                     # Architecture and design docs
-│   ├── api_architecture.md          # API layered architecture
-│   ├── analytics_strategy.md        # Analytics design
-│   ├── CACHING_GUIDE.md             # Caching implementation
-│   ├── CACHING_SUMMARY.md           # Caching quick reference
-│   ├── backend_filter_update.md     # Filter patterns
-│   └── TICKET_FEATURES_SUMMARY.md   # Feature specifications
-├── deployment/                       # Deployment guides
-│   └── RENDER_REDIS_GUIDE.md        # Render deployment
+│   └── LAYERS.md                    # API layered architecture
 └── testing/                          # Testing documentation
     ├── README.md                     # Test guide
     └── SAMPLE_QUERIES.md            # Query examples
@@ -71,7 +56,6 @@ docs/
 
 **Setting Up Development Environment:**
 1. [Main README](../README.md) - Installation steps
-2. [Setup Guide](setup/REDIS_SETUP.md) - Redis setup
 
 **Building Frontend Integration:**
 1. [Frontend API Guide](api/FRONTEND_API_GUIDE.md) - All endpoints
@@ -79,10 +63,10 @@ docs/
 
 **Understanding Architecture:**
 1. [API Architecture](architecture/api_architecture.md) - Code organization
-2. [Caching Guide](architecture/CACHING_GUIDE.md) - Performance patterns
+2. [Project Structure](PROJECT_STRUCTURE.md) - Complete directory overview
 
 **Deploying to Production:**
-1. [Render Redis Guide](deployment/RENDER_REDIS_GUIDE.md) - Cloud deployment
+1. [Render Config](../render.yaml) - Cloud deployment configuration
 
 **Writing Tests:**
 1. [Testing Guide](testing/README.md) - Test structure
@@ -91,24 +75,14 @@ docs/
 ### By Component
 
 **Tickets Module:**
-- [Ticket Features](architecture/TICKET_FEATURES_SUMMARY.md)
-- [Backend Filters](architecture/backend_filter_update.md)
+- [API Guide](api/GUIDE.md) - Complete ticket management API
 
 **Analytics:**
-- [Analytics API](api/analytics_README.md)
-- [Analytics Strategy](architecture/analytics_strategy.md)
-
-**Caching:**
-- [Caching Guide](architecture/CACHING_GUIDE.md) - Full implementation
-- [Caching Summary](architecture/CACHING_SUMMARY.md) - Quick reference
+- [Analytics API](api/ANALYTICS.md) - Analytics endpoints and usage
 
 ## 🆘 Common Issues
 
-**Redis Connection Errors:** See [Caching Guide](architecture/CACHING_GUIDE.md#troubleshooting)
-
 **Test Failures:** See [Testing Guide](testing/README.md)
-
-**Deployment Issues:** See [Render Redis Guide](deployment/RENDER_REDIS_GUIDE.md)
 
 ## 📝 Contributing
 

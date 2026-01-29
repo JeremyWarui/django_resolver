@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document provides a comprehensive overview of the Django Resolver project structure after reorganization.
+This document provides a comprehensive overview of the Django Resolver project structure.
 
 ## Directory Tree
 
@@ -27,16 +27,7 @@ django_resolver/
 │   │   ├── FRONTEND_API_GUIDE.md    # Complete API reference for frontend
 │   │   └── analytics_README.md      # Analytics endpoints documentation
 │   ├── architecture/                # Architecture and design documents
-│   │   ├── api_architecture.md      # API layered architecture details
-│   │   ├── analytics_strategy.md    # Analytics implementation strategy
-│   │   ├── backend_filter_update.md # Filter implementation details
-│   │   ├── CACHING_GUIDE.md         # Comprehensive caching guide
-│   │   ├── CACHING_SUMMARY.md       # Caching quick reference
-│   │   └── TICKET_FEATURES_SUMMARY.md # Feature specifications
-│   ├── deployment/                  # Deployment guides
-│   │   └── RENDER_REDIS_GUIDE.md    # Render.com with Redis deployment
-│   ├── setup/                       # Setup and installation
-│   │   └── REDIS_SETUP.md           # Redis installation and configuration
+│   │   └── api_architecture.md      # API layered architecture details
 │   └── testing/                     # Testing documentation
 │       ├── README.md                # Test organization and running
 │       └── SAMPLE_QUERIES.md        # 20+ Django ORM query examples
@@ -51,7 +42,7 @@ django_resolver/
 └── tickets/                          # 🎫 Main Application
     ├── __init__.py
     ├── admin.py                     # Django admin configuration
-    ├── apps.py                      # App configuration (signal registration)
+    ├── apps.py                      # App configuration
     ├── models.py                    # Data models (CustomUser, Ticket, etc.)
     ├── serializers.py               # DRF serializers
     ├── urls.py                      # App-level URL routing
@@ -75,12 +66,6 @@ django_resolver/
     │   │   ├── __init__.py
     │   │   └── ticket_services.py   # Ticket operations & validations
     │   │
-    │   ├── utils/                   # Shared utilities
-    │   │   ├── __init__.py
-    │   │   ├── cache_utils.py       # Caching patterns & invalidation
-    │   │   ├── pagination.py        # Custom pagination classes
-    │   │   └── signals.py           # Django signals for cache invalidation
-    │   │
     │   └── views/                   # API views (presentation layer)
     │       ├── __init__.py
     │       ├── index.py             # Clean imports
@@ -88,10 +73,6 @@ django_resolver/
     │
     ├── fixtures/                    # 📦 Test Data
     │   └── tickets_initial_data.json # Sample data (118 records)
-    │
-    ├── management/                  # 🛠️ Management Commands
-    │   └── commands/
-    │       └── clear_cache.py       # Cache clearing command
     │
     ├── migrations/                  # 🗄️ Database Migrations
     │   ├── __init__.py
@@ -112,22 +93,17 @@ django_resolver/
 
 ## Key Organizational Principles
 
-### 1. Documentation Centralization
-- **All documentation** moved to `docs/` at project root
-- Organized by purpose: `api/`, `architecture/`, `deployment/`, `setup/`, `testing/`
+### 1. Documentation Organization
+- All documentation is centralized in `docs/` at project root
+- Organized by purpose: `api/`, `architecture/`, `testing/`
 - Clear navigation via `docs/INDEX.md`
 
-### 2. Code Organization
-- **Layered architecture** in `tickets/api/`
-- **Separation of concerns**: views, services, utils
-- **Domain grouping**: analytics, reports as separate modules
+### 2. Code Architecture
+- Layered architecture in `tickets/api/`
+- Separation of concerns: views, services
+- Domain grouping: analytics, reports as separate modules
 
-### 3. Utilities Consolidation
-- Shared utilities in `tickets/api/utils/`
-- Includes: caching, pagination, signals
-- Clean imports via `__init__.py`
-
-### 4. Test Organization
+### 3. Test Organization
 - All tests in `tickets/tests/`
 - Named by component: `test_models.py`, `test_apis.py`, etc.
 - Test documentation in `docs/testing/`
@@ -157,21 +133,17 @@ django_resolver/
 ### tickets/api/
 - Complete API implementation
 - Layered architecture: views → services → models
-- Utilities for cross-cutting concerns
+- Modular design with analytics and reports
 
 ### tickets/tests/
 - Comprehensive test suite
-- Covers models, APIs, caching, workflows
+- Covers models, APIs, workflows
 - 40+ test cases
 
 ## Import Patterns
 
 ### From External Code
 ```python
-# Import utilities
-from tickets.api.utils import CacheKeyBuilder, CacheInvalidator
-from tickets.api.utils.pagination import StandardResultsSetPagination
-
 # Import services
 from tickets.api.services.ticket_services import create_ticket, update_ticket
 
@@ -183,7 +155,6 @@ from tickets.api.analytics.analytics import TicketAnalytics
 ```python
 # Relative imports within same module
 from .analytics import TicketAnalytics
-from ..utils import CacheKeyBuilder
 ```
 
 ## Configuration Files
@@ -197,7 +168,6 @@ from ..utils import CacheKeyBuilder
 - Database configuration
 - Installed apps
 - Middleware
-- Cache configuration (Redis)
 - CORS settings
 
 ### Pytest (pytest.ini)
@@ -207,7 +177,7 @@ from ..utils import CacheKeyBuilder
 
 ### Render (render.yaml)
 - Cloud deployment configuration
-- Services, databases, Redis
+- Services and databases
 - Build commands
 
 ## File Naming Conventions
@@ -234,7 +204,7 @@ from ..utils import CacheKeyBuilder
 2. Create view in `tickets/api/views/resource_views.py`
 3. Add URL in `tickets/api/urls.py`
 4. Write tests in `tickets/tests/test_apis.py`
-5. Update `docs/api/FRONTEND_API_GUIDE.md`
+5. Update `docs/api/GUIDE.md`
 
 ### New Feature Module
 1. Create directory in `tickets/api/` (e.g., `notifications/`)
@@ -250,5 +220,5 @@ from ..utils import CacheKeyBuilder
 ## See Also
 
 - [Documentation Index](INDEX.md) - Complete documentation navigation
-- [API Architecture](architecture/api_architecture.md) - Detailed architecture guide
+- [API Layers](architecture/LAYERS.md) - Detailed architecture guide
 - [README](../README.md) - Project overview and quick start

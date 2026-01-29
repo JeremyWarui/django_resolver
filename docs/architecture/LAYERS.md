@@ -9,12 +9,15 @@ tickets/
 ├── api/                          # Main API package
 │   ├── __init__.py
 │   ├── urls.py                   # Main API URL routing
-│   ├── pagination.py             # Custom pagination classes
 │   ├── analytics/                # Analytics components
 │   │   ├── __init__.py
 │   │   ├── analytics.py          # Core analytics logic
 │   │   ├── views.py              # Analytics API views
 │   │   └── index.py              # Exports for easier imports
+│   ├── reports/                  # Report generation
+│   │   ├── __init__.py
+│   │   ├── report_generator.py   # PDF/CSV generation
+│   │   └── views.py              # Report API views
 │   ├── services/                 # Business logic services
 │   │   ├── __init__.py
 │   │   └── ticket_services.py    # Ticket-related business logic
@@ -68,13 +71,6 @@ Specialized endpoints for analytics and reporting:
 
 - **Ticket Services**: Business logic for ticket workflow, status transitions, etc.
 - **Analytics Services**: Logic for generating reports and analyzing system data
-
-### Pagination
-
-Custom pagination classes for consistent API response formats:
-
-- **StandardResultsSetPagination**: Default pagination (10 items per page)
-- **LargeResultsSetPagination**: For endpoints returning larger datasets (50 items)
 
 ## Future Expansion
 

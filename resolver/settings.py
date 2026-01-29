@@ -187,29 +187,3 @@ CORS_ALLOW_CREDENTIALS = True
 
 # Optional: Allow all origins in development (NOT recommended for production)
 # CORS_ALLOW_ALL_ORIGINS = True
-
-# ============================================
-# REDIS CACHE CONFIGURATION
-# ============================================
-CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": os.getenv("REDIS_URL", "redis://127.0.0.1:6379/1"),
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            # Removed PARSER_CLASS - modern redis-py uses built-in parser
-            "CONNECTION_POOL_KWARGS": {"max_connections": 50},
-            "SOCKET_CONNECT_TIMEOUT": 5,
-            "SOCKET_TIMEOUT": 5,
-            "COMPRESSOR": "django_redis.compressors.zlib.ZlibCompressor",
-            "IGNORE_EXCEPTIONS": True,  # Fail gracefully if Redis is down
-        },
-        "KEY_PREFIX": "django_resolver",
-        "TIMEOUT": 300,  # Default 5 minutes
-    }
-}
-
-# Cache key prefixes for different data types
-CACHE_MIDDLEWARE_ALIAS = "default"
-CACHE_MIDDLEWARE_SECONDS = 300
-CACHE_MIDDLEWARE_KEY_PREFIX = "django_resolver"

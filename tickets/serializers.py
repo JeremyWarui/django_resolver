@@ -135,8 +135,6 @@ class TicketSerializer(serializers.ModelSerializer):
     facility = serializers.StringRelatedField(read_only=True)
     raised_by = serializers.StringRelatedField(read_only=True)
     assigned_to = UserSerializer(read_only=True)
-    # Simple string representation for assigned_to in list views
-    assigned_to_name = serializers.SerializerMethodField(read_only=True)
     comments = CommentSerializer(many=True, read_only=True)
     feedback = FeedbackSerializer(read_only=True)
 
@@ -157,7 +155,6 @@ class TicketSerializer(serializers.ModelSerializer):
             "raised_by",
             "assigned_to_id",
             "assigned_to",
-            "assigned_to_name",
             "available_technicians",
             "created_at",
             "updated_at",
@@ -166,36 +163,8 @@ class TicketSerializer(serializers.ModelSerializer):
             "feedback",
         ]
 
-    def get_fields(self):
-        """Conditionally include heavy fields based on context."""
-        fields = super().get_fields()
-
-        # Remove heavy nested fields in list views
-        if self.context.get("skip_available_technicians", False):
-            # Remove full assigned_to object in list views, keep simple name
-            if "assigned_to" in fields:
-                fields.pop("assigned_to")
-            if "comments" in fields:
-                fields.pop("comments")
-            if "feedback" in fields:
-                fields.pop("feedback")
-
-        return fields
-
-    def get_assigned_to_name(self, obj):
-        """Return simple string name for assigned technician in list views."""
-        if obj.assigned_to:
-            return f"{obj.assigned_to.first_name} {obj.assigned_to.last_name}"
-        return None
-
     def get_available_technicians(self, obj):
-        """Return list of technicians who can be assigned to this ticket.
-        Skip this expensive operation in list views for performance.
-        """
-        # Skip in list views to improve performance
-        if self.context.get("skip_available_technicians", False):
-            return []
-
+        """Return list of technicians who can be assigned to this ticket."""
         if obj.section:
             technicians = CustomUser.objects.filter(
                 role="technician", sections=obj.section

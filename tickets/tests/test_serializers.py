@@ -1,47 +1,22 @@
-from django.test import TestCase
-from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework import status
-from tickets.models import Ticket, CustomUser
+from tickets.models import Ticket, Comment
 from tickets.serializers import *
 from tickets.api.services import ticket_services as services
 from django.utils import timezone
 from datetime import timedelta
+from tickets.tests.base import BaseTicketTestCase
 
-# User = get_user_model()
 
-
-class SerializerTests(TestCase):
+class SerializerTests(BaseTicketTestCase):
+    """Test serializers using shared fixtures from BaseTicketTestCase."""
 
     def setUp(self):
-        self.user = CustomUser.objects.create_user(
-            username="testuser",
-            email="testuser@example.com",
-            password="testpass",
-        )
-        self.section = Section.objects.create(
-            name="IT", description="Information Technology"
-        )
-        self.facility = Facility.objects.create(
-            name="Main Block", type="building", status="active", location="123 Main St"
-        )
-        self.technician = CustomUser.objects.create_user(
-            username="techuser",
-            email="techuser@example.com",
-            password="techpass",
-            role="technician",
-        )
-        self.ticket = Ticket.objects.create(
-            title="Faulty Printer",
-            description="The printer in the IT section is not working.",
-            section=self.section,
-            facility=self.facility,
-            raised_by=self.user,
-            assigned_to=self.technician,
-            status="assigned",
-        )
-        self.comment = Comment.objects.create(
-            ticket=self.ticket, text="This is a comment.", author=self.user
+        """Create test-specific comment (base class provides user, ticket, etc.)."""
+        self.comment = self.create_comment(
+            ticket=self.ticket,
+            text="This is a comment.",
+            author=self.user
         )
 
     def test_ticket_serializer(self):
@@ -49,7 +24,7 @@ class SerializerTests(TestCase):
         serializer = TicketSerializer(instance=self.ticket)
         data = serializer.data
 
-        self.assertEqual(data["title"], "Faulty Printer")
+        self.assertEqual(data["title"], "Test Ticket")
         self.assertEqual(data["status"], "assigned")
         self.assertEqual(data["raised_by"], self.user.username)
         self.assertEqual(data["assigned_to"]["id"], self.technician.id)
@@ -119,7 +94,8 @@ class SerializerTests(TestCase):
         self.assertTrue(serializer.is_valid(), serializer.errors)
 
         # comment = serializer.save()
-        comment = services.create_comment(serializer, self.technician, self.ticket.id)
+        comment = services.create_comment(
+            serializer, self.technician, self.ticket.id)
         self.assertEqual(comment.text, "This is another comment.")
         self.assertEqual(comment.author, self.technician)
         self.assertEqual(comment.ticket, self.ticket)

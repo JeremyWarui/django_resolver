@@ -11,11 +11,6 @@ services:
         fromDatabase:
           name: resolver_db
           property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: django-resolver-redis
-          property: connectionString
       - key: SECRET_KEY
         generateValue: true
       - key: DEBUG
@@ -27,11 +22,3 @@ databases:
   - name: resolver_db
     databaseName: neondb
     user: neondb_owner
-
-# Add Redis service
-services:
-  - type: redis
-    name: django-resolver-redis
-    ipAllowList: []  # Required for Redis, restricts access
-    plan: starter  # Free tier available
-    maxmemoryPolicy: allkeys-lru  # Eviction policy

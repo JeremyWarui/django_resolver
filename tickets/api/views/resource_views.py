@@ -56,7 +56,7 @@ class TicketListCreateView(ListCreateAPIView):
     filterset_fields = ['status', 'section', 'assigned_to', 'raised_by']
     ordering_fields = ['created_at', 'updated_at', 'status']
     ordering = ['-updated_at']  # Default ordering
-    permission_classes = [IsAuthenticated]
+    # permission_classes = [IsAuthenticated]  # Commented out to allow public access
 
     def get_queryset(self):
         """

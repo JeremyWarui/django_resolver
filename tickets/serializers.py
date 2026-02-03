@@ -96,6 +96,49 @@ class FeedbackSerializer(serializers.ModelSerializer):
         fields = ["id", "ticket", "rated_by", "rating", "comment", "created_at"]
 
 
+class TicketListSerializer(serializers.ModelSerializer):
+    """
+    Optimized serializer for ticket list view.
+    - NO available_technicians (frontend fetches dynamically)
+    - NO comments (loaded separately if needed)
+    - NO feedback (loaded separately if needed)
+    - Simple string for assigned_to_name (matches Nov 2025 optimization)
+    """
+    
+    assigned_to_name = serializers.SerializerMethodField(read_only=True)
+    section_id_value = serializers.IntegerField(source="section.id", read_only=True)
+    facility_id_value = serializers.IntegerField(source="facility.id", read_only=True)
+    
+    section = serializers.StringRelatedField(read_only=True)
+    facility = serializers.StringRelatedField(read_only=True)
+    raised_by = serializers.StringRelatedField(read_only=True)
+    
+    class Meta:
+        model = Ticket
+        fields = [
+            "id",
+            "ticket_no",
+            "title",
+            "description",
+            "status",
+            "section",
+            "section_id_value",
+            "facility",
+            "facility_id_value",
+            "raised_by",
+            "assigned_to_name",
+            "created_at",
+            "updated_at",
+            "pending_reason",
+        ]
+    
+    def get_assigned_to_name(self, obj):
+        """Return assigned technician name as simple string (no extra query)."""
+        if obj.assigned_to:
+            return f"{obj.assigned_to.first_name} {obj.assigned_to.last_name}"
+        return None
+
+
 class TicketSerializer(serializers.ModelSerializer):
     """Main ticket serializer with nested relationships."""
 

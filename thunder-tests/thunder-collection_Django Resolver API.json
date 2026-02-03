@@ -1,0 +1,956 @@
+{
+  "client": "Thunder Client",
+  "collectionName": "Django Resolver API",
+  "dateExported": "2026-01-30T00:00:00.000Z",
+  "version": "1.2",
+  "folders": [
+    {
+      "_id": "auth-folder",
+      "name": "Authentication & Users",
+      "containerId": "",
+      "created": "2026-01-30T00:00:00.000Z",
+      "sortNum": 10000
+    },
+    {
+      "_id": "sections-folder",
+      "name": "Sections & Facilities",
+      "containerId": "",
+      "created": "2026-01-30T00:00:00.000Z",
+      "sortNum": 20000
+    },
+    {
+      "_id": "tickets-folder",
+      "name": "Tickets",
+      "containerId": "",
+      "created": "2026-01-30T00:00:00.000Z",
+      "sortNum": 30000
+    },
+    {
+      "_id": "assignment-folder",
+      "name": "Ticket Assignment",
+      "containerId": "",
+      "created": "2026-01-30T00:00:00.000Z",
+      "sortNum": 40000
+    },
+    {
+      "_id": "status-folder",
+      "name": "Ticket Status Updates",
+      "containerId": "",
+      "created": "2026-01-30T00:00:00.000Z",
+      "sortNum": 50000
+    },
+    {
+      "_id": "comments-folder",
+      "name": "Comments",
+      "containerId": "",
+      "created": "2026-01-30T00:00:00.000Z",
+      "sortNum": 60000
+    },
+    {
+      "_id": "feedback-folder",
+      "name": "Feedback",
+      "containerId": "",
+      "created": "2026-01-30T00:00:00.000Z",
+      "sortNum": 70000
+    },
+    {
+      "_id": "analytics-folder",
+      "name": "Analytics",
+      "containerId": "",
+      "created": "2026-01-30T00:00:00.000Z",
+      "sortNum": 80000
+    },
+    {
+      "_id": "reports-folder",
+      "name": "Reports",
+      "containerId": "",
+      "created": "2026-01-30T00:00:00.000Z",
+      "sortNum": 90000
+    }
+  ],
+  "requests": [
+    {
+      "_id": "auth-1",
+      "colId": "django-resolver",
+      "containerId": "auth-folder",
+      "name": "Login as User",
+      "url": "{{baseUrl}}/api/auth/login/",
+      "method": "POST",
+      "sortNum": 10000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"username\": \"testuser\",\n  \"password\": \"testpass123\"\n}",
+        "form": []
+      },
+      "tests": []
+    },
+    {
+      "_id": "auth-2",
+      "colId": "django-resolver",
+      "containerId": "auth-folder",
+      "name": "Login as Technician",
+      "url": "{{baseUrl}}/api/auth/login/",
+      "method": "POST",
+      "sortNum": 20000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"username\": \"technician_username\",\n  \"password\": \"tech_password\"\n}",
+        "form": []
+      },
+      "tests": []
+    },
+    {
+      "_id": "auth-3",
+      "colId": "django-resolver",
+      "containerId": "auth-folder",
+      "name": "Login as Manager",
+      "url": "{{baseUrl}}/api/auth/login/",
+      "method": "POST",
+      "sortNum": 30000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"username\": \"manager_username\",\n  \"password\": \"manager_password\"\n}",
+        "form": []
+      },
+      "tests": []
+    },
+    {
+      "_id": "auth-4",
+      "colId": "django-resolver",
+      "containerId": "auth-folder",
+      "name": "Login as Admin",
+      "url": "{{baseUrl}}/api/auth/login/",
+      "method": "POST",
+      "sortNum": 40000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"username\": \"admin_username\",\n  \"password\": \"admin_password\"\n}",
+        "form": []
+      },
+      "tests": []
+    },
+    {
+      "_id": "auth-5",
+      "colId": "django-resolver",
+      "containerId": "auth-folder",
+      "name": "Get Current User Profile",
+      "url": "{{baseUrl}}/api/users/me/",
+      "method": "GET",
+      "sortNum": 50000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{userToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "auth-6",
+      "colId": "django-resolver",
+      "containerId": "auth-folder",
+      "name": "List All Users",
+      "url": "{{baseUrl}}/api/users/",
+      "method": "GET",
+      "sortNum": 60000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{adminToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "auth-7",
+      "colId": "django-resolver",
+      "containerId": "auth-folder",
+      "name": "Create New User",
+      "url": "{{baseUrl}}/api/users/",
+      "method": "POST",
+      "sortNum": 70000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"first_name\": \"Jane\",\n  \"last_name\": \"Smith\",\n  \"email\": \"jane.smith@example.com\",\n  \"password\": \"securepass123\",\n  \"role\": \"user\",\n  \"sections\": []\n}",
+        "form": []
+      },
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{adminToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "sections-1",
+      "colId": "django-resolver",
+      "containerId": "sections-folder",
+      "name": "List All Sections",
+      "url": "{{baseUrl}}/api/sections/",
+      "method": "GET",
+      "sortNum": 10000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{userToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "sections-2",
+      "colId": "django-resolver",
+      "containerId": "sections-folder",
+      "name": "List All Facilities",
+      "url": "{{baseUrl}}/api/facilities/",
+      "method": "GET",
+      "sortNum": 20000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{userToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "sections-3",
+      "colId": "django-resolver",
+      "containerId": "sections-folder",
+      "name": "Get Technicians by Section",
+      "url": "{{baseUrl}}/api/technicians/?section_id=1",
+      "method": "GET",
+      "sortNum": 30000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{managerToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "tickets-1",
+      "colId": "django-resolver",
+      "containerId": "tickets-folder",
+      "name": "Create New Ticket",
+      "url": "{{baseUrl}}/api/tickets/",
+      "method": "POST",
+      "sortNum": 10000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"title\": \"Broken AC in Conference Room\",\n  \"description\": \"The air conditioning unit in Conference Room B has stopped working. Room temperature is rising.\",\n  \"section_id\": 1,\n  \"facility_id\": 1\n}",
+        "form": []
+      },
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{userToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "tickets-2",
+      "colId": "django-resolver",
+      "containerId": "tickets-folder",
+      "name": "List All Tickets",
+      "url": "{{baseUrl}}/api/tickets/",
+      "method": "GET",
+      "sortNum": 20000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{userToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "tickets-3",
+      "colId": "django-resolver",
+      "containerId": "tickets-folder",
+      "name": "Filter - Unassigned Tickets",
+      "url": "{{baseUrl}}/api/tickets/?assigned_to__isnull=true",
+      "method": "GET",
+      "sortNum": 30000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{managerToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "tickets-4",
+      "colId": "django-resolver",
+      "containerId": "tickets-folder",
+      "name": "Filter - By Status",
+      "url": "{{baseUrl}}/api/tickets/?status=open",
+      "method": "GET",
+      "sortNum": 40000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{technicianToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "tickets-5",
+      "colId": "django-resolver",
+      "containerId": "tickets-folder",
+      "name": "Filter - Overdue Tickets",
+      "url": "{{baseUrl}}/api/tickets/?is_overdue=true",
+      "method": "GET",
+      "sortNum": 50000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{managerToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "tickets-6",
+      "colId": "django-resolver",
+      "containerId": "tickets-folder",
+      "name": "Filter - By Section and Status",
+      "url": "{{baseUrl}}/api/tickets/?section=1&status=assigned",
+      "method": "GET",
+      "sortNum": 60000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{technicianToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "tickets-7",
+      "colId": "django-resolver",
+      "containerId": "tickets-folder",
+      "name": "Get Single Ticket Details",
+      "url": "{{baseUrl}}/api/tickets/1/",
+      "method": "GET",
+      "sortNum": 70000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{userToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "tickets-8",
+      "colId": "django-resolver",
+      "containerId": "tickets-folder",
+      "name": "Search Tickets by Title",
+      "url": "{{baseUrl}}/api/tickets/?search=AC",
+      "method": "GET",
+      "sortNum": 80000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{userToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "assignment-1",
+      "colId": "django-resolver",
+      "containerId": "assignment-folder",
+      "name": "Assign Ticket to Technician",
+      "url": "{{baseUrl}}/api/tickets/1/",
+      "method": "PATCH",
+      "sortNum": 10000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"assigned_to\": 2,\n  \"status\": \"assigned\"\n}",
+        "form": []
+      },
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{managerToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "assignment-2",
+      "colId": "django-resolver",
+      "containerId": "assignment-folder",
+      "name": "Reassign Ticket",
+      "url": "{{baseUrl}}/api/tickets/1/",
+      "method": "PATCH",
+      "sortNum": 20000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"assigned_to\": 3\n}",
+        "form": []
+      },
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{managerToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "status-1",
+      "colId": "django-resolver",
+      "containerId": "status-folder",
+      "name": "Assigned → In Progress",
+      "url": "{{baseUrl}}/api/tickets/1/",
+      "method": "PATCH",
+      "sortNum": 10000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"status\": \"in_progress\"\n}",
+        "form": []
+      },
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{technicianToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "status-2",
+      "colId": "django-resolver",
+      "containerId": "status-folder",
+      "name": "In Progress → Pending",
+      "url": "{{baseUrl}}/api/tickets/1/",
+      "method": "PATCH",
+      "sortNum": 20000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"status\": \"pending\",\n  \"pending_reason\": \"Waiting for replacement parts to arrive\"\n}",
+        "form": []
+      },
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{technicianToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "status-3",
+      "colId": "django-resolver",
+      "containerId": "status-folder",
+      "name": "Pending → In Progress",
+      "url": "{{baseUrl}}/api/tickets/1/",
+      "method": "PATCH",
+      "sortNum": 30000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"status\": \"in_progress\"\n}",
+        "form": []
+      },
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{technicianToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "status-4",
+      "colId": "django-resolver",
+      "containerId": "status-folder",
+      "name": "In Progress → Resolved",
+      "url": "{{baseUrl}}/api/tickets/1/",
+      "method": "PATCH",
+      "sortNum": 40000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"status\": \"resolved\",\n  \"resolution_notes\": \"Replaced faulty compressor unit. AC is now working properly.\"\n}",
+        "form": []
+      },
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{technicianToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "status-5",
+      "colId": "django-resolver",
+      "containerId": "status-folder",
+      "name": "Resolved → Closed",
+      "url": "{{baseUrl}}/api/tickets/1/",
+      "method": "PATCH",
+      "sortNum": 50000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"status\": \"closed\"\n}",
+        "form": []
+      },
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{managerToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "comments-1",
+      "colId": "django-resolver",
+      "containerId": "comments-folder",
+      "name": "Add Comment (User)",
+      "url": "{{baseUrl}}/api/comments/",
+      "method": "POST",
+      "sortNum": 10000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"ticket\": 1,\n  \"text\": \"The room is getting very hot. This is urgent!\"\n}",
+        "form": []
+      },
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{userToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "comments-2",
+      "colId": "django-resolver",
+      "containerId": "comments-folder",
+      "name": "Add Comment (Technician)",
+      "url": "{{baseUrl}}/api/comments/",
+      "method": "POST",
+      "sortNum": 20000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"ticket\": 1,\n  \"text\": \"I've inspected the unit. The compressor appears to be faulty. Ordering replacement parts.\"\n}",
+        "form": []
+      },
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{technicianToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "comments-3",
+      "colId": "django-resolver",
+      "containerId": "comments-folder",
+      "name": "Add Comment (Manager)",
+      "url": "{{baseUrl}}/api/comments/",
+      "method": "POST",
+      "sortNum": 30000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"ticket\": 1,\n  \"text\": \"Priority ticket. Please expedite the repair.\"\n}",
+        "form": []
+      },
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{managerToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "comments-4",
+      "colId": "django-resolver",
+      "containerId": "comments-folder",
+      "name": "Get All Comments for Ticket",
+      "url": "{{baseUrl}}/api/comments/?ticket=1",
+      "method": "GET",
+      "sortNum": 40000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{userToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "comments-5",
+      "colId": "django-resolver",
+      "containerId": "comments-folder",
+      "name": "Update Comment",
+      "url": "{{baseUrl}}/api/comments/1/",
+      "method": "PATCH",
+      "sortNum": 50000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"text\": \"Updated: The room temperature is now 32°C. This is urgent!\"\n}",
+        "form": []
+      },
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{userToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "comments-6",
+      "colId": "django-resolver",
+      "containerId": "comments-folder",
+      "name": "Delete Comment",
+      "url": "{{baseUrl}}/api/comments/1/",
+      "method": "DELETE",
+      "sortNum": 60000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{userToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "feedback-1",
+      "colId": "django-resolver",
+      "containerId": "feedback-folder",
+      "name": "Submit Feedback (5 stars)",
+      "url": "{{baseUrl}}/api/feedback/",
+      "method": "POST",
+      "sortNum": 10000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"ticket\": 1,\n  \"rating\": 5,\n  \"comment\": \"Excellent service! The technician was professional and fixed the issue quickly.\"\n}",
+        "form": []
+      },
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{userToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "feedback-2",
+      "colId": "django-resolver",
+      "containerId": "feedback-folder",
+      "name": "Submit Feedback (3 stars)",
+      "url": "{{baseUrl}}/api/feedback/",
+      "method": "POST",
+      "sortNum": 20000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"ticket\": 2,\n  \"rating\": 3,\n  \"comment\": \"Issue resolved but took longer than expected.\"\n}",
+        "form": []
+      },
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{userToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "feedback-3",
+      "colId": "django-resolver",
+      "containerId": "feedback-folder",
+      "name": "Get All Feedback",
+      "url": "{{baseUrl}}/api/feedback/",
+      "method": "GET",
+      "sortNum": 30000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{managerToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "feedback-4",
+      "colId": "django-resolver",
+      "containerId": "feedback-folder",
+      "name": "Get Feedback for Ticket",
+      "url": "{{baseUrl}}/api/feedback/?ticket=1",
+      "method": "GET",
+      "sortNum": 40000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{userToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "feedback-5",
+      "colId": "django-resolver",
+      "containerId": "feedback-folder",
+      "name": "Update Feedback",
+      "url": "{{baseUrl}}/api/feedback/1/",
+      "method": "PATCH",
+      "sortNum": 50000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"rating\": 4,\n  \"comment\": \"Updated: Good service overall, minor delays.\"\n}",
+        "form": []
+      },
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{userToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "analytics-1",
+      "colId": "django-resolver",
+      "containerId": "analytics-folder",
+      "name": "Admin Dashboard",
+      "url": "{{baseUrl}}/api/analytics/admin-dashboard/",
+      "method": "GET",
+      "sortNum": 10000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{adminToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "analytics-2",
+      "colId": "django-resolver",
+      "containerId": "analytics-folder",
+      "name": "Ticket Analytics - Weekly",
+      "url": "{{baseUrl}}/api/analytics/tickets/?timeframe=week",
+      "method": "GET",
+      "sortNum": 20000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{managerToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "analytics-3",
+      "colId": "django-resolver",
+      "containerId": "analytics-folder",
+      "name": "Ticket Analytics - Monthly by Section",
+      "url": "{{baseUrl}}/api/analytics/tickets/?timeframe=month&section_id=1",
+      "method": "GET",
+      "sortNum": 30000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{managerToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "analytics-4",
+      "colId": "django-resolver",
+      "containerId": "analytics-folder",
+      "name": "Ticket Analytics - Last 30 Days",
+      "url": "{{baseUrl}}/api/analytics/tickets/?days=30&group_by=day",
+      "method": "GET",
+      "sortNum": 40000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{managerToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "analytics-5",
+      "colId": "django-resolver",
+      "containerId": "analytics-folder",
+      "name": "Ticket Analytics - By Facility",
+      "url": "{{baseUrl}}/api/analytics/tickets/?facility_id=1&timeframe=month",
+      "method": "GET",
+      "sortNum": 50000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{managerToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "analytics-6",
+      "colId": "django-resolver",
+      "containerId": "analytics-folder",
+      "name": "Technician Performance",
+      "url": "{{baseUrl}}/api/analytics/technicians/?technician_id=2",
+      "method": "GET",
+      "sortNum": 60000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{managerToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "analytics-7",
+      "colId": "django-resolver",
+      "containerId": "analytics-folder",
+      "name": "Section Performance",
+      "url": "{{baseUrl}}/api/analytics/tickets/?section_id=1&timeframe=month",
+      "method": "GET",
+      "sortNum": 70000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{managerToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "reports-1",
+      "colId": "django-resolver",
+      "containerId": "reports-folder",
+      "name": "List Report Types",
+      "url": "{{baseUrl}}/api/reports/types/",
+      "method": "GET",
+      "sortNum": 10000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{managerToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "reports-2",
+      "colId": "django-resolver",
+      "containerId": "reports-folder",
+      "name": "Generate PDF - Open Tickets",
+      "url": "{{baseUrl}}/api/reports/generate/?report_type=tickets&format=pdf&status=open",
+      "method": "GET",
+      "sortNum": 20000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{managerToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "reports-3",
+      "colId": "django-resolver",
+      "containerId": "reports-folder",
+      "name": "Generate CSV - Resolved Tickets",
+      "url": "{{baseUrl}}/api/reports/generate/?report_type=tickets&format=csv&status=resolved",
+      "method": "GET",
+      "sortNum": 30000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{managerToken}}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "reports-4",
+      "colId": "django-resolver",
+      "containerId": "reports-folder",
+      "name": "Generate Technician Report",
+      "url": "{{baseUrl}}/api/reports/generate/?report_type=technicians&format=pdf&technician_id=2",
+      "method": "GET",
+      "sortNum": 40000,
+      "created": "2026-01-30T00:00:00.000Z",
+      "modified": "2026-01-30T00:00:00.000Z",
+      "headers": [],
+      "auth": {
+        "type": "bearer",
+        "bearer": "{{adminToken}}"
+      },
+      "tests": []
+    }
+  ]
+}

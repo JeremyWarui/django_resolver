@@ -11,7 +11,6 @@ from tickets.api.services.ticket_services import (
 from tickets.models import Section, Facility, Ticket, Comment, Feedback, CustomUser
 from django.utils import timezone
 from datetime import timedelta
-from tickets.pagination import TicketPagination
 
 
 # --------------------------------
@@ -52,7 +51,6 @@ class FacilityDetailView(RetrieveUpdateDestroyAPIView):
 
 class TicketListCreateView(ListCreateAPIView):
     queryset = Ticket.objects.all().order_by('-updated_at')
-    pagination_class = TicketPagination  # Use custom pagination for flexible page sizes
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ['status', 'section', 'assigned_to', 'raised_by']
     ordering_fields = ['created_at', 'updated_at', 'status']

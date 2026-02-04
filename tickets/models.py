@@ -1,3 +1,4 @@
+from .auth_models import MagicLink, LoginSession
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.conf import settings
@@ -262,3 +263,6 @@ class TicketLog(models.Model):
 
     def __str__(self):
         return f"{self.timestamp}: {self.action} (Ticket: {self.ticket.title})"
+
+
+# Import authentication models

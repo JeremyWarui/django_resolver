@@ -6,7 +6,7 @@ Tests inherit from BaseTicketTestCase to get common test data (users, sections, 
 
 Usage:
     from tickets.tests.base import BaseTicketTestCase
-    
+
     class MyTests(BaseTicketTestCase):
         def test_something(self):
             # Access self.user, self.section, self.facility, etc.
@@ -75,13 +75,11 @@ class BaseTicketTestCase(TestCase):
 
         # Create sections
         cls.section = Section.objects.create(
-            name="IT",
-            description="Information Technology"
+            name="IT", description="Information Technology"
         )
 
         cls.section_hvac = Section.objects.create(
-            name="HVAC",
-            description="Heating and cooling"
+            name="HVAC", description="Heating and cooling"
         )
 
         # Create facility
@@ -126,8 +124,7 @@ class BaseTicketTestCase(TestCase):
                 self.reset_ticket_sequence()
         """
         with connection.cursor() as cursor:
-            cursor.execute(
-                "ALTER SEQUENCE tickets_ticket_id_seq RESTART WITH 1;")
+            cursor.execute("ALTER SEQUENCE tickets_ticket_id_seq RESTART WITH 1;")
 
     def create_ticket(self, **kwargs):
         """

@@ -5,6 +5,7 @@ These endpoints provide various statistics for dashboards and reporting.
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from tickets.api.permissions import IsTechnicianOrAdmin, IsAdminOrManager
 
 from tickets.models import Ticket, CustomUser, Feedback, Section, Facility
 from tickets.api.analytics.analytics import TicketAnalytics, TechnicianAnalytics, AdminAnalytics
@@ -14,7 +15,8 @@ class TicketAnalyticsView(generics.GenericAPIView):
     """
     API view for ticket analytics data.
     """
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [
+        IsTechnicianOrAdmin]  # Only technicians and above can view analytics
 
     def get(self, request, format=None):
         """
@@ -76,38 +78,31 @@ class TechnicianAnalyticsView(generics.GenericAPIView):
     """
     API view for technician performance analytics.
     """
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [
+        IsTechnicianOrAdmin]  # Only technicians and above can view
 
     def get(self, request, format=None):
         """
         Get technician performance analytics.
+        Technicians can only see their own stats, admins/managers see all.
 
         Query Parameters:
         - technician_id: Optional specific technician to analyze
         """
-        # Extract query parameters
         technician_id = request.query_params.get('technician_id')
 
-        # Check if user is authenticated before checking permissions
-        if request.user.is_authenticated:
-            # Check if user has permission to see all technicians or just themselves
-            if not request.user.is_staff and request.user.role not in ['admin', 'manager']:
-                # Regular users and technicians can only see their own stats
-                if request.user.role == 'technician':
-                    technician_id = request.user.id
-                else:
-                    return Response(
-                        {"detail": "You do not have permission to view technician analytics"},
-                        status=status.HTTP_403_FORBIDDEN
-                    )
+        # Restrict technicians to their own stats
+        if request.user.role == 'technician':
+            technician_id = request.user.id
+        # Admins and managers can specify any technician_id
 
         # Get analytics data
         performance_data = TechnicianAnalytics.get_technician_performance(
             technician_id)
 
-        # Get section ratings if requesting all technicians
+        # Get section ratings if requesting all technicians and user is admin/manager
         section_ratings = None
-        if not technician_id:
+        if not technician_id and request.user.role in ['admin', 'manager']:
             section_ratings = TechnicianAnalytics.get_technician_ratings_by_section()
 
         response_data = {
@@ -125,18 +120,10 @@ class AdminDashboardAnalyticsView(generics.GenericAPIView):
     API view for admin dashboard analytics.
     Restricted to admin and manager roles.
     """
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminOrManager]  # Only admins and managers
 
     def get(self, request, format=None):
         """Get system-wide analytics for admin dashboard."""
-        # Check if user has admin permissions (only if authenticated)
-        # if request.user.is_authenticated:
-        #     if not request.user.is_staff and request.user.role not in ['admin', 'manager']:
-        #         return Response(
-        #             {"detail": "You do not have permission to view admin analytics"},
-        #             status=status.HTTP_403_FORBIDDEN
-        #         )
-
         # Get analytics data
         system_overview = AdminAnalytics.get_system_overview()
         overdue_tickets = AdminAnalytics.get_overdue_tickets()

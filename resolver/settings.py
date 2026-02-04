@@ -58,6 +58,13 @@ INSTALLED_APPS = [
 ]
 
 REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.TokenAuthentication",
+        "rest_framework.authentication.SessionAuthentication",  # For DRF web interface
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
@@ -187,3 +194,33 @@ CORS_ALLOW_CREDENTIALS = True
 
 # Optional: Allow all origins in development (NOT recommended for production)
 # CORS_ALLOW_ALL_ORIGINS = True
+
+# Email Configuration for Magic Link Authentication
+EMAIL_BACKEND = os.getenv(
+    'EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+
+# For production with SMTP
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@example.com')
+
+# For development - emails will be printed to console
+if DEBUG:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# Authentication Settings
+COMPANY_NAME = os.getenv('COMPANY_NAME', 'Django Resolver')
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+
+# Session and Token Configuration
+TOKEN_EXPIRY_HOURS = {
+    'technician': 24 * 30,  # 30 days for frequent users
+    'default': 8,           # 8 hours for regular users
+    'remember_me': 24 * 30  # 30 days when remember me is checked
+}
+
+# Magic Link Configuration
+MAGIC_LINK_EXPIRY_MINUTES = 15

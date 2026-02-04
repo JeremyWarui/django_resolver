@@ -1,0 +1,22 @@
+Hello {{ user.first_name|default:user.username }},
+
+We noticed a new sign-in to your {{ company_name }} account.
+
+Sign-in Details:
+- Method: {% if login_method == 'magic_link' %}Magic Link{% else %}Password{% endif %}
+- Date: {{ login_time|date:"F j, Y" }}
+- Time: {{ login_time|time:"g:i A T" }}
+{% if ip_address %}- IP Address: {{ ip_address }}{% endif %}
+{% if user_agent %}- Browser: {{ user_agent|truncatechars:50 }}{% endif %}
+
+If this was you, no action is needed.
+
+If you don't recognize this activity, please:
+1. Change your password immediately
+2. Contact support if you need assistance
+
+Best regards,
+{{ company_name }} Security Team
+
+---
+This is an automated security notification.

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In to {{ company_name }}</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .email-container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2563eb;
+            margin-bottom: 10px;
+        }
+        .magic-link-btn {
+            display: inline-block;
+            background-color: #2563eb;
+            color: white !important;
+            text-decoration: none;
+            padding: 12px 30px;
+            border-radius: 6px;
+            font-weight: 600;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .magic-link-btn:hover {
+            background-color: #1d4ed8;
+        }
+        .expiry-notice {
+            background-color: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 4px;
+            padding: 12px;
+            margin: 20px 0;
+        }
+        .security-notice {
+            background-color: #f3f4f6;
+            border-left: 4px solid #6b7280;
+            padding: 12px 16px;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            text-align: center;
+            font-size: 12px;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <div class="logo">{{ company_name }}</div>
+            <h2>Sign in to your account</h2>
+        </div>
+
+        <p>Hello {{ user.first_name|default:user.username }},</p>
+
+        <p>You requested to sign in to {{ company_name }}. Click the button below to securely access your account:</p>
+
+        <div style="text-align: center;">
+            <a href="{{ magic_url }}" class="magic-link-btn">
+                🔐 Sign In Securely
+            </a>
+        </div>
+
+        <div class="expiry-notice">
+            <strong>⏰ This link expires in {{ expiry_minutes }} minutes</strong><br>
+            For your security, this magic link will only work once and has a limited time.
+        </div>
+
+        <div class="security-notice">
+            <strong>🛡️ Security Notice:</strong><br>
+            If you didn't request this sign-in link, please ignore this email. Your account remains secure.
+        </div>
+
+        <p>Having trouble? Copy and paste this link into your browser:</p>
+        <p style="word-break: break-all; font-family: monospace; font-size: 12px; background-color: #f3f4f6; padding: 8px; border-radius: 4px;">
+            {{ magic_url }}
+        </p>
+
+        <div class="footer">
+            <p>Best regards,<br>{{ company_name }} Team</p>
+            <p>This is an automated email. Please do not reply to this email.</p>
+        </div>
+    </div>
+</body>
+</html>

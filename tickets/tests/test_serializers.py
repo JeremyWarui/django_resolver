@@ -17,9 +17,7 @@ class SerializerTests(BaseTicketTestCase):
     def setUp(self):
         """Create test-specific comment (base class provides user, ticket, etc.)."""
         self.comment = self.create_comment(
-            ticket=self.ticket,
-            text="This is a comment.",
-            author=self.user
+            ticket=self.ticket, text="This is a comment.", author=self.user
         )
 
     def test_ticket_serializer(self):
@@ -96,9 +94,7 @@ class SerializerTests(BaseTicketTestCase):
         serializer = CommentSerializer(data=data)
         self.assertTrue(serializer.is_valid(), serializer.errors)
 
-        comment = services.create_comment(
-            serializer, self.technician, self.ticket.id
-        )
+        comment = services.create_comment(serializer, self.technician, self.ticket.id)
         self.assertEqual(comment.text, "This is another comment.")
         self.assertEqual(comment.author, self.technician)
         self.assertEqual(comment.ticket, self.ticket)

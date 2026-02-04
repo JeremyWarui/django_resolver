@@ -7,6 +7,7 @@ from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from tickets.api.permissions import IsTechnicianOrAdmin
 
 from .report_generator import (
     TicketLifecycleReport,
@@ -20,7 +21,7 @@ from .report_generator import (
 class GenerateReportView(generics.GenericAPIView):
     """
     Generate and download reports in Excel format.
-    
+
     Query Parameters:
     - report_type: ticket-lifecycle, technician-performance, facility-health, 
                    pending-analysis, comprehensive
@@ -31,17 +32,20 @@ class GenerateReportView(generics.GenericAPIView):
     - section_id: Section ID filter (for ticket-lifecycle)
     - technician_id: Technician ID filter
     """
-    # permission_classes = [IsAuthenticated]
-    
+    permission_classes = [
+        IsTechnicianOrAdmin]  # Only technicians and above can generate reports
+
     def get(self, request, format=None):
         """Generate and return Excel report as downloadable file."""
-        report_type = request.query_params.get('report_type', 'ticket-lifecycle')
-        
+        report_type = request.query_params.get(
+            'report_type', 'ticket-lifecycle')
+
         # Parse date filters
         start_date = request.query_params.get('start_date')
         end_date = request.query_params.get('end_date')
-        timeframe = request.query_params.get('timeframe')  # No default - show all tickets if not specified
-        
+        # No default - show all tickets if not specified
+        timeframe = request.query_params.get('timeframe')
+
         # If timeframe is provided instead of explicit dates
         if not start_date and not end_date and timeframe:
             end_date = timezone.now()
@@ -64,12 +68,12 @@ class GenerateReportView(generics.GenericAPIView):
             if end_date:
                 end_date = datetime.strptime(end_date, '%Y-%m-%d')
                 end_date = timezone.make_aware(end_date)
-        
+
         # Get additional filters
         status_filter = request.query_params.get('status')
         section_id = request.query_params.get('section_id')
         technician_id = request.query_params.get('technician_id')
-        
+
         # Generate the appropriate report
         try:
             if report_type == 'ticket-lifecycle':
@@ -82,7 +86,7 @@ class GenerateReportView(generics.GenericAPIView):
                     technician_id=technician_id
                 )
                 filename = f'Ticket_Lifecycle_Report_{datetime.now().strftime("%Y%m%d")}.xlsx'
-                
+
             elif report_type == 'technician-performance':
                 report_gen = TechnicianPerformanceReport()
                 excel_buffer = report_gen.generate(
@@ -91,7 +95,7 @@ class GenerateReportView(generics.GenericAPIView):
                     technician_id=technician_id
                 )
                 filename = f'Technician_Performance_Report_{datetime.now().strftime("%Y%m%d")}.xlsx'
-                
+
             elif report_type == 'facility-health':
                 report_gen = FacilityHealthReport()
                 excel_buffer = report_gen.generate(
@@ -99,12 +103,12 @@ class GenerateReportView(generics.GenericAPIView):
                     end_date=end_date
                 )
                 filename = f'Facility_Health_Report_{datetime.now().strftime("%Y%m%d")}.xlsx'
-                
+
             elif report_type == 'pending-analysis':
                 report_gen = PendingAnalysisReport()
                 excel_buffer = report_gen.generate()
                 filename = f'Pending_Analysis_Report_{datetime.now().strftime("%Y%m%d")}.xlsx'
-                
+
             elif report_type == 'comprehensive':
                 report_gen = ComprehensiveReport()
                 excel_buffer = report_gen.generate(
@@ -112,22 +116,22 @@ class GenerateReportView(generics.GenericAPIView):
                     end_date=end_date
                 )
                 filename = f'Comprehensive_Report_{datetime.now().strftime("%Y%m%d")}.xlsx'
-                
+
             else:
                 return Response(
                     {'error': f'Invalid report type: {report_type}'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            
+
             # Create HTTP response with Excel file
             response = HttpResponse(
                 excel_buffer.read(),
                 content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
             )
             response['Content-Disposition'] = f'attachment; filename="{filename}"'
-            
+
             return response
-            
+
         except Exception as e:
             return Response(
                 {'error': f'Error generating report: {str(e)}'},
@@ -137,7 +141,9 @@ class GenerateReportView(generics.GenericAPIView):
 
 class ReportTypesView(generics.GenericAPIView):
     """Return available report types and their configurations."""
-    
+    permission_classes = [
+        IsTechnicianOrAdmin]  # Only technicians and above can view report types
+
     def get(self, request, format=None):
         """Get list of available report types."""
         report_types = [
@@ -191,7 +197,7 @@ class ReportTypesView(generics.GenericAPIView):
                 'columns': ['Multiple sheets with all data']
             }
         ]
-        
+
         return Response({
             'report_types': report_types,
             'timeframe_options': [

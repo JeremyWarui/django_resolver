@@ -184,7 +184,9 @@ STORAGES = {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
     },
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        # Use CompressedStaticFilesStorage instead of CompressedManifestStaticFilesStorage
+        # for better compatibility with Django Unfold
+        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
     },
 }
 
@@ -278,13 +280,8 @@ UNFOLD = {
     },
     "SIDEBAR": {
         "show_search": True,
-        "show_all_applications": True,
+        "show_all_applications": False,
         "navigation": [
-            {
-                "title": "Dashboard",
-                "icon": "dashboard",
-                "link": lambda request: "/admin/",
-            },
             {
                 "title": "Ticket Management",
                 "icon": "confirmation_number",

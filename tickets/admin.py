@@ -171,7 +171,6 @@ class TicketAdmin(ModelAdmin):
         "section",
         "facility",
         "status_badge",
-        "priority_indicator",
         "assigned_to",
         "days_old",
         "created_at",

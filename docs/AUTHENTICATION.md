@@ -7,8 +7,20 @@ This Django Resolver project now has **Token-based Authentication** with **Role-
 
 ### Token Authentication
 - **Type**: DRF Token Authentication (stateless)
+- **Authentication Method**: Password-based for all user roles
 - **Tokens**: Auto-generated for each user, persistent until logout
 - **Headers**: `Authorization: Token <your_token_here>`
+
+### Authentication Strategy
+**Current**: All users authenticate with username/password
+- Simple and reliable
+- No email configuration required
+- Works out of the box
+
+**Future (Commented Out)**: Magic link authentication for regular users
+- Magic link code is preserved in codebase but commented out
+- Can be enabled later when email service is configured
+- See [Magic Link Setup](#magic-link-future-implementation) section below
 
 ### User Roles & Permissions
 1. **User**: Can create tickets, comment on their own tickets, provide feedback
@@ -268,3 +280,51 @@ python manage.py shell
 >>> from tickets.models import CustomUser
 >>> CustomUser.objects.values('username', 'role', 'sections')
 ```
+
+## 🔮 Magic Link (Future Implementation)
+
+The codebase includes magic link authentication that is currently commented out. To enable it later:
+
+### 1. Email Configuration Required
+Add to your `.env` file:
+```bash
+EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=your-email@gmail.com
+EMAIL_HOST_PASSWORD=your-app-password
+```
+
+### 2. Enable Magic Link Code
+Uncomment the following sections:
+
+**In `tickets/api/simple_auth_views.py`:**
+- Uncomment `from tickets.auth_models import MagicLink` import
+- Uncomment `request_magic_link()` function
+- Uncomment `magic_link_login()` function
+- Update auth method logic in `check_auth_method()` and `register_user()`
+
+**In `tickets/api/urls.py`:**
+- Uncomment magic link URL patterns
+- Uncomment magic link imports
+
+**In `tickets/models.py`:**
+- Uncomment `from .auth_models import MagicLink` import
+
+### 3. Test Magic Link Flow
+```bash
+# Request magic link
+curl -X POST http://localhost:8000/api/auth/magic-link/request/ \
+  -H "Content-Type: application/json" \
+  -d '{"email": "user@example.com"}'
+
+# User receives email with token and clicks link
+# Frontend calls: POST /api/auth/magic-link/<token>/
+```
+
+### Why Magic Links?
+- **Passwordless**: No passwords to remember or store
+- **Secure**: Time-limited tokens (15 min expiry)
+- **User-friendly**: Simple email-based login for regular users
+- **Staff still use passwords**: Technicians/admins/managers keep password auth

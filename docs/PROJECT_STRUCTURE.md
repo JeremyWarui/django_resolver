@@ -23,13 +23,17 @@ django_resolver/
 │
 ├── docs/                             # 📚 All Documentation
 │   ├── INDEX.md                     # Documentation navigation hub
+│   ├── PROJECT_STRUCTURE.md         # This file - directory structure
+│   ├── CODEBASE_ARCHITECTURE.md     # Complete architecture and data flows
+│   ├── AUTHENTICATION.md            # Authentication system details
+│   ├── DEFAULT_CREDENTIALS.md       # Test user accounts (in .gitignore)
 │   ├── api/                         # API documentation
-│   │   ├── FRONTEND_API_GUIDE.md    # Complete API reference for frontend
-│   │   └── analytics_README.md      # Analytics endpoints documentation
+│   │   ├── GUIDE.md                # Complete API reference for frontend
+│   │   └── ANALYTICS.md            # Analytics endpoints documentation
 │   ├── architecture/                # Architecture and design documents
-│   │   └── api_architecture.md      # API layered architecture details
+│   │   └── LAYERS.md               # API layered architecture details
 │   └── testing/                     # Testing documentation
-│       ├── README.md                # Test organization and running
+│       ├── TESTING.md              # Test organization and running
 │       └── SAMPLE_QUERIES.md        # 20+ Django ORM query examples
 │
 ├── resolver/                         # 🔧 Django Project Configuration

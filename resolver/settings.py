@@ -39,6 +39,10 @@ ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
 # Application definition
 
 INSTALLED_APPS = [
+    # Modern admin interface (must be before django.contrib.admin)
+    "unfold",
+    "unfold.contrib.filters",
+    "unfold.contrib.forms",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -197,30 +201,37 @@ CORS_ALLOW_CREDENTIALS = True
 
 # Email Configuration for Magic Link Authentication
 EMAIL_BACKEND = os.getenv(
-    'EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+    "EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend"
+)
 
 # For production with SMTP
-EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
-EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
-EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
-EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@example.com')
+EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True") == "True"
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@example.com")
 
 # For development - emails will be printed to console
 if DEBUG:
-    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 # Authentication Settings
-COMPANY_NAME = os.getenv('COMPANY_NAME', 'Django Resolver')
-FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+COMPANY_NAME = os.getenv("COMPANY_NAME", "Django Resolver")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 # Session and Token Configuration
 TOKEN_EXPIRY_HOURS = {
-    'technician': 24 * 30,  # 30 days for frequent users
-    'default': 8,           # 8 hours for regular users
-    'remember_me': 24 * 30  # 30 days when remember me is checked
+    "technician": 24 * 30,  # 30 days for frequent users
+    "default": 8,  # 8 hours for regular users
+    "remember_me": 24 * 30,  # 30 days when remember me is checked
 }
 
 # Magic Link Configuration
 MAGIC_LINK_EXPIRY_MINUTES = 15
+# Django Unfold Admin Configuration
+UNFOLD = {
+    "SITE_TITLE": "Django Resolver",
+    "SITE_HEADER": "Maintenance Ticket Management",
+    "INDEX_TITLE": "Admin Dashboard",
+}

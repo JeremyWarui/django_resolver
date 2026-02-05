@@ -34,10 +34,13 @@ staticfiles/
 !*/migrations/__init__.py
 # The line above ensures the __init__.py files remain, which are required for imports.
 
+# 🔑 IGNORE DOCUMENTATION WITH SENSITIVE DATA (PASSWORDS)
+# Excludes credentials documentation from version control
+docs/DEFAULT_CREDENTIALS.md
+docs/DJANGO_UNFOLD_SETUP.md
+
 # 🔑 IGNORE FIXTURE JSON FILES WITH SENSITIVE DATA (PASSWORDS)
 # Excludes JSON fixtures within the 'tickets' app's fixtures directory.
-tickets/fixtures/tickets_initial_data.json
-
 tickets/fixtures/tickets_initial_data.json
 
 

@@ -41,6 +41,8 @@ ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
 INSTALLED_APPS = [
     # Modern admin interface (must be before django.contrib.admin)
     "unfold",
+    "unfold.contrib.filters",  # Optional but recommended
+    "unfold.contrib.forms",    # Optional but recommended
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -179,15 +181,14 @@ STATICFILES_FINDERS = [
 # Additional static files directories (if needed)
 STATICFILES_DIRS = []
 
-# WhiteNoise configuration - use simpler backend for Django Unfold
+# WhiteNoise configuration - use CompressedManifestStaticFilesStorage for production
 STORAGES = {
     "default": {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
     },
     "staticfiles": {
-        # Use CompressedStaticFilesStorage instead of CompressedManifestStaticFilesStorage
-        # for better compatibility with Django Unfold
-        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+        # Use CompressedManifestStaticFilesStorage for better caching and Django Unfold compatibility
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
 
@@ -195,6 +196,12 @@ STORAGES = {
 WHITENOISE_AUTOREFRESH = DEBUG
 WHITENOISE_USE_FINDERS = DEBUG
 WHITENOISE_MANIFEST_STRICT = False  # Don't fail on missing files
+WHITENOISE_SKIP_COMPRESS_EXTENSIONS = [
+    'jpg', 'jpeg', 'png', 'gif', 'webp', 'zip', 'gz', 'tgz', 'bz2', 'tbz', 'xz', 'br']
+WHITENOISE_MIMETYPES = {
+    '.js': 'application/javascript',
+    '.css': 'text/css',
+}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

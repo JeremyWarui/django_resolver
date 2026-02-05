@@ -16,4 +16,8 @@ python manage.py collectstatic --no-input --clear
 echo "🗄️ Running migrations..."
 python manage.py migrate
 
+# Create superuser if it doesn't exist (uses environment variables)
+echo "👤 Creating superuser if needed..."
+python manage.py createsuperuser --no-input || echo "Superuser already exists or creation skipped"
+
 echo "✅ Build completed successfully!"

@@ -69,8 +69,90 @@ INSTALLED_APPS = [
 
 # Django Unfold Admin Configuration
 UNFOLD = {
-    "SITE_TITLE": "Django Resolver",
+    "SITE_TITLE": "Resolver",
     "SITE_HEADER": "Maintenance Ticket Management",
+    "SITE_URL": "/",
+    "SITE_SYMBOL": "🎫",  # Ticket emoji for branding
+    "SHOW_HISTORY": True,
+    "SHOW_VIEW_ON_SITE": True,
+    "ENVIRONMENT": "tickets.admin.environment_callback",
+    "DASHBOARD_CALLBACK": "tickets.admin.dashboard_callback",
+    "SIDEBAR": {
+        "show_search": True,
+        "show_all_applications": True,
+        "navigation": [
+            {
+                "title": "Dashboard",
+                "separator": True,
+                "items": [
+                    {
+                        "title": "Overview",
+                        "icon": "dashboard",
+                        "link": "/admin/",
+                    },
+                ]
+            },
+            {
+                "title": "Ticket Management",
+                "separator": True,
+                "items": [
+                    {
+                        "title": "Tickets",
+                        "icon": "assignment",
+                        "link": "/admin/tickets/ticket/",
+                        "badge": "tickets.admin.ticket_count_badge",
+                    },
+                    {
+                        "title": "Comments",
+                        "icon": "comment",
+                        "link": "/admin/tickets/comment/",
+                    },
+                    {
+                        "title": "Feedback",
+                        "icon": "star_rate",
+                        "link": "/admin/tickets/feedback/",
+                    },
+                ]
+            },
+            {
+                "title": "System Management",
+                "separator": True,
+                "items": [
+                    {
+                        "title": "Users",
+                        "icon": "people",
+                        "link": "/admin/tickets/customuser/",
+                        "badge": "tickets.admin.user_count_badge",
+                    },
+                    {
+                        "title": "Sections",
+                        "icon": "category",
+                        "link": "/admin/tickets/section/",
+                    },
+                    {
+                        "title": "Facilities",
+                        "icon": "business",
+                        "link": "/admin/tickets/facility/",
+                        "badge": "tickets.admin.facility_count_badge",
+                    },
+                ]
+            },
+        ]
+    },
+    "COLORS": {
+        "primary": {
+            "50": "#eff6ff",
+            "100": "#dbeafe",
+            "200": "#bfdbfe",
+            "300": "#93c5fd",
+            "400": "#60a5fa",
+            "500": "#3b82f6",
+            "600": "#2563eb",
+            "700": "#1d4ed8",
+            "800": "#1e40af",
+            "900": "#1e3a8a",
+        },
+    },
 }
 
 REST_FRAMEWORK = {

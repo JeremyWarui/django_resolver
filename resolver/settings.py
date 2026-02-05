@@ -37,11 +37,11 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 DEBUG = True
 
 # Allow all hosts in production for now (more secure to specify exact domains)
-if DEBUG:
-    ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
-else:
-    ALLOWED_HOSTS = ["*"]  # Allow all hosts in production
-# For production, you can specify: ALLOWED_HOSTS = ["django-resolver.onrender.com"]
+ALLOWED_HOSTS = [
+    "127.0.0.1",
+    "localhost",
+    "django-resolver.onrender.com"
+]
 # Application definition
 
 INSTALLED_APPS = [

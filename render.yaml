@@ -17,6 +17,8 @@ services:
         value: False
       - key: ALLOWED_HOSTS
         sync: false
+      - key: DJANGO_SETTINGS_MODULE
+        value: resolver.settings
 
 databases:
   - name: resolver_db

@@ -6,7 +6,7 @@ dj-database-url==2.3.0
 Django==5.2.7
 django-cors-headers==4.9.0
 django-filter==25.2
-django-unfold==0.32.0
+
 django-restframework==0.0.1
 djangorestframework==3.16.1
 et_xmlfile==2.0.0

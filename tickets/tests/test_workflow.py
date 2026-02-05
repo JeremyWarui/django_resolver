@@ -20,9 +20,11 @@ def api_client():
 @pytest.fixture
 def setup_data(db):
     # Create sections
-    section = Section.objects.create(name="IT", description="Information Technology")
+    section = Section.objects.create(
+        name="IT", description="Information Technology")
 
-    hvac = Section.objects.create(name="HVAC", description="Air Conditioning systems.")
+    hvac = Section.objects.create(
+        name="HVAC", description="Air Conditioning systems.")
 
     electrical = Section.objects.create(
         name="Electrical", description="Electricity installations and fixtures."
@@ -127,7 +129,8 @@ def test_admin_can_assign_ticket(api_client, setup_data):
         status="open",
     )
 
-    payload = {"assigned_to_id": setup_data["technician"].id, "status": "assigned"}
+    payload = {
+        "assigned_to_id": setup_data["technician"].id, "status": "assigned"}
 
     print(ticket, payload)
     # ✅ authenticate as admin
@@ -244,7 +247,7 @@ def test_user_cant_update_ticket_status(api_client, setup_data):
     response = api_client.patch(
         reverse("ticket-detail", args=[ticket.id]), payload, format="json"
     )
-    assert response.status_code in [400, 404]
+    assert response.status_code == 403
     ticket.refresh_from_db()
     assert ticket.status == "assigned"
 
@@ -427,7 +430,8 @@ def test_complete_ticket_lifecycle(api_client, setup_data):
     # Step 6: User adds feedback
     api_client.force_authenticate(user=setup_data["user"])
 
-    feedback_payload = {"rating": 5, "comment": "Excellent service, thank you!"}
+    feedback_payload = {"rating": 5,
+                        "comment": "Excellent service, thank you!"}
 
     feedback_response = api_client.post(
         reverse("ticket-feedback", args=[ticket_id]), feedback_payload, format="json"
@@ -463,7 +467,8 @@ def test_complete_ticket_lifecycle(api_client, setup_data):
     assert "Cannot modify a closed ticket" in str(modified_response.data)
 
     # Step 9: Verify ticket history through logs
-    ticket_logs = TicketLog.objects.filter(ticket_id=ticket_id).order_by("timestamp")
+    ticket_logs = TicketLog.objects.filter(
+        ticket_id=ticket_id).order_by("timestamp")
 
     # Should have at least 5 log entries: created, assigned, in_progress, resolved, closed
     assert ticket_logs.count() >= 5
@@ -638,7 +643,8 @@ def test_admin_workflow_vs_technician_workflow(api_client, setup_data):
     )
     assert tech_closed_response.status_code == 400
     assert (
-        "cannot set ticket status to 'closed'" in str(tech_closed_response.data).lower()
+        "cannot set ticket status to 'closed'" in str(
+            tech_closed_response.data).lower()
     )
 
     # 5. Admin CAN close a resolved ticket

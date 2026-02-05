@@ -6,7 +6,6 @@ dj-database-url==2.3.0
 Django==5.2.7
 django-cors-headers==4.9.0
 django-filter==25.2
-django-redis==5.4.0
 django-unfold==0.32.0
 django-restframework==0.0.1
 djangorestframework==3.16.1
@@ -27,7 +26,6 @@ pytest-cov==6.0.0
 pytest-django==4.9.0
 python-dotenv==1.2.1
 pytokens==0.4.0
-redis==5.2.0
 sqlparse==0.5.3
 typing_extensions==4.15.0
 whitenoise==6.8.2

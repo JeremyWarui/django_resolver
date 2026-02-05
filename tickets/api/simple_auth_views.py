@@ -17,7 +17,7 @@ from django.utils.html import strip_tags
 
 # Magic link temporarily disabled - uncomment when email is configured
 # from tickets.auth_models import MagicLink, LoginSession
-from tickets.auth_models import LoginSession
+# from tickets.auth_models import LoginSession  # Temporarily disabled
 from tickets.serializers import UserSerializer
 
 User = get_user_model()

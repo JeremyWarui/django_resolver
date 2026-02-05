@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from tickets.auth_models import LoginSession
+# from tickets.auth_models import LoginSession  # Temporarily disabled
 from rest_framework.authtoken.models import Token
 
 

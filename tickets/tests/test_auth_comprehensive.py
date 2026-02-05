@@ -7,7 +7,7 @@ from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from tickets.models import Section, Facility, Ticket
-from tickets.auth_models import MagicLink, LoginSession
+# from tickets.auth_models import MagicLink, LoginSession  # Temporarily disabled
 from datetime import timedelta
 from django.utils import timezone
 

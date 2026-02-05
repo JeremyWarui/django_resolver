@@ -172,15 +172,26 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-# WhiteNoise configuration for Django Unfold compatibility
+# Explicitly define static files finders (important for Django Unfold)
+STATICFILES_FINDERS = [
+    "django.contrib.staticfiles.finders.FileSystemFinder",
+    "django.contrib.staticfiles.finders.AppDirectoriesFinder",
+]
+
+# WhiteNoise configuration - use simpler backend for Django Unfold
 STORAGES = {
     "default": {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
     },
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
+
+# WhiteNoise settings for better static file serving
+WHITENOISE_AUTOREFRESH = DEBUG
+WHITENOISE_USE_FINDERS = DEBUG
+WHITENOISE_MANIFEST_STRICT = False  # Don't fail on missing files
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

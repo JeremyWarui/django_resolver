@@ -173,7 +173,7 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-# Explicitly define static files finders (important for Django Unfold)
+# Explicitly define static files finders
 STATICFILES_FINDERS = [
     "django.contrib.staticfiles.finders.FileSystemFinder",
     "django.contrib.staticfiles.finders.AppDirectoriesFinder",
@@ -188,7 +188,7 @@ STORAGES = {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
     },
     "staticfiles": {
-        # Use CompressedManifestStaticFilesStorage for better caching and Django Unfold compatibility
+        # Use CompressedManifestStaticFilesStorage for better caching
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
@@ -258,4 +258,3 @@ TOKEN_EXPIRY_HOURS = {
 
 # Magic Link Configuration
 MAGIC_LINK_EXPIRY_MINUTES = 15
-

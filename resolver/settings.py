@@ -44,10 +44,6 @@ else:
 # Application definition
 
 INSTALLED_APPS = [
-    # Modern admin interface (must be before django.contrib.admin)
-    "unfold",
-    "unfold.contrib.filters",  # Optional but recommended
-    "unfold.contrib.forms",    # Optional but recommended
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -262,8 +258,4 @@ TOKEN_EXPIRY_HOURS = {
 
 # Magic Link Configuration
 MAGIC_LINK_EXPIRY_MINUTES = 15
-# Django Unfold Admin Configuration
-UNFOLD = {
-    "SITE_TITLE": "Django Resolver",
-    "SITE_HEADER": "Maintenance Ticket Management",
-}
+

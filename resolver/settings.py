@@ -264,7 +264,7 @@ UNFOLD = {
     "COLORS": {
         "primary": {
             "50": "239 246 255",
-            "100": "219 234 254", 
+            "100": "219 234 254",
             "200": "191 219 254",
             "300": "147 197 253",
             "400": "96 165 250",
@@ -396,29 +396,30 @@ def dashboard_callback(request, context):
     from django.db.models import Count, Q
     from django.utils import timezone
     from datetime import timedelta
-    
+
     # Calculate key metrics
     total_tickets = Ticket.objects.count()
-    active_tickets = Ticket.objects.exclude(status__in=['resolved', 'closed']).count()
+    active_tickets = Ticket.objects.exclude(
+        status__in=['resolved', 'closed']).count()
     resolved_today = Ticket.objects.filter(
         resolved_at__date=timezone.now().date()
     ).count()
-    
+
     # Overdue tickets (>7 days old and not resolved)
     overdue_date = timezone.now() - timedelta(days=7)
     overdue_tickets = Ticket.objects.filter(
         created_at__lt=overdue_date,
         status__in=['open', 'assigned', 'in_progress', 'pending']
     ).count()
-    
+
     # Status breakdown
     status_stats = Ticket.objects.values('status').annotate(count=Count('id'))
-    
+
     # Top sections by ticket count
     section_stats = Section.objects.annotate(
         ticket_count=Count('ticket')
     ).order_by('-ticket_count')[:5]
-    
+
     context.update({
         "kpi": [
             {
@@ -452,5 +453,5 @@ def dashboard_callback(request, context):
         "status_breakdown": list(status_stats),
         "top_sections": section_stats,
     })
-    
+
     return context

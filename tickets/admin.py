@@ -15,7 +15,8 @@ from .models import *
 @admin.register(CustomUser)
 class CustomUserAdmin(ModelAdmin):
     model = CustomUser
-    list_display = ("username", "email", "role_badge", "ticket_stats", "is_staff", "is_active")
+    list_display = ("username", "email", "role_badge",
+                    "ticket_stats", "is_staff", "is_active")
     list_filter = ("role", "is_staff", "is_active", "sections")
 
     # Form for editing existing users
@@ -81,12 +82,13 @@ class CustomUserAdmin(ModelAdmin):
             "admin": "danger",
         }
         return role_colors.get(obj.role, "secondary")
-    
+
     @display(description="Tickets")
     def ticket_stats(self, obj):
         """Show ticket statistics for technicians"""
         if obj.role == 'technician':
-            assigned = obj.assigned_tickets.exclude(status__in=['resolved', 'closed']).count()
+            assigned = obj.assigned_tickets.exclude(
+                status__in=['resolved', 'closed']).count()
             resolved = obj.assigned_tickets.filter(status='resolved').count()
             return format_html(
                 '<span style="color: #f59e0b; font-weight: bold;">{}</span> active | '
@@ -103,7 +105,8 @@ class CustomUserAdmin(ModelAdmin):
 # register section
 @admin.register(Section)
 class SectionAdmin(ModelAdmin):
-    list_display = ("name", "description", "technician_count", "active_tickets_count")
+    list_display = ("name", "description", "technician_count",
+                    "active_tickets_count")
     search_fields = ("name", "description", "technicians__username")
 
     @display(description="Technicians")
@@ -114,11 +117,12 @@ class SectionAdmin(ModelAdmin):
             '<span style="font-weight: bold; color: #3b82f6;">{}</span>',
             count
         )
-    
+
     @display(description="Active Tickets")
     def active_tickets_count(self, obj):
         """Return count of active tickets in section"""
-        count = obj.ticket_set.exclude(status__in=['resolved', 'closed']).count()
+        count = obj.ticket_set.exclude(
+            status__in=['resolved', 'closed']).count()
         color = "#ef4444" if count > 10 else "#10b981" if count == 0 else "#f59e0b"
         return format_html(
             '<span style="font-weight: bold; color: {};">{}</span>',
@@ -143,12 +147,13 @@ class FacilityAdmin(ModelAdmin):
             "inactive": "secondary",
         }
         return status_colors.get(obj.status, "secondary")
-    
+
     @display(description="Tickets")
     def ticket_count(self, obj):
         """Show ticket count for facility"""
         total = obj.ticket_set.count()
-        active = obj.ticket_set.exclude(status__in=['resolved', 'closed']).count()
+        active = obj.ticket_set.exclude(
+            status__in=['resolved', 'closed']).count()
         return format_html(
             '<span style="color: #f59e0b; font-weight: bold;">{}</span> active / '
             '<span style="color: #6b7280;">{}</span> total',
@@ -172,11 +177,11 @@ class TicketAdmin(ModelAdmin):
         "created_at",
     )
     list_filter = (
-        "section", 
-        "facility", 
-        "status", 
+        "section",
+        "facility",
+        "status",
         ("created_at", RangeDateFilter),
-        "raised_by", 
+        "raised_by",
         "assigned_to"
     )
     search_fields = (
@@ -191,10 +196,10 @@ class TicketAdmin(ModelAdmin):
     readonly_fields = ("ticket_no", "created_at", "updated_at", "resolved_at")
     list_per_page = 25
     date_hierarchy = "created_at"
-    
+
     actions_list = ["assign_to_me", "mark_resolved", "mark_closed"]
     actions_detail = ["assign_to_me", "mark_resolved"]
-    
+
     fieldsets = (
         ("Ticket Information", {
             "fields": ("ticket_no", "title", "description")
@@ -223,13 +228,13 @@ class TicketAdmin(ModelAdmin):
             "closed": "secondary",
         }
         return status_colors.get(obj.status, "secondary")
-    
+
     @display(description="Priority", ordering="created_at")
     def priority_indicator(self, obj):
         """Show priority based on ticket age"""
         from django.utils import timezone
         age_days = (timezone.now() - obj.created_at).days
-        
+
         if obj.status in ['resolved', 'closed']:
             icon = "✓"
             color = "#10b981"
@@ -242,35 +247,37 @@ class TicketAdmin(ModelAdmin):
         else:
             icon = "🟢"
             color = "#10b981"
-        
+
         return format_html(
             '<span style="font-size: 18px;" title="{} days old">{}</span>',
             age_days,
             icon
         )
-    
+
     @display(description="Age", ordering="created_at")
     def days_old(self, obj):
         """Display how many days old the ticket is"""
         from django.utils import timezone
         age_days = (timezone.now() - obj.created_at).days
-        
+
         if age_days == 0:
             return "Today"
         elif age_days == 1:
             return "1 day"
         else:
             return f"{age_days} days"
-    
+
     @action(description="Assign to me")
     def assign_to_me(self, request, queryset):
         """Assign selected tickets to current user"""
         if request.user.role == 'technician':
-            updated = queryset.update(assigned_to=request.user, status='assigned')
+            updated = queryset.update(
+                assigned_to=request.user, status='assigned')
             self.message_user(request, f"{updated} ticket(s) assigned to you.")
         else:
-            self.message_user(request, "Only technicians can be assigned tickets.", level='error')
-    
+            self.message_user(
+                request, "Only technicians can be assigned tickets.", level='error')
+
     @action(description="Mark as Resolved")
     def mark_resolved(self, request, queryset):
         """Mark selected tickets as resolved"""
@@ -280,7 +287,7 @@ class TicketAdmin(ModelAdmin):
             resolved_at=timezone.now()
         )
         self.message_user(request, f"{updated} ticket(s) marked as resolved.")
-    
+
     @action(description="Mark as Closed", permissions=["change"])
     def mark_closed(self, request, queryset):
         """Mark selected tickets as closed (admin/manager only)"""
@@ -292,7 +299,8 @@ class TicketAdmin(ModelAdmin):
             )
             self.message_user(request, f"{updated} ticket(s) closed.")
         else:
-            self.message_user(request, "Only admins/managers can close tickets.", level='error')
+            self.message_user(
+                request, "Only admins/managers can close tickets.", level='error')
 
 
 # register comments

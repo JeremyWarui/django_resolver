@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 from django.utils.html import format_html
-from django.contrib.admin import ModelAdmin
+from unfold.admin import ModelAdmin
 from .models import *
 
 # Register your models here.

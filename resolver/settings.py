@@ -45,6 +45,10 @@ ALLOWED_HOSTS = [
 # Application definition
 
 INSTALLED_APPS = [
+    # Modern admin interface (must be before django.contrib.admin)
+    "unfold",
+    "unfold.contrib.filters",  # Optional but recommended
+    "unfold.contrib.forms",    # Optional but recommended
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -62,6 +66,12 @@ INSTALLED_APPS = [
     # add whitenoise for static files
     "whitenoise.runserver_nostatic",
 ]
+
+# Django Unfold Admin Configuration
+UNFOLD = {
+    "SITE_TITLE": "Django Resolver",
+    "SITE_HEADER": "Maintenance Ticket Management",
+}
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [

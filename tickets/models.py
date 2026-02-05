@@ -19,7 +19,8 @@ class CustomUser(AbstractUser):
         ("technician", "Technician"),
         ("manager", "Manager"),
     ]
-    role = models.CharField(max_length=10, choices=ROLE_CHOICES, default="user")
+    role = models.CharField(
+        max_length=10, choices=ROLE_CHOICES, default="user")
 
     # add section - many-to-many relationship
     # allows to query section.objects.get(name-'IT').technicians.all()
@@ -97,7 +98,8 @@ class Ticket(models.Model):
         on_delete=models.CASCADE,
         related_name="raised_tickets",
     )
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="open")
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default="open")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     resolved_at = models.DateTimeField(
@@ -223,7 +225,8 @@ class Comment(models.Model):
     ticket = models.ForeignKey(
         Ticket, on_delete=models.CASCADE, related_name="comments"
     )
-    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -239,7 +242,8 @@ class Feedback(models.Model):
     ticket = models.OneToOneField(
         Ticket, on_delete=models.CASCADE, related_name="feedback"
     )
-    rated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    rated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     rating = models.FloatField()
     comment = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -255,7 +259,8 @@ class Feedback(models.Model):
 class TicketLog(models.Model):
     """Logs every action on a ticket for auditing purposes"""
 
-    ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name="logs")
+    ticket = models.ForeignKey(
+        Ticket, on_delete=models.CASCADE, related_name="logs")
     # e.g., "Assigned to John", "Status changed to Pending"
     action = models.CharField(max_length=255)
     performed_by = models.ForeignKey(

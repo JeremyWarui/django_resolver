@@ -178,6 +178,9 @@ STATICFILES_FINDERS = [
     "django.contrib.staticfiles.finders.AppDirectoriesFinder",
 ]
 
+# Additional static files directories (if needed)
+STATICFILES_DIRS = []
+
 # WhiteNoise configuration - use simpler backend for Django Unfold
 STORAGES = {
     "default": {

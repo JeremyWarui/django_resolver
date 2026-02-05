@@ -51,7 +51,7 @@ INSTALLED_APPS = [
     "tickets.apps.TicketsConfig",
     # add django rest framework
     "rest_framework",
-    # "rest_framework.authtoken",  # Temporarily removed to avoid circular dependencies
+    "rest_framework.authtoken",  # Re-enabled for token authentication
     "django_filters",
     # add CORS headers
     "corsheaders",

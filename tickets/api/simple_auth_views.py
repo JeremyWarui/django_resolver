@@ -89,10 +89,10 @@ def simple_auth_login(request):
     # Create or get token
     token, created = Token.objects.get_or_create(user=user)
 
-    # Create session tracking
-    session = LoginSession.create_session(
-        user=user, token=token, login_method="password", remember_me=remember_me
-    )
+    # Session tracking temporarily disabled - simple token auth only
+    # session = LoginSession.create_session(
+    #     user=user, token=token, login_method="password", remember_me=remember_me
+    # )
 
     return Response(
         {
@@ -102,7 +102,7 @@ def simple_auth_login(request):
             "role": user.role,
             "login_method": "password",
             "remember_me": remember_me,
-            "session_id": session.id,
+            # "session_id": session.id,  # Disabled for now
         }
     )
 
@@ -206,9 +206,9 @@ def simple_logout(request):
         # Get user's token
         token = request.auth
 
-        # Delete associated sessions
+        # Delete token (session tracking temporarily disabled)
         if token:
-            LoginSession.objects.filter(token=token).delete()
+            # LoginSession.objects.filter(token=token).delete()  # Disabled for now
             token.delete()
 
         return Response({"message": "Logged out successfully"})

@@ -2,7 +2,7 @@ services:
   - type: web
     name: django-resolver
     runtime: python
-    buildCommand: "./build.sh"
+    buildCommand: "chmod +x build.sh && ./build.sh"
     startCommand: "gunicorn resolver.wsgi:application --bind 0.0.0.0:$PORT"
     envVars:
       - key: PYTHON_VERSION

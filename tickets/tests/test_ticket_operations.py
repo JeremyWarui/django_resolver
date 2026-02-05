@@ -23,7 +23,8 @@ class TicketOperationsTestCase(TestCase):
         )
 
         # Create facility
-        self.facility = Facility.objects.create(name="Main Building", type="building")
+        self.facility = Facility.objects.create(
+            name="Main Building", type="building")
 
         # Create users
         self.user = CustomUser.objects.create_user(
@@ -128,7 +129,8 @@ class TicketOperationsTestCase(TestCase):
 
         # Assign technician
         data = {"assigned_to_id": self.tech_hvac.id}
-        response = self.client.patch(f"/api/tickets/{ticket.id}/", data, format="json")
+        response = self.client.patch(
+            f"/api/tickets/{ticket.id}/", data, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["assigned_to"]["id"], self.tech_hvac.id)
@@ -150,7 +152,8 @@ class TicketOperationsTestCase(TestCase):
 
         # Try to assign plumbing technician (should fail)
         data = {"assigned_to_id": self.tech_plumbing.id}
-        response = self.client.patch(f"/api/tickets/{ticket.id}/", data, format="json")
+        response = self.client.patch(
+            f"/api/tickets/{ticket.id}/", data, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -170,7 +173,8 @@ class TicketOperationsTestCase(TestCase):
 
         # Assign multi-section technician (should work)
         data = {"assigned_to_id": self.tech_both.id}
-        response = self.client.patch(f"/api/tickets/{ticket.id}/", data, format="json")
+        response = self.client.patch(
+            f"/api/tickets/{ticket.id}/", data, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["assigned_to"]["id"], self.tech_both.id)
@@ -193,13 +197,16 @@ class TicketOperationsTestCase(TestCase):
 
         # Update to in_progress
         data = {"status": "in_progress"}
-        response = self.client.patch(f"/api/tickets/{ticket.id}/", data, format="json")
+        response = self.client.patch(
+            f"/api/tickets/{ticket.id}/", data, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["status"], "in_progress")
 
     def test_get_technicians_by_section(self):
         """Test fetching technicians filtered by section."""
+        # Authenticate as admin to access technicians endpoint
+        self.client.force_authenticate(user=self.admin)
         response = self.client.get(
             f"/api/technicians/?section_id={self.section_hvac.id}"
         )
@@ -214,6 +221,8 @@ class TicketOperationsTestCase(TestCase):
 
     def test_get_all_technicians(self):
         """Test fetching all technicians without section filter."""
+        # Authenticate as admin to access technicians endpoint
+        self.client.force_authenticate(user=self.admin)
         response = self.client.get("/api/technicians/")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -243,7 +252,8 @@ class TicketOperationsTestCase(TestCase):
             "assigned_to_id": self.tech_hvac.id,
         }
 
-        response = self.client.patch(f"/api/tickets/{ticket.id}/", data, format="json")
+        response = self.client.patch(
+            f"/api/tickets/{ticket.id}/", data, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["title"], "Updated Title")

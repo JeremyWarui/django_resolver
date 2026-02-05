@@ -251,5 +251,206 @@ MAGIC_LINK_EXPIRY_MINUTES = 15
 UNFOLD = {
     "SITE_TITLE": "Django Resolver",
     "SITE_HEADER": "Maintenance Ticket Management",
-    "INDEX_TITLE": "Admin Dashboard",
+    "SITE_URL": "/",
+    "SITE_ICON": {
+        "light": lambda request: "🔧",  # Wrench emoji for maintenance theme
+        "dark": lambda request: "🔧",
+    },
+    "SITE_SYMBOL": "speed",  # Material icon for dashboard
+    "SHOW_HISTORY": True,
+    "SHOW_VIEW_ON_SITE": False,
+    "ENVIRONMENT": "resolver.settings.environment_callback",
+    "DASHBOARD_CALLBACK": "resolver.settings.dashboard_callback",
+    "COLORS": {
+        "primary": {
+            "50": "239 246 255",
+            "100": "219 234 254", 
+            "200": "191 219 254",
+            "300": "147 197 253",
+            "400": "96 165 250",
+            "500": "59 130 246",
+            "600": "37 99 235",
+            "700": "29 78 216",
+            "800": "30 64 175",
+            "900": "30 58 138",
+            "950": "23 37 84",
+        },
+    },
+    "SIDEBAR": {
+        "show_search": True,
+        "show_all_applications": True,
+        "navigation": [
+            {
+                "title": "Dashboard",
+                "icon": "dashboard",
+                "link": lambda request: "/admin/",
+            },
+            {
+                "title": "Ticket Management",
+                "icon": "confirmation_number",
+                "items": [
+                    {
+                        "title": "All Tickets",
+                        "icon": "list",
+                        "link": lambda request: "/admin/tickets/ticket/",
+                        "badge": "resolver.settings.active_tickets_badge",
+                    },
+                    {
+                        "title": "Open Tickets",
+                        "icon": "report_problem",
+                        "link": lambda request: "/admin/tickets/ticket/?status__exact=open",
+                    },
+                    {
+                        "title": "Assigned",
+                        "icon": "assignment_ind",
+                        "link": lambda request: "/admin/tickets/ticket/?status__exact=assigned",
+                    },
+                    {
+                        "title": "In Progress",
+                        "icon": "autorenew",
+                        "link": lambda request: "/admin/tickets/ticket/?status__exact=in_progress",
+                    },
+                    {
+                        "title": "Pending",
+                        "icon": "schedule",
+                        "link": lambda request: "/admin/tickets/ticket/?status__exact=pending",
+                    },
+                ],
+            },
+            {
+                "title": "Resources",
+                "icon": "category",
+                "items": [
+                    {
+                        "title": "Sections",
+                        "icon": "workspaces",
+                        "link": lambda request: "/admin/tickets/section/",
+                    },
+                    {
+                        "title": "Facilities",
+                        "icon": "business",
+                        "link": lambda request: "/admin/tickets/facility/",
+                    },
+                ],
+            },
+            {
+                "title": "User Management",
+                "icon": "people",
+                "items": [
+                    {
+                        "title": "All Users",
+                        "icon": "person",
+                        "link": lambda request: "/admin/tickets/customuser/",
+                    },
+                    {
+                        "title": "Technicians",
+                        "icon": "engineering",
+                        "link": lambda request: "/admin/tickets/customuser/?role__exact=technician",
+                    },
+                    {
+                        "title": "Managers",
+                        "icon": "admin_panel_settings",
+                        "link": lambda request: "/admin/tickets/customuser/?role__exact=manager",
+                    },
+                ],
+            },
+            {
+                "title": "Engagement",
+                "icon": "forum",
+                "items": [
+                    {
+                        "title": "Comments",
+                        "icon": "comment",
+                        "link": lambda request: "/admin/tickets/comment/",
+                    },
+                    {
+                        "title": "Feedback",
+                        "icon": "star",
+                        "link": lambda request: "/admin/tickets/feedback/",
+                    },
+                ],
+            },
+        ],
+    },
 }
+
+
+def environment_callback(request):
+    """Show environment badge in admin"""
+    import os
+    if os.getenv("DEBUG", "True") == "True":
+        return ["Development", "success"]
+    return ["Production", "danger"]
+
+
+def active_tickets_badge(request):
+    """Show count of active tickets in sidebar"""
+    from tickets.models import Ticket
+    count = Ticket.objects.exclude(status__in=['resolved', 'closed']).count()
+    return count
+
+
+def dashboard_callback(request, context):
+    """Custom dashboard widgets"""
+    from tickets.models import Ticket, CustomUser, Section, Facility
+    from django.db.models import Count, Q
+    from django.utils import timezone
+    from datetime import timedelta
+    
+    # Calculate key metrics
+    total_tickets = Ticket.objects.count()
+    active_tickets = Ticket.objects.exclude(status__in=['resolved', 'closed']).count()
+    resolved_today = Ticket.objects.filter(
+        resolved_at__date=timezone.now().date()
+    ).count()
+    
+    # Overdue tickets (>7 days old and not resolved)
+    overdue_date = timezone.now() - timedelta(days=7)
+    overdue_tickets = Ticket.objects.filter(
+        created_at__lt=overdue_date,
+        status__in=['open', 'assigned', 'in_progress', 'pending']
+    ).count()
+    
+    # Status breakdown
+    status_stats = Ticket.objects.values('status').annotate(count=Count('id'))
+    
+    # Top sections by ticket count
+    section_stats = Section.objects.annotate(
+        ticket_count=Count('ticket')
+    ).order_by('-ticket_count')[:5]
+    
+    context.update({
+        "kpi": [
+            {
+                "title": "Total Tickets",
+                "metric": total_tickets,
+                "description": "All time",
+                "icon": "confirmation_number",
+            },
+            {
+                "title": "Active Tickets",
+                "metric": active_tickets,
+                "description": "Currently open",
+                "icon": "pending_actions",
+                "color": "orange" if active_tickets > 10 else "green",
+            },
+            {
+                "title": "Resolved Today",
+                "metric": resolved_today,
+                "description": timezone.now().strftime("%B %d"),
+                "icon": "check_circle",
+                "color": "green",
+            },
+            {
+                "title": "Overdue",
+                "metric": overdue_tickets,
+                "description": ">7 days old",
+                "icon": "warning",
+                "color": "red" if overdue_tickets > 0 else "green",
+            },
+        ],
+        "status_breakdown": list(status_stats),
+        "top_sections": section_stats,
+    })
+    
+    return context

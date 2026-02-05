@@ -215,42 +215,26 @@ class TicketAdmin(ModelAdmin):
         }),
     )
 
-    @display(description="Status", ordering="status", label=True)
+    @display(description="Status", ordering="status")
     def status_badge(self, obj):
         """Display ticket status as a colored badge"""
-        status_colors = {
-            "open": "danger",
-            "assigned": "warning",
-            "in_progress": "info",
-            "pending": "dark",
-            "resolved": "success",
-            "closed": "secondary",
+        status_config = {
+            "open": {"color": "#dc2626", "bg": "#fee2e2", "text": "Open"},
+            "assigned": {"color": "#d97706", "bg": "#fef3c7", "text": "Assigned"},
+            "in_progress": {"color": "#0891b2", "bg": "#cffafe", "text": "In Progress"},
+            "pending": {"color": "#374151", "bg": "#f3f4f6", "text": "Pending"},
+            "resolved": {"color": "#16a34a", "bg": "#dcfce7", "text": "Resolved"},
+            "closed": {"color": "#6b7280", "bg": "#f9fafb", "text": "Closed"},
         }
-        return status_colors.get(obj.status, "secondary")
 
-    @display(description="Priority", ordering="created_at")
-    def priority_indicator(self, obj):
-        """Show priority based on ticket age"""
-        from django.utils import timezone
-        age_days = (timezone.now() - obj.created_at).days
-
-        if obj.status in ['resolved', 'closed']:
-            icon = "✓"
-            color = "#10b981"
-        elif age_days > 7:
-            icon = "🔴"
-            color = "#ef4444"
-        elif age_days > 3:
-            icon = "🟡"
-            color = "#f59e0b"
-        else:
-            icon = "🟢"
-            color = "#10b981"
+        config = status_config.get(obj.status, status_config["closed"])
 
         return format_html(
-            '<span style="font-size: 18px;" title="{} days old">{}</span>',
-            age_days,
-            icon
+            '<span style="background-color: {}; color: {}; padding: 4px 8px; '
+            'border-radius: 4px; font-size: 12px; font-weight: 500;">{}</span>',
+            config["bg"],
+            config["color"],
+            config["text"]
         )
 
     @display(description="Age", ordering="created_at")

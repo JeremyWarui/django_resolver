@@ -1,6 +1,6 @@
 # Magic link functionality temporarily disabled - uncomment when email is configured
 # from .auth_models import MagicLink, LoginSession
-from .auth_models import LoginSession
+# from .auth_models import LoginSession  # Temporarily disabled for clean migration
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.conf import settings

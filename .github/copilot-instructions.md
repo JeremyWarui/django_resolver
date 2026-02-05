@@ -1,7 +1,19 @@
 # Copilot Instructions for Django Resolver
 
 ## Project Overview
-**Django Resolver** is a Django REST API for maintenance ticket management with role-based access, analytics, and reporting. Core app is `tickets/` with a layered architecture separating concerns across models, serializers, views, services, and analytics.
+**Django Resolver** is a Django REST API for maintenance ticket management with token-based authentication, role-based access, analytics, and reporting. Core app is `tickets/` with a layered architecture separating concerns across models, serializers, views, services, and analytics.
+
+## Authentication System
+**Current**: Password-based authentication for all user roles
+- All users authenticate with username/password
+- Simple and reliable, no email configuration required
+- Test accounts have unique passwords defined in fixtures (e.g., `janedoe123`, `alexsmith123`, `adminuser123`)
+- See `docs/DEFAULT_CREDENTIALS.md` for complete test account list
+
+**Magic Link (Future)**: Code is preserved but commented out
+- Located in `tickets/api/simple_auth_views.py`
+- Can be enabled later when email service is configured
+- See `docs/AUTHENTICATION.md` for enable instructions
 
 ## Architecture & Critical Patterns
 

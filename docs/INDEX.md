@@ -2,11 +2,14 @@
 
 Welcome to the comprehensive documentation for Django Resolver - a Django REST API for maintenance ticket management.
 
+**[📖 START HERE: Documentation Guide](DOCUMENTATION_GUIDE.md)** - Choose your role and follow the recommended reading path
+
 ## 📚 Quick Navigation
 
 ### 🚀 Getting Started
 
 - **[Main README](../README.md)** - Project overview, quick start guide, and installation
+- **[Developer Quick Reference](DEVELOPER_QUICK_REFERENCE.md)** - Checklists, patterns, and common tasks
 - **[Project Structure](PROJECT_STRUCTURE.md)** - Complete directory structure and organization
 
 ### 🔌 API Documentation
@@ -16,6 +19,8 @@ Welcome to the comprehensive documentation for Django Resolver - a Django REST A
 
 ### 🏗️ Architecture & Design
 
+- **[Codebase Architecture](CODEBASE_ARCHITECTURE.md)** - Complete codebase structure, file roles, and data flows
+- **[Architecture Diagrams](ARCHITECTURE_DIAGRAMS.md)** - Visual flow diagrams and module interactions
 - **[API Layers](architecture/LAYERS.md)** - Layered architecture and design patterns
 
 ### 🚢 Deployment

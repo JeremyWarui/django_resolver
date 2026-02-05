@@ -26,8 +26,31 @@ python manage.py runserver
 
 **Access**: http://127.0.0.1:8000 | **Admin**: http://127.0.0.1:8000/admin
 
+### 🔐 Test Login Credentials
+Test accounts have unique passwords from fixtures:
+
+```bash
+# Regular user
+curl -X POST http://localhost:8000/api/auth/login/ \
+  -H "Content-Type: application/json" \
+  -d '{"username": "jane_user", "password": "janedoe123"}'
+
+# Technician
+curl -X POST http://localhost:8000/api/auth/login/ \
+  -H "Content-Type: application/json" \
+  -d '{"username": "tech_alex", "password": "alexsmith123"}'
+
+# Admin
+curl -X POST http://localhost:8000/api/auth/login/ \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin_user", "password": "adminuser123"}'
+```
+
+See [docs/DEFAULT_CREDENTIALS.md](docs/DEFAULT_CREDENTIALS.md) for complete list of test accounts.
+
 ## ✨ Key Features
 
+- **Token Authentication**: Password-based login for all roles (magic link code available but commented out)
 - **Ticket Management**: Auto-numbered tickets (TKT-XXXXXX), status workflow, assignment rules
 - **Role-Based Access**: User | Admin | Technician | Manager with granular permissions
 - **Advanced Filtering**: Status, facility, section, technician, overdue (>7 days)
@@ -127,6 +150,8 @@ tickets/
 
 | Guide | Description |
 |-------|-------------|
+| [Authentication](docs/AUTHENTICATION.md) | Token-based auth, login/logout, test credentials |
+| [Default Credentials](docs/DEFAULT_CREDENTIALS.md) | Test account usernames and passwords |
 | [API Reference](docs/api/GUIDE.md) | Complete endpoint documentation with examples |
 | [Analytics API](docs/api/ANALYTICS.md) | Query parameters and response schemas |
 | [Testing Guide](docs/testing/TESTING.md) | Running tests, BaseTicketTestCase usage |

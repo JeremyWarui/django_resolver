@@ -118,15 +118,19 @@ class TechnicianAnalyticsView(generics.GenericAPIView):
 class AdminDashboardAnalyticsView(generics.GenericAPIView):
     """
     API view for admin dashboard analytics.
-    Restricted to admin and manager roles.
+    Now accessible to all authenticated users for viewing system stats.
     """
-    permission_classes = [IsAdminOrManager]  # Only admins and managers
+    permission_classes = [IsAuthenticated]  # All authenticated users can view
 
     def get(self, request, format=None):
-        """Get system-wide analytics for admin dashboard."""
+        """Get system-wide analytics for dashboard."""
         # Get analytics data
         system_overview = AdminAnalytics.get_system_overview()
-        overdue_tickets = AdminAnalytics.get_overdue_tickets()
+
+        # Only show overdue tickets to admins/managers/technicians
+        overdue_tickets = []
+        if request.user.role in ['admin', 'manager', 'technician']:
+            overdue_tickets = AdminAnalytics.get_overdue_tickets()
 
         data = {
             'system_overview': system_overview,

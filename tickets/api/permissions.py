@@ -7,7 +7,7 @@ from tickets.models import Ticket
 class IsWithinOrganizationalScope(permissions.BasePermission):
     """
     Ensures users can only access data within their organizational scope.
-    
+
     Scope access:
     - user/technician: section-level
     - section_head: department-level
@@ -56,8 +56,8 @@ class IsWithinOrganizationalScope(permissions.BasePermission):
 
         if user.role == 'director':
             # Director can see all tickets in their organization
-            return (ticket.section.department.campus.organization == 
-                   user.primary_campus.organization)
+            return (ticket.section.department.campus.organization ==
+                    user.primary_campus.organization)
         elif user.role == 'hod':
             # HOD can see all tickets in their campus
             return ticket.section.department.campus == user.primary_campus
@@ -66,9 +66,9 @@ class IsWithinOrganizationalScope(permissions.BasePermission):
             return ticket.section.department == user.primary_department
         elif user.role == 'technician':
             # Technician can see tickets in their sections or assigned to them
-            return (ticket.section in user.sections.all() or 
-                   ticket.assigned_to == user or
-                   ticket.raised_by == user)
+            return (ticket.section in user.sections.all() or
+                    ticket.assigned_to == user or
+                    ticket.raised_by == user)
         elif user.role == 'user':
             # Users can only see their own tickets
             return ticket.raised_by == user
@@ -122,25 +122,26 @@ class CanAssignTickets(permissions.BasePermission):
     """Permission for users who can assign tickets to technicians"""
 
     def has_permission(self, request, view):
-        return (request.user.is_authenticated and 
-               request.user.role in ['section_head', 'hod', 'director', 'admin'])
+        return (request.user.is_authenticated and
+                request.user.role in ['section_head', 'hod', 'director', 'admin'])
 
 
 class CanEscalateTickets(permissions.BasePermission):
     """Permission for users who can escalate tickets"""
 
     def has_permission(self, request, view):
-        return (request.user.is_authenticated and 
-               request.user.role in ['section_head', 'hod', 'admin'])  # Directors excluded
+        return (request.user.is_authenticated and
+                # Directors excluded
+                request.user.role in ['section_head', 'hod', 'admin'])
 
 
 class CanViewAnalytics(permissions.BasePermission):
     """Permission for accessing analytics endpoints"""
 
     def has_permission(self, request, view):
-        return (request.user.is_authenticated and 
-               (request.user.can_view_analytics or
-                request.user.role in ['section_head', 'hod', 'director', 'admin']))
+        return (request.user.is_authenticated and
+                (request.user.can_view_analytics or
+                 request.user.role in ['section_head', 'hod', 'director', 'admin']))
 
 
 # LEGACY PERMISSIONS (kept for backward compatibility)

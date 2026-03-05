@@ -8,22 +8,93 @@ from django.utils import timezone
 
 # Create your models here.
 
+# ORGANIZATIONAL HIERARCHY MODELS
+
+
+class Organization(models.Model):
+    """Root organizational entity - corporation, university, government agency"""
+    name = models.CharField(max_length=200, unique=True)
+    code = models.CharField(max_length=10, unique=True)  # e.g., "UNIV", "CORP"
+    organization_type = models.CharField(max_length=50, choices=[
+        ('corporate', 'Corporate'),
+        ('education', 'Educational Institution'),
+        ('government', 'Government Agency'),
+        ('healthcare', 'Healthcare System'),
+        ('other', 'Other')
+    ])
+    headquarters = models.CharField(max_length=200)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return f"{self.name} ({self.code})"
+
+
+class Campus(models.Model):
+    """Geographic or operational division - campus, branch, site"""
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name='campuses')
+    name = models.CharField(max_length=200)
+    code = models.CharField(max_length=10)  # e.g., "MAIN", "WEST", "HQ"
+    location = models.CharField(max_length=200)
+
+    class Meta:
+        ordering = ['organization', 'name']
+        unique_together = [['organization', 'code']]
+        verbose_name_plural = "Campuses"
+
+    def __str__(self):
+        return f"{self.organization.code}-{self.code}: {self.name}"
+
+
+class Department(models.Model):
+    """Functional division within campus - academics, operations, admin"""
+    campus = models.ForeignKey(
+        Campus, on_delete=models.CASCADE, related_name='departments')
+    name = models.CharField(max_length=200)
+    code = models.CharField(max_length=10)  # e.g., "IT", "HR", "OPS"
+    head_of_department = models.ForeignKey(
+        'CustomUser', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='managed_departments'
+    )
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['campus', 'name']
+        unique_together = [['campus', 'code']]
+
+    def __str__(self):
+        return f"{self.campus.code}-{self.code}: {self.name}"
+
 
 # Custom User Model
 class CustomUser(AbstractUser):
-    """Extends Django's AbstractUser class to include additional fields"""
+    """Enhanced user model with organizational hierarchy awareness"""
 
     ROLE_CHOICES = [
         ("user", "User"),
-        ("admin", "Admin"),
         ("technician", "Technician"),
-        ("manager", "Manager"),
+        ("section_head", "Section Head"),  # Previously maintenance_officer
+        ("hod", "Head of Department"),
+        ("director", "Director"),
+        ("admin", "System Administrator"),  # Technical admin role
     ]
-    role = models.CharField(
-        max_length=10, choices=ROLE_CHOICES, default="user")
 
-    # add section - many-to-many relationship
-    # allows to query section.objects.get(name-'IT').technicians.all()
+    role = models.CharField(
+        max_length=15, choices=ROLE_CHOICES, default="user")
+
+    # Organizational assignments - temporarily nullable for migration
+    primary_campus = models.ForeignKey(
+        Campus, on_delete=models.CASCADE, related_name='primary_users',
+        null=True, blank=True  # Temporary for migration
+    )
+    primary_department = models.ForeignKey(
+        Department, on_delete=models.CASCADE, related_name='primary_users',
+        null=True, blank=True  # Temporary for migration
+    )
+
+    # Multi-section assignment for technicians
     sections = models.ManyToManyField(
         "Section",
         related_name="technicians",
@@ -31,27 +102,103 @@ class CustomUser(AbstractUser):
         help_text="Sections the technician is specialized in.",
     )
 
+    # Additional user context
+    phone_number = models.CharField(max_length=15, blank=True)
+
+    # Permissions and capabilities
+    can_assign_tickets = models.BooleanField(default=False)
+    can_escalate_tickets = models.BooleanField(default=False)
+    can_view_analytics = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['username']
+
     def __str__(self):
-        return f"{self.username}"
+        campus_code = self.primary_campus.code if self.primary_campus else "NO-CAMPUS"
+        return f"{self.username} ({self.get_role_display()}) - {campus_code}"
+
+    @property
+    def organizational_scope(self):
+        """Returns the scope of organizational access for this user"""
+        scopes = {
+            'user': 'section',
+            'technician': 'section',
+            'section_head': 'section',
+            'hod': 'department',
+            'director': 'organization',
+            'admin': 'system'
+        }
+        return scopes.get(self.role, 'none')
+
+    def get_accessible_campuses(self):
+        """Returns campuses this user can access based on role"""
+        if not self.primary_campus:
+            return Campus.objects.none()
+
+        if self.role == 'director':
+            return Campus.objects.filter(organization=self.primary_campus.organization)
+        elif self.role == 'hod':
+            return Campus.objects.filter(id=self.primary_campus.id)
+        else:
+            return Campus.objects.filter(id=self.primary_campus.id)
+
+    def get_accessible_departments(self):
+        """Returns departments this user can access"""
+        if not self.primary_campus:
+            return Department.objects.none()
+
+        accessible_campuses = self.get_accessible_campuses()
+        if self.role == 'director':
+            return Department.objects.filter(campus__in=accessible_campuses)
+        elif self.role == 'hod':
+            return Department.objects.filter(campus=self.primary_campus)
+        elif self.primary_department:
+            return Department.objects.filter(id=self.primary_department.id)
+        else:
+            return Department.objects.none()
 
 
 # SECTIONS MODEL
 class Section(models.Model):
-    """Maintenance sections e.g. IT, Plumbing, Electrical e.t.c."""
-
-    name = models.CharField(max_length=100, unique=True)
+    """Enhanced section model with departmental hierarchy"""
+    # Temporarily nullable for migration
+    department = models.ForeignKey(
+        Department, on_delete=models.CASCADE, related_name='sections',
+        null=True, blank=True  # Temporary for migration
+    )
+    name = models.CharField(max_length=100)
+    code = models.CharField(max_length=10, null=True,
+                            blank=True)  # Temporary for migration
     description = models.TextField(max_length=200, blank=True)
+    section_head = models.ForeignKey(
+        'CustomUser', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='managed_sections'
+    )
+    is_active = models.BooleanField(default=True)
 
     class Meta:
-        ordering = ["name"]
+        ordering = ['name']  # Will update after migration
 
     def __str__(self):
-        return f"{self.name}\n"
+        if self.department:
+            return f"{self.department.campus.code}-{self.department.code}-{self.code}: {self.name}"
+        return f"{self.name}"  # Fallback during migration
+
+    @property
+    def full_hierarchy_name(self):
+        """Returns: ORG-CAMPUS-DEPT-SECTION"""
+        if self.department and self.department.campus and self.department.campus.organization:
+            return (
+                f"{self.department.campus.organization.code}-"
+                f"{self.department.campus.code}-"
+                f"{self.department.code}-{self.code}"
+            )
+        return self.name
 
 
 # FACILITY MODEL
 class Facility(models.Model):
-    """Facilities e.g. Building, ICT Equipment, Kitchen Equipment, Residential, e.t.c"""
+    """Enhanced facility model with organizational context"""
 
     FACILITY_CHOICES = [
         ("building", "Building"),
@@ -59,25 +206,56 @@ class Facility(models.Model):
         ("laundry", "Laundry Equipment"),
         ("kitchen", "Kitchen Equipment"),
         ("residential", "Residential"),
+        ("classroom", "Classroom"),
+        ("office", "Office Space"),
     ]
-    name = models.CharField(max_length=100, unique=True)
+
+    name = models.CharField(max_length=100)
+    # Will add unique constraint later
+    facility_code = models.CharField(
+        max_length=20, null=True, blank=True)  # Temporary for migration
     type = models.CharField(
-        max_length=50, choices=FACILITY_CHOICES, blank=True, null=True
+        max_length=50, choices=FACILITY_CHOICES, default="building")
+
+    # Organizational location - temporarily nullable for migration
+    campus = models.ForeignKey(
+        Campus, on_delete=models.CASCADE, related_name='facilities',
+        null=True, blank=True  # Temporary for migration
     )
-    status = models.CharField(max_length=50, default="active")
-    location = models.CharField(max_length=100, blank=True, null=True)
+    department = models.ForeignKey(
+        Department, on_delete=models.CASCADE, related_name='facilities',
+        null=True, blank=True  # Temporary for migration
+    )
+
+    # Physical details
+    location = models.CharField(
+        max_length=100, blank=True, null=True)  # Building, floor, room
+    status = models.CharField(max_length=50, default="active", choices=[
+        ('active', 'Active'),
+        ('maintenance', 'Under Maintenance'),
+        ('inactive', 'Inactive'),
+        ('decommissioned', 'Decommissioned')
+    ])
+
+    # Asset management
+    purchase_date = models.DateField(null=True, blank=True)
+    warranty_expiry = models.DateField(null=True, blank=True)
+    asset_value = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True)
 
     class Meta:
-        ordering = ["name"]
+        ordering = ["name"]  # Will update after migration
         verbose_name_plural = "Facilities"
 
     def __str__(self):
-        return f"{self.name}\n"
+        if self.campus and self.facility_code:
+            return f"{self.campus.code}-{self.facility_code}: {self.name}"
+        return self.name  # Fallback during migration
 
 
 # TICKETS MODEL
 class Ticket(models.Model):
-    """Tickets: maintenance issues such as leaking pipe...e.t.c"""
+    """Enhanced ticket model with organizational hierarchy and escalation support"""
 
     STATUS_CHOICES = [
         ("open", "Open"),
@@ -86,27 +264,36 @@ class Ticket(models.Model):
         ("pending", "Pending"),
         ("resolved", "Resolved"),
         ("closed", "Closed"),
+        ("escalated", "Escalated"),  # New status
     ]
 
-    ticket_no = models.CharField(max_length=10, unique=True, editable=False)
+    PRIORITY_CHOICES = [
+        ("low", "Low"),
+        ("normal", "Normal"),
+        ("high", "High"),
+        ("urgent", "Urgent"),
+        ("critical", "Critical"),
+    ]
+
+    # Core ticket information
+    # Format: CAMPUS-DEPT-XXXXX
+    ticket_no = models.CharField(max_length=15, unique=True, editable=False)
     title = models.CharField(max_length=100)
-    description = models.TextField(max_length=200)
-    section = models.ForeignKey(Section, on_delete=models.CASCADE)
-    facility = models.ForeignKey(Facility, on_delete=models.CASCADE)
+    description = models.TextField(max_length=500)  # Extended description
+    priority = models.CharField(
+        max_length=10, choices=PRIORITY_CHOICES, default="normal")
+
+    # Organizational context
+    section = models.ForeignKey(
+        Section, on_delete=models.CASCADE, related_name='tickets')
+    facility = models.ForeignKey(
+        Facility, on_delete=models.CASCADE, related_name='tickets')
+
+    # User relationships
     raised_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="raised_tickets",
-    )
-    status = models.CharField(
-        max_length=20, choices=STATUS_CHOICES, default="open")
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    resolved_at = models.DateTimeField(
-        null=True,
-        blank=True,
-        editable=False,  # Users can't edit this field directly
-        help_text="Automatically set when ticket status changes to resolved/closed",
     )
     assigned_to = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -115,44 +302,243 @@ class Ticket(models.Model):
         null=True,
         related_name="assigned_tickets",
     )
+
+    # Status and lifecycle
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default="open")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    resolved_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        editable=False,
+        help_text="Automatically set when ticket status changes to resolved/closed",
+    )
+    closed_at = models.DateTimeField(null=True, blank=True, editable=False)
+
+    # Escalation tracking
+    # 0=none, 1=section_head, 2=hod (max level)
+    escalation_level = models.IntegerField(default=0)
+    escalated_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="escalated_tickets"
+    )
+    escalated_at = models.DateTimeField(null=True, blank=True)
+    escalation_reason = models.TextField(max_length=500, blank=True)
+
+    # Auto-escalation timing
+    auto_escalation_enabled = models.BooleanField(default=True)
+    next_escalation_due = models.DateTimeField(
+        null=True, blank=True, editable=False)
+    escalation_threshold_hours = models.IntegerField(
+        default=48)  # Hours before auto-escalation
+
+    # Additional context
     pending_reason = models.TextField(
         max_length=500,
         blank=True,
         null=True,
         help_text="Reason provided when ticket status is changed to pending (e.g., waiting for parts)",
     )
+    # Room, building, etc.
+    location_details = models.CharField(max_length=200, blank=True)
+    estimated_resolution_hours = models.IntegerField(null=True, blank=True)
+    actual_resolution_hours = models.IntegerField(
+        null=True, blank=True, editable=False)
 
     class Meta:
         ordering = ["-updated_at"]
         indexes = [
-            # Keep only composite index for common filter patterns
             models.Index(
-                fields=["status", "-updated_at"], name="ticket_status_updated_idx"
-            ),
+                fields=['status', 'section', '-updated_at'], name='ticket_section_status_idx'),
+            models.Index(fields=['assigned_to', 'status'],
+                         name='ticket_assignment_idx'),
+            models.Index(
+                fields=['escalation_level', '-escalated_at'], name='ticket_escalation_idx'),
+            models.Index(fields=['priority', '-created_at'],
+                         name='ticket_priority_idx'),
+            models.Index(fields=[
+                         'next_escalation_due', 'auto_escalation_enabled'], name='ticket_auto_escalation_idx'),
+            # Keep existing status index
+            models.Index(fields=["status", "-updated_at"],
+                         name="ticket_status_updated_idx"),
         ]
 
     def save(self, *args, performed_by=None, **kwargs):
-        """Generate ticket number if missing. Status-change logging is handled
-        explicitly by model helper methods (`change_status`, `change_assignment`).
-
-        Keep save lightweight so services or model helpers can control when
-        logging happens atomically.
-        """
+        """Enhanced save with organizational ticket numbering and auto-escalation scheduling"""
         # 1. Handle ticket number generation for new tickets
         if not self.ticket_no:
-            last_ticket = Ticket.objects.all().order_by("-id").first()
-            next_id = 1 if not last_ticket else last_ticket.id + 1
-            self.ticket_no = f"TKT-{next_id:06d}"
+            # Generate ticket number: CAMPUS-DEPT-XXXXX
+            if self.section and self.section.department and self.section.department.campus:
+                campus_code = self.section.department.campus.code
+                dept_code = self.section.department.code
+
+                # Get next sequence number for this department
+                last_ticket = Ticket.objects.filter(
+                    section__department=self.section.department
+                ).order_by('-id').first()
+
+                next_id = 1 if not last_ticket else (
+                    last_ticket.id % 99999) + 1
+                self.ticket_no = f"{campus_code}-{dept_code}-{next_id:05d}"
+            else:
+                # Fallback for migration/testing
+                last_ticket = Ticket.objects.all().order_by("-id").first()
+                next_id = 1 if not last_ticket else last_ticket.id + 1
+                self.ticket_no = f"TKT-{next_id:06d}"
+
+        # Auto-set closure timestamp
+        if self.status == 'closed' and not self.closed_at:
+            self.closed_at = timezone.now()
 
         # If creating or saving a ticket that is already in a resolved state,
-        # ensure `resolved_at` is set so analytics that rely on this field
-        # (resolved_tickets counting) include these records. We avoid creating
-        # a TicketLog here because creation (fixtures) should not be treated
-        # as an explicit state-change event performed by a user.
+        # ensure `resolved_at` is set
         if self.status in ["resolved", "closed"] and not self.resolved_at:
             self.resolved_at = timezone.now()
 
+        # Schedule auto-escalation on creation or status change
+        if not self.pk or self.status in ['open', 'assigned', 'in_progress']:
+            self._schedule_next_escalation()
+
         super(Ticket, self).save(*args, **kwargs)
+
+    def _schedule_next_escalation(self):
+        """Schedule next auto-escalation based on current level and timing rules"""
+        if not self.auto_escalation_enabled or self.status in ['resolved', 'closed']:
+            self.next_escalation_due = None
+            return
+
+        from datetime import timedelta
+        now = timezone.now()
+
+        if self.escalation_level == 0:
+            # Schedule escalation to section head after 48 hours
+            self.next_escalation_due = now + timedelta(hours=48)
+        elif self.escalation_level == 1:
+            # Schedule escalation to HOD 24 hours after first escalation
+            if self.escalated_at:
+                self.next_escalation_due = self.escalated_at + \
+                    timedelta(hours=24)
+            else:
+                self.next_escalation_due = now + timedelta(hours=24)
+        else:
+            # No further escalation beyond HOD
+            self.next_escalation_due = None
+
+    def escalate(self, escalated_by, reason="", is_auto_escalation=False):
+        """Escalate ticket to next organizational level (max: HOD)"""
+        from django.db import transaction
+
+        escalation_paths = {
+            0: self._find_section_head(),      # To section head
+            1: self._find_hod(),               # To HOD (final level)
+        }
+
+        # Check if already at maximum escalation level
+        if self.escalation_level >= 2:
+            raise ValueError(
+                "Ticket is already at maximum escalation level (HOD)")
+
+        next_escalation_level = self.escalation_level + 1
+        escalated_to = escalation_paths.get(self.escalation_level)
+
+        if not escalated_to:
+            raise ValueError(
+                f"No escalation path available for level {self.escalation_level}")
+
+        with transaction.atomic():
+            self.escalation_level = next_escalation_level
+            self.escalated_to = escalated_to
+            self.escalated_at = timezone.now()
+            self.escalation_reason = reason
+            if self.status != 'escalated':
+                self.status = 'escalated'
+
+            # Schedule next auto-escalation if applicable
+            self._schedule_next_escalation()
+
+            self.save()
+
+            # Create audit log
+            escalation_type = "Auto-escalated" if is_auto_escalation else "Manually escalated"
+            action_msg = (
+                f"{escalation_type} to {escalated_to.get_role_display()}: {escalated_to.username} "
+                f"- Level {next_escalation_level}"
+            )
+            TicketLog.objects.create(
+                ticket=self,
+                action=action_msg,
+                performed_by=escalated_by
+            )
+
+    def is_due_for_escalation(self):
+        """Check if ticket is due for automatic escalation"""
+        if not self.auto_escalation_enabled or not self.next_escalation_due:
+            return False
+
+        return (
+            timezone.now() >= self.next_escalation_due and
+            self.status not in ['resolved', 'closed'] and
+            self.escalation_level < 2  # Not already at max escalation
+        )
+
+    def disable_auto_escalation(self, disabled_by, reason=""):
+        """Disable automatic escalation for this ticket"""
+        from django.db import transaction
+
+        with transaction.atomic():
+            self.auto_escalation_enabled = False
+            self.next_escalation_due = None
+            self.save()
+
+            # Create audit log
+            TicketLog.objects.create(
+                ticket=self,
+                action=f"Auto-escalation disabled. Reason: {reason}",
+                performed_by=disabled_by
+            )
+
+    def _find_section_head(self):
+        """Find section head for escalation"""
+        return self.section.section_head if self.section else None
+
+    def _find_hod(self):
+        """Find HOD for escalation"""
+        if self.section and self.section.department:
+            return self.section.department.head_of_department
+        return None
+
+    @property
+    def is_overdue(self):
+        """Check if ticket is overdue based on organizational SLA"""
+        if self.status in ['resolved', 'closed']:
+            return False
+
+        # SLA hours based on priority
+        sla_hours = {
+            'critical': 4,
+            'urgent': 24,
+            'high': 48,
+            'normal': 72,
+            'low': 120
+        }
+
+        hours_since_creation = (
+            timezone.now() - self.created_at).total_seconds() / 3600
+        return hours_since_creation > sla_hours.get(self.priority, 72)
+
+    @property
+    def organizational_path(self):
+        """Return full organizational path"""
+        if (self.section and self.section.department and
+                self.section.department.campus and self.section.department.campus.organization):
+            return (
+                f"{self.section.department.campus.organization.name} > "
+                f"{self.section.department.campus.name} > "
+                f"{self.section.department.name} > "
+                f"{self.section.name}"
+            )
+        return "No organizational context"
 
     def change_status(self, new_status, performed_by=None):
         """Atomically change ticket status, update resolved_at, and create a TicketLog.
@@ -214,7 +600,7 @@ class Ticket(models.Model):
         return self
 
     def __str__(self):
-        return f"{self.ticket_no}\n" f"{self.title}\n" f"{self.status}\n"
+        return f"{self.ticket_no} - {self.title} ({self.status})"
 
 
 # COMMENTS MODEL

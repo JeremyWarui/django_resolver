@@ -43,7 +43,7 @@ class InvalidEscalationException(OrganizationalTicketServiceException):
 class OrganizationalTicketService:
     """
     Central service for ticket operations with organizational hierarchy validation.
-    
+
     Enforces:
     - Role-based access control (user, technician, section_head, hod, director, admin)
     - Organizational scope boundaries (section → department → campus → organization)
@@ -63,7 +63,7 @@ class OrganizationalTicketService:
     ) -> Ticket:
         """
         Create a new ticket with organizational validation.
-        
+
         Args:
             data: Dictionary with ticket data (title, description, etc.)
             created_by: User creating the ticket
@@ -71,10 +71,10 @@ class OrganizationalTicketService:
             facility: Facility object ticket is for
             priority: Ticket priority (low/medium/high/critical)
             enable_auto_escalation: Whether to enable auto-escalation (default: True)
-            
+
         Returns:
             Created Ticket object
-            
+
         Raises:
             InsufficientScopeException: User doesn't have access to this section/facility
             ValidationError: Invalid ticket data
@@ -128,15 +128,15 @@ class OrganizationalTicketService:
     ) -> Ticket:
         """
         Assign a ticket to a technician with organizational validation.
-        
+
         Args:
             ticket: Ticket to assign
             technician: Technician to assign to
             assigned_by: User performing the assignment
-            
+
         Returns:
             Updated Ticket object
-            
+
         Raises:
             PermissionDenied: assigned_by user lacks permission
             InvalidAssignmentException: Technician cannot be assigned for any reason
@@ -192,21 +192,21 @@ class OrganizationalTicketService:
     ) -> Ticket:
         """
         Escalate a ticket to the next level in approval chain.
-        
+
         Escalation chain:
         - Level 0 (technician) → Level 1 (section_head)
         - Level 1 (section_head) → Level 2 (hod) [MAXIMUM]
         - Cannot escalate beyond hod
-        
+
         Args:
             ticket: Ticket to escalate
             escalated_by: User performing escalation
             reason: Reason for escalation
             manual: Whether this is a manual escalation (default: True)
-            
+
         Returns:
             Updated Ticket object
-            
+
         Raises:
             PermissionDenied: User lacks escalation permission
             InvalidEscalationException: Ticket cannot be escalated
@@ -231,7 +231,8 @@ class OrganizationalTicketService:
 
         with transaction.atomic():
             # Use model's atomic helper
-            ticket.escalate(reason=reason, escalated_by=escalated_by, is_manual=manual)
+            ticket.escalate(
+                reason=reason, escalated_by=escalated_by, is_manual=manual)
 
             return ticket
 
@@ -243,15 +244,15 @@ class OrganizationalTicketService:
     ) -> Ticket:
         """
         Close a resolved ticket (admin/manager only).
-        
+
         Args:
             ticket: Ticket to close
             closed_by: User closing the ticket (must be admin/manager)
             closure_notes: Optional notes about closure
-            
+
         Returns:
             Updated Ticket object
-            
+
         Raises:
             PermissionDenied: User is not admin or manager
             ValidationError: Ticket is not resolved
@@ -287,9 +288,9 @@ class OrganizationalTicketService:
     def process_auto_escalations() -> Dict[str, any]:
         """
         Process automatic escalations for tickets that have exceeded time thresholds.
-        
+
         Scheduled task to run periodically (e.g., every hour via management command).
-        
+
         Returns:
             Dictionary with escalation statistics:
             {
@@ -355,11 +356,11 @@ class OrganizationalTicketService:
     ) -> List[Ticket]:
         """
         Get all tickets user can access based on organizational scope.
-        
+
         Args:
             user: User requesting tickets
             filters: Optional additional filters (status, priority, etc.)
-            
+
         Returns:
             Queryset of accessible Ticket objects
         """
@@ -453,7 +454,7 @@ class OrganizationalTicketService:
     def _get_system_user() -> CustomUser:
         """
         Get or create system user for automated operations.
-        
+
         Returns:
             CustomUser object representing the system
         """
@@ -474,13 +475,13 @@ class OrganizationalTicketService:
 def manual_escalation_allowed(ticket: Ticket) -> bool:
     """
     Check if ticket can be manually escalated (respects auto-escalation timeout).
-    
+
     If auto-escalation is enabled and next escalation is due soon, prevent
     manual escalation to avoid bypassing the auto-escalation process.
-    
+
     Args:
         ticket: Ticket to check
-        
+
     Returns:
         True if manual escalation is allowed, False otherwise
     """

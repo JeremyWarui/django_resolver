@@ -20,6 +20,7 @@ from tickets.api.views.index import (
     FacilityDetailView,
     TicketListCreateView,
     TicketDetailView,
+    TicketEscalationView,
     CommentListCreateView,
     FeedbackListCreateView,
     UserListCreateView,
@@ -54,10 +55,14 @@ urlpatterns = [
     path("sections/<int:pk>/", SectionDetailView.as_view(), name="section-detail"),
     # FACILITY
     path("facilities/", FacilityListCreateView.as_view(), name="facility-list"),
-    path("facilities/<int:pk>/", FacilityDetailView.as_view(), name="facility-detail"),
+    path("facilities/<int:pk>/", FacilityDetailView.as_view(),
+         name="facility-detail"),
     # TICKET
     path("tickets/", TicketListCreateView.as_view(), name="ticket-list"),
     path("tickets/<int:pk>/", TicketDetailView.as_view(), name="ticket-detail"),
+    # TICKET ESCALATION
+    path("tickets/<int:ticket_id>/escalate/",
+         TicketEscalationView.as_view(), name="ticket-escalate"),
     # COMMENT
     path("comments/", CommentListCreateView.as_view(), name="comment-list"),
     # FEEDBACK
@@ -83,7 +88,8 @@ urlpatterns = [
         name="ticket-feedback",
     ),
     # ANALYTICS ENDPOINTS
-    path("analytics/tickets/", TicketAnalyticsView.as_view(), name="analytics-tickets"),
+    path("analytics/tickets/", TicketAnalyticsView.as_view(),
+         name="analytics-tickets"),
     path(
         "analytics/technicians/",
         TechnicianAnalyticsView.as_view(),

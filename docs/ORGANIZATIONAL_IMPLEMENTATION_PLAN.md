@@ -143,8 +143,7 @@ class Organization(models.Model):
         ('healthcare', 'Healthcare System'),
         ('other', 'Other')
     ])
-    established_date = models.DateField()
-    headquarters_location = models.CharField(max_length=200)
+    headquarters = models.CharField(max_length=200)
     
     class Meta:
         ordering = ['name']
@@ -158,14 +157,6 @@ class Campus(models.Model):
     name = models.CharField(max_length=200)
     code = models.CharField(max_length=10)  # e.g., "MAIN", "WEST", "HQ"
     location = models.CharField(max_length=200)
-    campus_type = models.CharField(max_length=50, choices=[
-        ('main', 'Main Campus'),
-        ('branch', 'Branch Campus'),
-        ('satellite', 'Satellite Office'),
-        ('remote', 'Remote Location')
-    ])
-    established_date = models.DateField()
-    is_active = models.BooleanField(default=True)
     
     class Meta:
         ordering = ['organization', 'name']
@@ -180,18 +171,10 @@ class Department(models.Model):
     campus = models.ForeignKey(Campus, on_delete=models.CASCADE, related_name='departments')
     name = models.CharField(max_length=200)
     code = models.CharField(max_length=10)  # e.g., "IT", "HR", "OPS"
-    department_type = models.CharField(max_length=50, choices=[
-        ('academic', 'Academic Department'),
-        ('administrative', 'Administrative Department'),
-        ('operations', 'Operations Department'),
-        ('support', 'Support Services'),
-        ('facilities', 'Facilities Management')
-    ])
     head_of_department = models.ForeignKey(
         'CustomUser', on_delete=models.SET_NULL, null=True, blank=True,
         related_name='managed_departments'
     )
-    budget_code = models.CharField(max_length=20, blank=True)
     is_active = models.BooleanField(default=True)
     
     class Meta:
@@ -211,12 +194,6 @@ class Section(models.Model):
     name = models.CharField(max_length=100)
     code = models.CharField(max_length=10)  # e.g., "NET", "SRV", "APP"
     description = models.TextField(max_length=200, blank=True)
-    section_type = models.CharField(max_length=50, choices=[
-        ('technical', 'Technical Services'),
-        ('facilities', 'Facilities Management'),
-        ('administrative', 'Administrative Services'),
-        ('support', 'Support Services')
-    ])
     section_head = models.ForeignKey(
         'CustomUser', on_delete=models.SET_NULL, null=True, blank=True,
         related_name='managed_sections'
@@ -283,8 +260,7 @@ def create_default_organization(apps, schema_editor):
         name="Default Organization",
         code="DEFAULT",
         organization_type="other",
-        established_date="2023-01-01",
-        headquarters_location="Main Office"
+        headquarters="Main Office"
     )
     
     # Create default campus
@@ -292,17 +268,14 @@ def create_default_organization(apps, schema_editor):
         organization=org,
         name="Default Campus",
         code="MAIN",
-        location="Main Campus",
-        campus_type="main",
-        established_date="2023-01-01"
+        location="Main Campus"
     )
     
     # Create default department
     department = Department.objects.create(
         campus=campus,
         name="General Operations",
-        code="OPS",
-        department_type="operations"
+        code="OPS"
     )
     
     # Link existing sections to default department
@@ -338,9 +311,7 @@ class CustomUser(AbstractUser):
     sections = models.ManyToManyField(Section, related_name="technicians", blank=True)
     
     # Additional user context
-    employee_id = models.CharField(max_length=20, unique=True, null=True, blank=True)
     phone_number = models.CharField(max_length=15, blank=True)
-    office_location = models.CharField(max_length=100, blank=True)
     
     # Permissions and capabilities
     can_assign_tickets = models.BooleanField(default=False)
@@ -485,7 +456,7 @@ class Ticket(models.Model):
     ]
     
     # Core ticket information
-    ticket_no = models.CharField(max_length=15, unique=True, editable=False)  # Extended for org codes
+    ticket_no = models.CharField(max_length=15, unique=True, editable=False)  # Format: CAMPUS-DEPT-XXXXX
     title = models.CharField(max_length=100)
     description = models.TextField(max_length=500)  # Extended description
     priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default="normal")
@@ -517,6 +488,11 @@ class Ticket(models.Model):
     escalated_at = models.DateTimeField(null=True, blank=True)
     escalation_reason = models.TextField(max_length=500, blank=True)
     
+    # Auto-escalation timing
+    auto_escalation_enabled = models.BooleanField(default=True)
+    next_escalation_due = models.DateTimeField(null=True, blank=True, editable=False)
+    escalation_threshold_hours = models.IntegerField(default=48)  # Hours before auto-escalation
+    
     # Additional context
     pending_reason = models.TextField(max_length=500, blank=True, null=True)
     location_details = models.CharField(max_length=200, blank=True)  # Room, building, etc.
@@ -530,13 +506,13 @@ class Ticket(models.Model):
             models.Index(fields=['assigned_to', 'status'], name='ticket_assignment_idx'),
             models.Index(fields=['escalation_level', '-escalated_at'], name='ticket_escalation_idx'),
             models.Index(fields=['priority', '-created_at'], name='ticket_priority_idx'),
+            models.Index(fields=['next_escalation_due', 'auto_escalation_enabled'], name='ticket_auto_escalation_idx'),
         ]
     
     def save(self, *args, **kwargs):
-        """Enhanced save with organizational ticket numbering"""
+        """Enhanced save with organizational ticket numbering and auto-escalation scheduling"""
         if not self.ticket_no:
-            # Generate ticket number: ORG-CAP-DEPT-XXXXXX
-            org_code = self.section.department.campus.organization.code
+            # Generate ticket number: CAMPUS-DEPT-XXXXX
             campus_code = self.section.department.campus.code
             dept_code = self.section.department.code
             
@@ -545,16 +521,41 @@ class Ticket(models.Model):
                 section__department=self.section.department
             ).order_by('-id').first()
             
-            next_id = 1 if not last_ticket else (last_ticket.id % 999999) + 1
-            self.ticket_no = f"{org_code}-{campus_code}-{dept_code}-{next_id:06d}"
+            next_id = 1 if not last_ticket else (last_ticket.id % 99999) + 1
+            self.ticket_no = f"{campus_code}-{dept_code}-{next_id:05d}"
         
         # Auto-set closure timestamp
         if self.status == 'closed' and not self.closed_at:
             self.closed_at = timezone.now()
             
+        # Schedule auto-escalation on creation or status change
+        if not self.pk or self.status in ['open', 'assigned', 'in_progress']:
+            self._schedule_next_escalation()
+            
         super().save(*args, **kwargs)
     
-    def escalate(self, escalated_by, reason=""):
+    def _schedule_next_escalation(self):
+        """Schedule next auto-escalation based on current level and timing rules"""
+        if not self.auto_escalation_enabled or self.status in ['resolved', 'closed']:
+            self.next_escalation_due = None
+            return
+        
+        now = timezone.now()
+        
+        if self.escalation_level == 0:
+            # Schedule escalation to section head after 48 hours
+            self.next_escalation_due = now + timedelta(hours=48)
+        elif self.escalation_level == 1:
+            # Schedule escalation to HOD 24 hours after first escalation
+            if self.escalated_at:
+                self.next_escalation_due = self.escalated_at + timedelta(hours=24)
+            else:
+                self.next_escalation_due = now + timedelta(hours=24)
+        else:
+            # No further escalation beyond HOD
+            self.next_escalation_due = None
+    
+    def escalate(self, escalated_by, reason="", is_auto_escalation=False):
         """Escalate ticket to next organizational level (max: HOD)"""
         from django.db import transaction
         
@@ -581,13 +582,48 @@ class Ticket(models.Model):
             if self.status != 'escalated':
                 self.status = 'escalated'
             
+            # Schedule next auto-escalation if applicable
+            self._schedule_next_escalation()
+            
+            self.save()
+            
+            # Create audit log
+            escalation_type = "Auto-escalated" if is_auto_escalation else "Manually escalated"
+            action_msg = (
+                f"{escalation_type} to {escalated_to.get_role_display()}: {escalated_to.username} "
+                f"- Level {next_escalation_level}"
+            )
+            TicketLog.objects.create(
+                ticket=self,
+                action=action_msg,
+                performed_by=escalated_by
+            )
+    
+    def is_due_for_escalation(self):
+        """Check if ticket is due for automatic escalation"""
+        if not self.auto_escalation_enabled or not self.next_escalation_due:
+            return False
+        
+        return (
+            timezone.now() >= self.next_escalation_due and 
+            self.status not in ['resolved', 'closed'] and
+            self.escalation_level < 2  # Not already at max escalation
+        )
+    
+    def disable_auto_escalation(self, disabled_by, reason=""):
+        """Disable automatic escalation for this ticket"""
+        from django.db import transaction
+        
+        with transaction.atomic():
+            self.auto_escalation_enabled = False
+            self.next_escalation_due = None
             self.save()
             
             # Create audit log
             TicketLog.objects.create(
                 ticket=self,
-                action=f"Ticket escalated to {escalated_to.get_role_display()}: {escalated_to.username}",
-                performed_by=escalated_by
+                action=f"Auto-escalation disabled. Reason: {reason}",
+                performed_by=disabled_by
             )
     
     def _find_section_head(self):
@@ -768,24 +804,79 @@ class OrganizationalTicketService:
         return ticket
     
     @staticmethod
-    def escalate_ticket(ticket, escalated_by, reason=""):
+    def escalate_ticket(ticket, escalated_by, reason="", is_auto_escalation=False):
         """Escalate ticket following organizational hierarchy"""
         
-        # Validate escalation permission
-        if not OrganizationalTicketService._can_escalate_tickets(escalated_by):
+        # Validate escalation permission (skip for auto-escalation)
+        if not is_auto_escalation and not OrganizationalTicketService._can_escalate_tickets(escalated_by):
             raise PermissionDenied("User cannot escalate tickets")
         
-        # Validate escalation necessity
-        if not ticket.is_overdue and escalated_by.role not in ['director', 'admin']:
+        # Validate escalation necessity (relaxed for auto-escalation)
+        if not is_auto_escalation and not ticket.is_overdue and escalated_by.role not in ['director', 'admin']:
             raise ValidationError("Only overdue tickets can be escalated")
         
         # Perform escalation
-        ticket.escalate(escalated_by, reason)
+        ticket.escalate(escalated_by, reason, is_auto_escalation=is_auto_escalation)
         
         # Notify escalated recipient
         OrganizationalTicketService._notify_escalation(ticket)
         
         return ticket
+    
+    @staticmethod
+    def process_auto_escalations():
+        """Process all tickets due for automatic escalation"""
+        from tickets.models import CustomUser
+        
+        # Get system user for auto-escalation logging
+        try:
+            system_user = CustomUser.objects.filter(role='admin', is_active=True).first()
+        except CustomUser.DoesNotExist:
+            # Fallback: create a system user if none exists
+            system_user = CustomUser.objects.create_user(
+                username='system_auto_escalation',
+                email='system@example.com',
+                role='admin',
+                is_active=True
+            )
+        
+        # Find tickets due for escalation
+        due_tickets = Ticket.objects.filter(
+            auto_escalation_enabled=True,
+            next_escalation_due__lte=timezone.now(),
+            status__in=['open', 'assigned', 'in_progress', 'escalated'],
+            escalation_level__lt=2  # Not already at max level
+        )
+        
+        escalated_count = 0
+        failed_escalations = []
+        
+        for ticket in due_tickets:
+            try:
+                # Check if ticket is still due (race condition protection)
+                if ticket.is_due_for_escalation():
+                    reason = f"Auto-escalated after {ticket.escalation_threshold_hours} hours"
+                    
+                    # Perform auto-escalation
+                    OrganizationalTicketService.escalate_ticket(
+                        ticket=ticket,
+                        escalated_by=system_user,
+                        reason=reason,
+                        is_auto_escalation=True
+                    )
+                    escalated_count += 1
+                    
+            except Exception as e:
+                failed_escalations.append({
+                    'ticket_no': ticket.ticket_no,
+                    'error': str(e)
+                })
+        
+        return {
+            'processed': due_tickets.count(),
+            'escalated': escalated_count,
+            'failed': failed_escalations
+        }
     
     @staticmethod
     def close_ticket(ticket, closed_by, resolution_notes=""):
@@ -1148,6 +1239,128 @@ class OrganizationalAnalytics:
 
 ### Phase 6: API Integration & Testing (Weeks 11-12)
 
+#### 6.0 Auto-Escalation Management Command
+
+**Management Command for Auto-Escalation Processing:**
+
+```python
+# tickets/management/commands/process_auto_escalations.py
+
+from django.core.management.base import BaseCommand
+from django.utils import timezone
+from tickets.api.services.ticket_services import OrganizationalTicketService
+
+class Command(BaseCommand):
+    """Management command to process automatic ticket escalations"""
+    
+    help = 'Process tickets due for automatic escalation according to time thresholds'
+    
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--dry-run',
+            action='store_true',
+            help='Show tickets that would be escalated without actually escalating them'
+        )
+        
+        parser.add_argument(
+            '--verbose',
+            action='store_true', 
+            help='Show detailed output of escalation processing'
+        )
+    
+    def handle(self, *args, **options):
+        """Execute auto-escalation processing"""
+        
+        start_time = timezone.now()
+        self.stdout.write(f"Starting auto-escalation processing at {start_time}")
+        
+        if options['dry_run']:
+            # Dry run mode - show what would be escalated
+            from tickets.models import Ticket
+            
+            due_tickets = Ticket.objects.filter(
+                auto_escalation_enabled=True,
+                next_escalation_due__lte=timezone.now(),
+                status__in=['open', 'assigned', 'in_progress', 'escalated'],
+                escalation_level__lt=2
+            )
+            
+            if due_tickets.exists():
+                self.stdout.write(f"\n{due_tickets.count()} tickets due for escalation:")
+                for ticket in due_tickets:
+                    self.stdout.write(
+                        f"  - {ticket.ticket_no}: Level {ticket.escalation_level} → "
+                        f"{ticket.escalation_level + 1} (Due: {ticket.next_escalation_due})"
+                    )
+            else:
+                self.stdout.write("No tickets currently due for escalation.")
+                
+        else:
+            # Actual processing
+            try:
+                results = OrganizationalTicketService.process_auto_escalations()
+                
+                # Report results
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        f"✓ Auto-escalation processing completed:\n"
+                        f"  Processed: {results['processed']} tickets\n"
+                        f"  Escalated: {results['escalated']} tickets"
+                    )
+                )
+                
+                # Report any failures
+                if results['failed']:
+                    self.stdout.write(
+                        self.style.WARNING(
+                            f"⚠ Failed escalations: {len(results['failed'])}"
+                        )
+                    )
+                    
+                    if options['verbose']:
+                        for failure in results['failed']:
+                            self.stdout.write(
+                                f"  - {failure['ticket_no']}: {failure['error']}"
+                            )
+                
+            except Exception as e:
+                self.stdout.write(
+                    self.style.ERROR(f"✗ Auto-escalation processing failed: {str(e)}")
+                )
+                raise
+        
+        end_time = timezone.now()
+        duration = (end_time - start_time).total_seconds()
+        self.stdout.write(f"Completed in {duration:.2f} seconds")
+```
+
+**Cron Job Setup:**
+```bash
+# Add to crontab for hourly auto-escalation processing
+0 * * * * cd /path/to/django_resolver && python manage.py process_auto_escalations
+```
+
+**Celery Task (Alternative):**
+```python
+# tickets/tasks.py (if using Celery)
+
+from celery import shared_task
+from .api.services.ticket_services import OrganizationalTicketService
+
+@shared_task
+def process_auto_escalations_task():
+    """Celery task for processing auto-escalations"""
+    return OrganizationalTicketService.process_auto_escalations()
+
+# Schedule: Run every hour
+# CELERYBEAT_SCHEDULE = {
+#     'auto-escalate-tickets': {
+#         'task': 'tickets.tasks.process_auto_escalations_task',
+#         'schedule': crontab(minute=0),  # Every hour at minute 0
+#     },
+# }
+```
+
 #### 6.1 Enhanced API Views
 
 ```python
@@ -1273,31 +1486,26 @@ class OrganizationalHierarchyTestCase(BaseTicketTestCase):
             name="Test University",
             code="TESTU",
             organization_type="education",
-            established_date="2020-01-01",
-            headquarters_location="Main Campus"
+            headquarters="Main Campus"
         )
         
         cls.main_campus = Campus.objects.create(
             organization=cls.org,
             name="Main Campus", 
             code="MAIN",
-            location="City Center",
-            campus_type="main",
-            established_date="2020-01-01"
+            location="City Center"
         )
         
         cls.it_department = Department.objects.create(
             campus=cls.main_campus,
             name="Information Technology",
-            code="IT",
-            department_type="support"
+            code="IT"
         )
         
         cls.network_section = Section.objects.create(
             department=cls.it_department,
             name="Network Services",
-            code="NET",
-            section_type="technical"
+            code="NET"
         )
         
         # Create users with organizational context
@@ -1337,7 +1545,7 @@ class OrganizationalHierarchyTestCase(BaseTicketTestCase):
         )
         
         # Verify organizational ticket numbering
-        self.assertIn("TESTU-MAIN-IT", ticket.ticket_no)
+        self.assertIn("MAIN-IT-", ticket.ticket_no)
         self.assertEqual(ticket.organizational_path, 
                         "Test University > Main Campus > Information Technology > Network Services")
     
@@ -1385,23 +1593,19 @@ class OrganizationalHierarchyTestCase(BaseTicketTestCase):
             organization=self.org,
             name="Branch Campus",
             code="BRANCH", 
-            location="Suburb",
-            campus_type="branch",
-            established_date="2021-01-01"
+            location="Suburb"
         )
         
         hr_department = Department.objects.create(
             campus=branch_campus,
             name="Human Resources",
-            code="HR",
-            department_type="administrative"
+            code="HR"
         )
         
         hr_section = Section.objects.create(
             department=hr_department,
             name="HR Services", 
-            code="HRS",
-            section_type="administrative"
+            code="HRS"
         )
         
         # Create HR ticket
@@ -1489,6 +1693,20 @@ class OrganizationalAnalyticsTestCase(BaseTicketTestCase):
 - [ ] Implement comprehensive test suite
 - [ ] Performance optimization and indexing
 
+### Week 13: Auto-Escalation System
+- [ ] Create `process_auto_escalations` management command
+- [ ] Add dry-run and verbose options for testing
+- [ ] Implement cron job or Celery task scheduling
+- [ ] Add auto-escalation controls and API endpoints
+- [ ] Create escalation timing configuration interface
+- [ ] Implement escalation performance monitoring
+
+### Weeks 14-15: Final Testing & Documentation
+- [ ] Comprehensive testing of auto-escalation system
+- [ ] Performance validation and optimization
+- [ ] Documentation updates for new escalation features
+- [ ] User training materials for auto-escalation controls
+
 ---
 
 ## Migration Considerations
@@ -1507,6 +1725,42 @@ class OrganizationalAnalyticsTestCase(BaseTicketTestCase):
 
 ---
 
+## Auto-Escalation Business Rules
+
+### Time-Based Escalation Thresholds
+**Automatic Escalation Schedule:**
+- **Level 0 → 1 (Section Head)**: 48 hours after ticket creation
+- **Level 1 → 2 (HOD)**: 24 hours after first escalation  
+- **Maximum Level**: HOD (Level 2) - no further automatic escalation
+
+### Auto-Escalation Conditions
+**Triggers:**
+- Enabled by default (`auto_escalation_enabled = True`)
+- Only applies to active tickets (`open`, `assigned`, `in_progress`, `escalated`)
+- Automatically scheduled on ticket creation and status updates
+- Processed hourly via management command or Celery task
+
+**Exceptions:**
+- Stops when ticket status becomes `resolved` or `closed`
+- Bypassed if escalation targets (Section Head/HOD) are unavailable
+- Can be manually disabled by authorized users with audit trail
+- Manual escalation resets the auto-escalation timer
+
+### Management & Control
+**Manual Override Capabilities:**
+- Authorized users can escalate before automatic threshold
+- Auto-escalation can be disabled per ticket with reason
+- Manual escalation triggers rescheduling of next auto-escalation
+- System administrators can configure timing thresholds
+
+**Audit & Monitoring:**
+- All escalations (manual and automatic) logged in `TicketLog`
+- Auto-escalation distinguished from manual escalation in logs
+- Escalation performance metrics tracked in analytics
+- Failed escalation attempts logged and monitored
+
+---
+
 ## Success Metrics
 
 ### Technical Metrics
@@ -1520,6 +1774,9 @@ class OrganizationalAnalyticsTestCase(BaseTicketTestCase):
 - [ ] Escalation follows correct organizational hierarchy
 - [ ] Analytics reflect accurate organizational breakdowns
 - [ ] Ticket assignment respects section boundaries
+- [ ] Auto-escalation triggers within defined time thresholds (48h/24h)
+- [ ] Manual escalation resets auto-escalation timers correctly
+- [ ] Auto-escalation can be disabled/enabled with proper audit trail
 
 ### Organizational Benefits
 - [ ] Clear separation of campus operations

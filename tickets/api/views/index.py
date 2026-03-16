@@ -17,6 +17,15 @@ from .resource_views import (
     UserListCreateView,
     UserDetailView,
     TechniciansBySectionView,
+    BulkTicketStatusUpdateView,
+)
+
+# Organizational Views (Phase 6)
+from .organizational_views import (
+    OrganizationalTicketListView,
+    AssignableUsersView,
+    OrganizationalAnalyticsView,
+    EscalateTicketView,
 )
 
 __all__ = [
@@ -30,5 +39,11 @@ __all__ = [
     'CommentListCreateView',
     'FeedbackListCreateView',
     'UserListCreateView',
-    'UserDetailView'
+    'UserDetailView',
+    'TechniciansBySectionView',
+    'BulkTicketStatusUpdateView',
+    'OrganizationalTicketListView',
+    'AssignableUsersView',
+    'OrganizationalAnalyticsView',
+    'EscalateTicketView',
 ]

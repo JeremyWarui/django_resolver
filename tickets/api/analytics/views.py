@@ -5,10 +5,12 @@ These endpoints provide various statistics for dashboards and reporting.
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.views import APIView
 from tickets.api.permissions import IsTechnicianOrAdmin, IsAdminOrManager
 
 from tickets.models import Ticket, CustomUser, Feedback, Section, Facility
 from tickets.api.analytics.analytics import TicketAnalytics, TechnicianAnalytics, AdminAnalytics
+from tickets.api.analytics.organizational_analytics import OrganizationalAnalytics
 
 
 class TicketAnalyticsView(generics.GenericAPIView):
@@ -138,3 +140,97 @@ class AdminDashboardAnalyticsView(generics.GenericAPIView):
         }
 
         return Response(data)
+
+
+# ============================================================================
+# ORGANIZATIONAL ANALYTICS VIEWS
+# ============================================================================
+
+class DirectorDashboardView(APIView):
+    """
+    Director dashboard showing organization-wide analytics.
+
+    Only accessible to directors and system administrators.
+
+    Query Parameters:
+    - days: Number of days to analyze (default: 30)
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Get organization-wide dashboard for directors"""
+        # Verify user is director
+        if request.user.role not in ['director', 'admin']:
+            return Response(
+                {'error': 'Only directors and admins can access this endpoint'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Get query parameters
+        days = int(request.query_params.get('days', 30))
+
+        # Get dashboard data
+        dashboard = OrganizationalAnalytics.director_dashboard(
+            request.user, days=days)
+
+        return Response(dashboard)
+
+
+class HODDashboardView(APIView):
+    """
+    Head of Department dashboard showing campus-level analytics.
+
+    Only accessible to HODs and system administrators.
+
+    Query Parameters:
+    - days: Number of days to analyze (default: 30)
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Get campus-level dashboard for HODs"""
+        # Verify user is HOD
+        if request.user.role not in ['hod', 'admin']:
+            return Response(
+                {'error': 'Only HODs and admins can access this endpoint'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Get query parameters
+        days = int(request.query_params.get('days', 30))
+
+        # Get dashboard data
+        dashboard = OrganizationalAnalytics.hod_dashboard(
+            request.user, days=days)
+
+        return Response(dashboard)
+
+
+class SectionHeadDashboardView(APIView):
+    """
+    Section Head dashboard showing department-level analytics.
+
+    Only accessible to section heads and system administrators.
+
+    Query Parameters:
+    - days: Number of days to analyze (default: 30)
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Get department-level dashboard for section heads"""
+        # Verify user is section head
+        if request.user.role not in ['section_head', 'admin']:
+            return Response(
+                {'error': 'Only section heads and admins can access this endpoint'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Get query parameters
+        days = int(request.query_params.get('days', 30))
+
+        # Get dashboard data
+        dashboard = OrganizationalAnalytics.section_head_dashboard(
+            request.user, days=days)
+
+        return Response(dashboard)

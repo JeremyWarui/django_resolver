@@ -1,0 +1,1261 @@
+[
+  {
+    "model": "tickets.organization",
+    "pk": 1,
+    "fields": {
+      "name": "Government Institution",
+      "code": "KSG",
+      "organization_type": "government",
+      "headquarters": "Nairobi, Kenya"
+    }
+  },
+  {
+    "model": "tickets.campus",
+    "pk": 1,
+    "fields": {
+      "organization": 1,
+      "name": "Nairobi Campus",
+      "code": "NAIROBI",
+      "location": "Nairobi"
+    }
+  },
+  {
+    "model": "tickets.campus",
+    "pk": 2,
+    "fields": {
+      "organization": 1,
+      "name": "Mombasa Campus",
+      "code": "MOMBASA",
+      "location": "Mombasa"
+    }
+  },
+  {
+    "model": "tickets.campus",
+    "pk": 3,
+    "fields": {
+      "organization": 1,
+      "name": "Matuga Campus",
+      "code": "MATUGA",
+      "location": "Matuga"
+    }
+  },
+  {
+    "model": "tickets.campus",
+    "pk": 4,
+    "fields": {
+      "organization": 1,
+      "name": "Embu Campus",
+      "code": "EMBU",
+      "location": "Embu"
+    }
+  },
+  {
+    "model": "tickets.campus",
+    "pk": 5,
+    "fields": {
+      "organization": 1,
+      "name": "Baringo Campus",
+      "code": "BARINGO",
+      "location": "Baringo"
+    }
+  },
+  {
+    "model": "tickets.department",
+    "pk": 1,
+    "fields": {
+      "campus": 1,
+      "name": "Information and Communication Technology",
+      "code": "ICT",
+      "head_of_department": 3,
+      "is_active": true
+    }
+  },
+  {
+    "model": "tickets.department",
+    "pk": 2,
+    "fields": {
+      "campus": 1,
+      "name": "Hospitality Services",
+      "code": "HOSP",
+      "head_of_department": 4,
+      "is_active": true
+    }
+  },
+  {
+    "model": "tickets.department",
+    "pk": 3,
+    "fields": {
+      "campus": 2,
+      "name": "Administration",
+      "code": "ADMIN",
+      "head_of_department": 5,
+      "is_active": true
+    }
+  },
+  {
+    "model": "tickets.department",
+    "pk": 4,
+    "fields": {
+      "campus": 2,
+      "name": "Learning and Development",
+      "code": "L&D",
+      "head_of_department": null,
+      "is_active": true
+    }
+  },
+  {
+    "model": "tickets.department",
+    "pk": 5,
+    "fields": {
+      "campus": 3,
+      "name": "Human Resource",
+      "code": "HR",
+      "head_of_department": null,
+      "is_active": true
+    }
+  },
+  {
+    "model": "tickets.section",
+    "pk": 1,
+    "fields": {
+      "department": 1,
+      "name": "ICT Support",
+      "code": "ICT",
+      "description": "Information Technology infrastructure and support services.",
+      "section_head": 6,
+      "is_active": true
+    }
+  },
+  {
+    "model": "tickets.section",
+    "pk": 2,
+    "fields": {
+      "department": 2,
+      "name": "Plumbing",
+      "code": "PLB",
+      "description": "Water systems, drainage, and plumbing maintenance.",
+      "section_head": 7,
+      "is_active": true
+    }
+  },
+  {
+    "model": "tickets.section",
+    "pk": 3,
+    "fields": {
+      "department": 2,
+      "name": "Electrical",
+      "code": "ELE",
+      "description": "Electrical systems, power distribution, and lighting.",
+      "section_head": 8,
+      "is_active": true
+    }
+  },
+  {
+    "model": "tickets.section",
+    "pk": 4,
+    "fields": {
+      "department": 2,
+      "name": "Carpentry & Masonry",
+      "code": "CARP",
+      "description": "Carpentry, masonry, and structural repairs.",
+      "section_head": 9,
+      "is_active": true
+    }
+  },
+  {
+    "model": "tickets.facility",
+    "pk": 1,
+    "fields": {
+      "name": "Main Office Block",
+      "facility_code": "MOB-001",
+      "type": "building",
+      "campus": 1,
+      "department": 1,
+      "location": "Floor 1, West Wing",
+      "status": "active"
+    }
+  },
+  {
+    "model": "tickets.facility",
+    "pk": 2,
+    "fields": {
+      "name": "Server Rack 01",
+      "facility_code": "ICT-001",
+      "type": "ict",
+      "campus": 1,
+      "department": 1,
+      "location": "IT Server Room",
+      "status": "active"
+    }
+  },
+  {
+    "model": "tickets.facility",
+    "pk": 3,
+    "fields": {
+      "name": "Kitchen Unit A",
+      "facility_code": "KIT-001",
+      "type": "kitchen",
+      "campus": 1,
+      "department": 2,
+      "location": "Main Cafeteria",
+      "status": "active"
+    }
+  },
+  {
+    "model": "tickets.facility",
+    "pk": 4,
+    "fields": {
+      "name": "Apartment 101",
+      "facility_code": "RES-101",
+      "type": "residential",
+      "campus": 1,
+      "department": 2,
+      "location": "Residential Block A",
+      "status": "active"
+    }
+  },
+  {
+    "model": "tickets.facility",
+    "pk": 5,
+    "fields": {
+      "name": "Laundry Room",
+      "facility_code": "LAU-001",
+      "type": "laundry",
+      "campus": 1,
+      "department": 2,
+      "location": "Basement Level",
+      "status": "active"
+    }
+  },
+  {
+    "model": "tickets.facility",
+    "pk": 6,
+    "fields": {
+      "name": "Conference Room B",
+      "facility_code": "CONF-002",
+      "type": "building",
+      "campus": 1,
+      "department": 1,
+      "location": "Floor 2",
+      "status": "active"
+    }
+  },
+  {
+    "model": "tickets.facility",
+    "pk": 7,
+    "fields": {
+      "name": "Data Center",
+      "facility_code": "DCT-001",
+      "type": "ict",
+      "campus": 1,
+      "department": 1,
+      "location": "Basement Level, East Wing",
+      "status": "active"
+    }
+  },
+  {
+    "model": "tickets.facility",
+    "pk": 8,
+    "fields": {
+      "name": "Apartment 205",
+      "facility_code": "RES-205",
+      "type": "residential",
+      "campus": 1,
+      "department": 2,
+      "location": "Residential Block B",
+      "status": "active"
+    }
+  },
+  {
+    "model": "tickets.facility",
+    "pk": 9,
+    "fields": {
+      "name": "Cafeteria Kitchen",
+      "facility_code": "KIT-002",
+      "type": "kitchen",
+      "campus": 1,
+      "department": 2,
+      "location": "Ground Floor, South Wing",
+      "status": "active"
+    }
+  },
+  {
+    "model": "tickets.facility",
+    "pk": 10,
+    "fields": {
+      "name": "Mombasa Administration Block",
+      "facility_code": "ADM-001",
+      "type": "building",
+      "campus": 2,
+      "department": 3,
+      "location": "Mombasa Campus",
+      "status": "active"
+    }
+  },
+  {
+    "model": "tickets.facility",
+    "pk": 11,
+    "fields": {
+      "name": "Matuga Staff Office",
+      "facility_code": "MAT-001",
+      "type": "building",
+      "campus": 3,
+      "department": 5,
+      "location": "Matuga Campus",
+      "status": "active"
+    }
+  },
+  {
+    "model": "tickets.facility",
+    "pk": 12,
+    "fields": {
+      "name": "Embu ICT Lab",
+      "facility_code": "EMB-001",
+      "type": "ict",
+      "campus": 4,
+      "department": 1,
+      "location": "Embu Campus",
+      "status": "active"
+    }
+  },
+  {
+    "model": "tickets.facility",
+    "pk": 13,
+    "fields": {
+      "name": "Baringo Cafeteria",
+      "facility_code": "BAR-001",
+      "type": "kitchen",
+      "campus": 5,
+      "department": 2,
+      "location": "Baringo Campus",
+      "status": "active"
+    }
+  },
+  {
+    "model": "tickets.customuser",
+    "pk": 1,
+    "fields": {
+      "password": "pbkdf2_sha256$1000000$ZvGuVX0X6VTjLFVlNr8wMc$46on0T+/xtdtVtYTKmAXGdjIRUopB+As0+qPGkvh8gY=",
+      "is_superuser": true,
+      "username": "admin_user",
+      "first_name": "System",
+      "last_name": "Admin",
+      "email": "admin@example.com",
+      "is_staff": true,
+      "is_active": true,
+      "date_joined": "2025-10-01T10:00:00Z",
+      "role": "admin",
+      "primary_campus": 1,
+      "primary_department": 1,
+      "phone_number": "",
+      "can_assign_tickets": true,
+      "can_escalate_tickets": true,
+      "can_view_analytics": true,
+      "sections": []
+    }
+  },
+  {
+    "model": "tickets.customuser",
+    "pk": 2,
+    "fields": {
+      "password": "pbkdf2_sha256$1000000$2igHblhkba05SecRpW7daJ$Gf4tfsfs2Id9Q2iks0Sf5FZ8iFS+sqD4uacjV5Ohzcg=",
+      "is_superuser": false,
+      "username": "user_sarah",
+      "first_name": "Sarah",
+      "last_name": "Wilson",
+      "email": "sarah.wilson@example.com",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2025-10-02T09:00:00Z",
+      "role": "user",
+      "primary_campus": 1,
+      "primary_department": 2,
+      "phone_number": "555-0001",
+      "can_assign_tickets": false,
+      "can_escalate_tickets": false,
+      "can_view_analytics": false,
+      "sections": []
+    }
+  },
+  {
+    "model": "tickets.customuser",
+    "pk": 3,
+    "fields": {
+      "password": "pbkdf2_sha256$1000000$p9KSND1G1xc09RQMj0opFc$JWOIxm9LqRHo+ZH3gOn5AXszd1j/WX4sizEKqpStStU=",
+      "is_superuser": false,
+      "username": "director_jane",
+      "first_name": "Jane",
+      "last_name": "Director",
+      "email": "jane.director@example.com",
+      "is_staff": true,
+      "is_active": true,
+      "date_joined": "2025-10-01T10:05:00Z",
+      "role": "director",
+      "primary_campus": 1,
+      "primary_department": 1,
+      "phone_number": "555-0100",
+      "can_assign_tickets": false,
+      "can_escalate_tickets": false,
+      "can_view_analytics": true,
+      "sections": []
+    }
+  },
+  {
+    "model": "tickets.customuser",
+    "pk": 4,
+    "fields": {
+      "password": "pbkdf2_sha256$1000000$NKkfRTfWJT6fT5JaUMMDxV$401DJS/fuuFTgVoQrvh3sY7oNA0c/wfLwFkobDk2rtE=",
+      "is_superuser": false,
+      "username": "hod_alex",
+      "first_name": "Alex",
+      "last_name": "Smith",
+      "email": "alex.smith@example.com",
+      "is_staff": true,
+      "is_active": true,
+      "date_joined": "2025-10-01T10:10:00Z",
+      "role": "hod",
+      "primary_campus": 1,
+      "primary_department": 1,
+      "phone_number": "555-0101",
+      "can_assign_tickets": true,
+      "can_escalate_tickets": true,
+      "can_view_analytics": true,
+      "sections": []
+    }
+  },
+  {
+    "model": "tickets.customuser",
+    "pk": 5,
+    "fields": {
+      "password": "pbkdf2_sha256$1000000$zneRNo8dktMbDlV9E4ixJM$1yrUMfNzty17UdQqIHSBWQucKS+lDDPe5JG+EkErjqY=",
+      "is_superuser": false,
+      "username": "hod_maria",
+      "first_name": "Maria",
+      "last_name": "Garcia",
+      "email": "maria@example.com",
+      "is_staff": true,
+      "is_active": true,
+      "date_joined": "2025-10-01T10:15:00Z",
+      "role": "hod",
+      "primary_campus": 2,
+      "primary_department": 3,
+      "phone_number": "555-0102",
+      "can_assign_tickets": true,
+      "can_escalate_tickets": true,
+      "can_view_analytics": true,
+      "sections": []
+    }
+  },
+  {
+    "model": "tickets.customuser",
+    "pk": 6,
+    "fields": {
+      "password": "pbkdf2_sha256$1000000$I7DtPv6XeE1lAXm8d6n094$eBDEvqtTy9ySw5MZzmuMdhZbg6hosJE0rByrWES8aY4=",
+      "is_superuser": false,
+      "username": "section_head_ben",
+      "first_name": "Ben",
+      "last_name": "Clark",
+      "email": "ben@example.com",
+      "is_staff": true,
+      "is_active": true,
+      "date_joined": "2025-10-01T10:20:00Z",
+      "role": "section_head",
+      "primary_campus": 1,
+      "primary_department": 1,
+      "phone_number": "555-0103",
+      "can_assign_tickets": true,
+      "can_escalate_tickets": true,
+      "can_view_analytics": true,
+      "sections": [1]
+    }
+  },
+  {
+    "model": "tickets.customuser",
+    "pk": 7,
+    "fields": {
+      "password": "pbkdf2_sha256$1000000$uZlIXuuw8dW5nPP8vgfHIo$cnQ6nnzuv1FEHuL1eh8J72gZCjTGCv/Kvf6mP/EsFxw=",
+      "is_superuser": false,
+      "username": "section_head_mike",
+      "first_name": "Mike",
+      "last_name": "Brown",
+      "email": "mike.brown@example.com",
+      "is_staff": true,
+      "is_active": true,
+      "date_joined": "2025-10-02T10:00:00Z",
+      "role": "section_head",
+      "primary_campus": 1,
+      "primary_department": 2,
+      "phone_number": "555-0104",
+      "can_assign_tickets": true,
+      "can_escalate_tickets": true,
+      "can_view_analytics": true,
+      "sections": [2]
+    }
+  },
+  {
+    "model": "tickets.customuser",
+    "pk": 8,
+    "fields": {
+      "password": "pbkdf2_sha256$1000000$Dho7j2JAXoRUL7FXkXkmZV$CIple1OXrv2Lnpt2xpU9aVrkK8hGSEGwkmoK+2DlMWc=",
+      "is_superuser": false,
+      "username": "section_head_linda",
+      "first_name": "Linda",
+      "last_name": "Davis",
+      "email": "linda.davis@example.com",
+      "is_staff": true,
+      "is_active": true,
+      "date_joined": "2025-10-03T08:30:00Z",
+      "role": "section_head",
+      "primary_campus": 1,
+      "primary_department": 2,
+      "phone_number": "555-0105",
+      "can_assign_tickets": true,
+      "can_escalate_tickets": true,
+      "can_view_analytics": true,
+      "sections": [3]
+    }
+  },
+  {
+    "model": "tickets.customuser",
+    "pk": 9,
+    "fields": {
+      "password": "pbkdf2_sha256$1000000$ohxEa32QhT1d2WTUo4m7ng$Ucq3mVYDvnPa/cESr0qHVJPZ7s0ZVKAkR9Z0X/OgQP8=",
+      "is_superuser": false,
+      "username": "section_head_david",
+      "first_name": "David",
+      "last_name": "Lee",
+      "email": "david.lee@example.com",
+      "is_staff": true,
+      "is_active": true,
+      "date_joined": "2025-10-03T11:00:00Z",
+      "role": "section_head",
+      "primary_campus": 1,
+      "primary_department": 2,
+      "phone_number": "555-0106",
+      "can_assign_tickets": true,
+      "can_escalate_tickets": true,
+      "can_view_analytics": true,
+      "sections": [4]
+    }
+  },
+  {
+    "model": "tickets.customuser",
+    "pk": 12,
+    "fields": {
+      "password": "pbkdf2_sha256$1000000$newpasshash2$test",
+      "is_superuser": false,
+      "username": "tech_alex",
+      "first_name": "Alex",
+      "last_name": "Tech",
+      "email": "alex.tech@example.com",
+      "is_staff": true,
+      "is_active": true,
+      "date_joined": "2025-10-06T10:00:00Z",
+      "role": "technician",
+      "primary_campus": 1,
+      "primary_department": 1,
+      "phone_number": "555-0201",
+      "can_assign_tickets": false,
+      "can_escalate_tickets": false,
+      "can_view_analytics": false,
+      "sections": [1]
+    }
+  },
+  {
+    "model": "tickets.customuser",
+    "pk": 13,
+    "fields": {
+      "password": "pbkdf2_sha256$1000000$newpasshash3$test",
+      "is_superuser": false,
+      "username": "tech_john",
+      "first_name": "John",
+      "last_name": "Plumber",
+      "email": "john.plumber@example.com",
+      "is_staff": true,
+      "is_active": true,
+      "date_joined": "2025-10-07T10:00:00Z",
+      "role": "technician",
+      "primary_campus": 1,
+      "primary_department": 2,
+      "phone_number": "555-0202",
+      "can_assign_tickets": false,
+      "can_escalate_tickets": false,
+      "can_view_analytics": false,
+      "sections": [2]
+    }
+  },
+  {
+    "model": "tickets.customuser",
+    "pk": 14,
+    "fields": {
+      "password": "pbkdf2_sha256$1000000$newpasshash4$test",
+      "is_superuser": false,
+      "username": "tech_carol",
+      "first_name": "Carol",
+      "last_name": "Electrician",
+      "email": "carol.electric@example.com",
+      "is_staff": true,
+      "is_active": true,
+      "date_joined": "2025-10-08T10:00:00Z",
+      "role": "technician",
+      "primary_campus": 1,
+      "primary_department": 2,
+      "phone_number": "555-0203",
+      "can_assign_tickets": false,
+      "can_escalate_tickets": false,
+      "can_view_analytics": false,
+      "sections": [3]
+    }
+  },
+  {
+    "model": "tickets.customuser",
+    "pk": 10,
+    "fields": {
+      "password": "pbkdf2_sha256$1000000$newpasshash5$test",
+      "is_superuser": false,
+      "username": "tech_robert",
+      "first_name": "Robert",
+      "last_name": "Carpenter",
+      "email": "robert.carpenter@example.com",
+      "is_staff": true,
+      "is_active": true,
+      "date_joined": "2025-10-09T10:00:00Z",
+      "role": "technician",
+      "primary_campus": 1,
+      "primary_department": 2,
+      "phone_number": "555-0204",
+      "can_assign_tickets": false,
+      "can_escalate_tickets": false,
+      "can_view_analytics": false,
+      "sections": [4]
+    }
+  },
+  {
+    "model": "tickets.ticket",
+    "pk": 1,
+    "fields": {
+      "ticket_no": "MAIN-IT-00001",
+      "title": "Office Network Outage",
+      "description": "Entire office unable to connect to network",
+      "section": 1,
+      "facility": 1,
+      "raised_by": 2,
+      "status": "in_progress",
+      "priority": "critical",
+      "created_at": "2025-10-10T08:00:00Z",
+      "updated_at": "2025-10-10T12:00:00Z",
+      "resolved_at": null,
+      "assigned_to": 12,
+      "escalation_level": 0,
+      "escalated_to": null,
+      "escalated_at": null,
+      "auto_escalation_enabled": true,
+      "next_escalation_due": "2025-10-12T08:00:00Z",
+      "escalation_threshold_hours": 48,
+      "escalation_reason": ""
+    }
+  },
+  {
+    "model": "tickets.ticket",
+    "pk": 2,
+    "fields": {
+      "ticket_no": "MAIN-IT-00002",
+      "title": "Server Temperature Alert",
+      "description": "Critical temperature alert from Data Center",
+      "section": 1,
+      "facility": 7,
+      "raised_by": 1,
+      "status": "open",
+      "priority": "critical",
+      "created_at": "2025-10-11T14:30:00Z",
+      "updated_at": "2025-10-11T14:30:00Z",
+      "resolved_at": null,
+      "assigned_to": null,
+      "escalation_level": 0,
+      "escalated_to": null,
+      "escalated_at": null,
+      "auto_escalation_enabled": true,
+      "next_escalation_due": "2025-10-13T14:30:00Z",
+      "escalation_threshold_hours": 48,
+      "escalation_reason": ""
+    }
+  },
+  {
+    "model": "tickets.ticket",
+    "pk": 3,
+    "fields": {
+      "ticket_no": "MAIN-MAINT-00001",
+      "title": "Leaking Faucet",
+      "description": "Kitchen sink faucet has continuous drip",
+      "section": 2,
+      "facility": 4,
+      "raised_by": 2,
+      "status": "closed",
+      "priority": "low",
+      "created_at": "2025-10-12T10:00:00Z",
+      "updated_at": "2025-10-12T14:30:00Z",
+      "resolved_at": "2025-10-12T14:30:00Z",
+      "assigned_to": 13,
+      "escalation_level": 0,
+      "escalated_to": null,
+      "escalated_at": null,
+      "auto_escalation_enabled": true,
+      "next_escalation_due": null,
+      "escalation_threshold_hours": 48,
+      "escalation_reason": ""
+    }
+  },
+  {
+    "model": "tickets.ticket",
+    "pk": 4,
+    "fields": {
+      "ticket_no": "MAIN-IT-00003",
+      "title": "Network Port Damage",
+      "description": "Wall port in Conference Room damaged",
+      "section": 1,
+      "facility": 6,
+      "raised_by": 1,
+      "status": "resolved",
+      "priority": "high",
+      "created_at": "2025-10-13T09:15:00Z",
+      "updated_at": "2025-10-13T16:45:00Z",
+      "resolved_at": "2025-10-13T16:45:00Z",
+      "assigned_to": 12,
+      "escalation_level": 0,
+      "escalated_to": null,
+      "escalated_at": null,
+      "auto_escalation_enabled": true,
+      "next_escalation_due": null,
+      "escalation_threshold_hours": 48,
+      "escalation_reason": ""
+    }
+  },
+  {
+    "model": "tickets.ticket",
+    "pk": 5,
+    "fields": {
+      "ticket_no": "MAIN-MAINT-00002",
+      "title": "AC Unit Malfunction",
+      "description": "HVAC unit in West Wing not cooling",
+      "section": 4,
+      "facility": 1,
+      "raised_by": 2,
+      "status": "assigned",
+      "priority": "high",
+      "created_at": "2025-10-14T11:00:00Z",
+      "updated_at": "2025-10-14T11:30:00Z",
+      "resolved_at": null,
+      "assigned_to": null,
+      "escalation_level": 0,
+      "escalated_to": null,
+      "escalated_at": null,
+      "auto_escalation_enabled": true,
+      "next_escalation_due": "2025-10-16T11:00:00Z",
+      "escalation_threshold_hours": 48,
+      "escalation_reason": ""
+    }
+  },
+  {
+    "model": "tickets.ticket",
+    "pk": 6,
+    "fields": {
+      "ticket_no": "MAIN-MAINT-00003",
+      "title": "Oven Element Burnout",
+      "description": "Cafeteria oven heating element not working",
+      "section": 4,
+      "facility": 9,
+      "raised_by": 1,
+      "status": "pending",
+      "priority": "normal",
+      "created_at": "2025-10-15T07:45:00Z",
+      "updated_at": "2025-10-15T15:00:00Z",
+      "resolved_at": null,
+      "assigned_to": null,
+      "escalation_level": 0,
+      "escalated_to": null,
+      "escalated_at": null,
+      "auto_escalation_enabled": true,
+      "next_escalation_due": "2025-10-17T07:45:00Z",
+      "escalation_threshold_hours": 48,
+      "escalation_reason": "",
+      "pending_reason": "Ordered replacement element - arrives Friday"
+    }
+  },
+  {
+    "model": "tickets.ticket",
+    "pk": 7,
+    "fields": {
+      "ticket_no": "MAIN-IT-00004",
+      "title": "Slow Internet Speed",
+      "description": "Internet connection running at half speed",
+      "section": 1,
+      "facility": 1,
+      "raised_by": 1,
+      "status": "resolved",
+      "priority": "normal",
+      "created_at": "2025-10-16T13:00:00Z",
+      "updated_at": "2025-10-16T17:00:00Z",
+      "resolved_at": "2025-10-16T17:00:00Z",
+      "assigned_to": 12,
+      "escalation_level": 0,
+      "escalated_to": null,
+      "escalated_at": null,
+      "auto_escalation_enabled": true,
+      "next_escalation_due": null,
+      "escalation_threshold_hours": 48,
+      "escalation_reason": ""
+    }
+  },
+  {
+    "model": "tickets.ticket",
+    "pk": 8,
+    "fields": {
+      "ticket_no": "MAIN-MAINT-00004",
+      "title": "Blocked Drainage",
+      "description": "Laundry room main drain backing up",
+      "section": 2,
+      "facility": 5,
+      "raised_by": 2,
+      "status": "open",
+      "priority": "high",
+      "created_at": "2025-10-17T09:30:00Z",
+      "updated_at": "2025-10-17T09:30:00Z",
+      "resolved_at": null,
+      "assigned_to": null,
+      "escalation_level": 0,
+      "escalated_to": null,
+      "escalated_at": null,
+      "auto_escalation_enabled": true,
+      "next_escalation_due": "2025-10-19T09:30:00Z",
+      "escalation_threshold_hours": 48,
+      "escalation_reason": ""
+    }
+  },
+  {
+    "model": "tickets.ticket",
+    "pk": 9,
+    "fields": {
+      "ticket_no": "MAIN-MAINT-00005",
+      "title": "Damaged Power Outlet",
+      "description": "Outlet casing near water cooler broken",
+      "section": 3,
+      "facility": 1,
+      "raised_by": 1,
+      "status": "assigned",
+      "priority": "high",
+      "created_at": "2025-10-18T10:15:00Z",
+      "updated_at": "2025-10-18T11:00:00Z",
+      "resolved_at": null,
+      "assigned_to": 14,
+      "escalation_level": 0,
+      "escalated_to": null,
+      "escalated_at": null,
+      "auto_escalation_enabled": true,
+      "next_escalation_due": "2025-10-20T10:15:00Z",
+      "escalation_threshold_hours": 48,
+      "escalation_reason": ""
+    }
+  },
+  {
+    "model": "tickets.ticket",
+    "pk": 10,
+    "fields": {
+      "ticket_no": "MAIN-IT-00005",
+      "title": "Software License Expiring",
+      "description": "Project management software license expires next week",
+      "section": 1,
+      "facility": 1,
+      "raised_by": 1,
+      "status": "open",
+      "priority": "normal",
+      "created_at": "2025-10-19T14:00:00Z",
+      "updated_at": "2025-10-19T14:00:00Z",
+      "resolved_at": null,
+      "assigned_to": null,
+      "escalation_level": 0,
+      "escalated_to": null,
+      "escalated_at": null,
+      "auto_escalation_enabled": true,
+      "next_escalation_due": "2025-10-21T14:00:00Z",
+      "escalation_threshold_hours": 48,
+      "escalation_reason": ""
+    }
+  },
+  {
+    "model": "tickets.ticket",
+    "pk": 11,
+    "fields": {
+      "ticket_no": "MAIN-MAINT-00006",
+      "title": "Door Lock Sticky",
+      "description": "Apartment entrance door lock difficult to turn",
+      "section": 2,
+      "facility": 4,
+      "raised_by": 2,
+      "status": "closed",
+      "priority": "low",
+      "created_at": "2025-10-20T08:30:00Z",
+      "updated_at": "2025-10-20T11:00:00Z",
+      "resolved_at": "2025-10-20T11:00:00Z",
+      "assigned_to": 13,
+      "escalation_level": 0,
+      "escalated_to": null,
+      "escalated_at": null,
+      "auto_escalation_enabled": true,
+      "next_escalation_due": null,
+      "escalation_threshold_hours": 48,
+      "escalation_reason": ""
+    }
+  },
+  {
+    "model": "tickets.ticket",
+    "pk": 12,
+    "fields": {
+      "ticket_no": "MAIN-MAINT-00007",
+      "title": "Cold Draft in Conference Room",
+      "description": "Cold air draft from windows in Conference Room B",
+      "section": 4,
+      "facility": 6,
+      "raised_by": 1,
+      "status": "in_progress",
+      "priority": "normal",
+      "created_at": "2025-10-21T12:00:00Z",
+      "updated_at": "2025-10-21T14:00:00Z",
+      "resolved_at": null,
+      "assigned_to": null,
+      "escalation_level": 0,
+      "escalated_to": null,
+      "escalated_at": null,
+      "auto_escalation_enabled": true,
+      "next_escalation_due": "2025-10-23T12:00:00Z",
+      "escalation_threshold_hours": 48,
+      "escalation_reason": ""
+    }
+  },
+  {
+    "model": "tickets.ticket",
+    "pk": 13,
+    "fields": {
+      "ticket_no": "MAIN-IT-00006",
+      "title": "Database Backup Failed",
+      "description": "Automated database backup failed with error 500",
+      "section": 1,
+      "facility": 7,
+      "raised_by": 1,
+      "status": "open",
+      "priority": "critical",
+      "created_at": "2025-10-22T02:30:00Z",
+      "updated_at": "2025-10-22T02:30:00Z",
+      "resolved_at": null,
+      "assigned_to": null,
+      "escalation_level": 0,
+      "escalated_to": null,
+      "escalated_at": null,
+      "auto_escalation_enabled": true,
+      "next_escalation_due": "2025-10-24T02:30:00Z",
+      "escalation_threshold_hours": 48,
+      "escalation_reason": ""
+    }
+  },
+  {
+    "model": "tickets.ticket",
+    "pk": 14,
+    "fields": {
+      "ticket_no": "MAIN-MAINT-00008",
+      "title": "Broken Shelf",
+      "description": "Kitchen cabinet shelf collapsed",
+      "section": 5,
+      "facility": 8,
+      "raised_by": 2,
+      "status": "assigned",
+      "priority": "normal",
+      "created_at": "2025-10-22T09:00:00Z",
+      "updated_at": "2025-10-22T10:30:00Z",
+      "resolved_at": null,
+      "assigned_to": 15,
+      "escalation_level": 0,
+      "escalated_to": null,
+      "escalated_at": null,
+      "auto_escalation_enabled": true,
+      "next_escalation_due": "2025-10-24T09:00:00Z",
+      "escalation_threshold_hours": 48,
+      "escalation_reason": ""
+    }
+  },
+  {
+    "model": "tickets.ticket",
+    "pk": 15,
+    "fields": {
+      "ticket_no": "MAIN-MAINT-00009",
+      "title": "Refrigerator Malfunction",
+      "description": "Main cafeteria refrigerator not maintaining temperature",
+      "section": 4,
+      "facility": 9,
+      "raised_by": 1,
+      "status": "in_progress",
+      "priority": "high",
+      "created_at": "2025-10-23T06:15:00Z",
+      "updated_at": "2025-10-23T08:45:00Z",
+      "resolved_at": null,
+      "assigned_to": null,
+      "escalation_level": 0,
+      "escalated_to": null,
+      "escalated_at": null,
+      "auto_escalation_enabled": true,
+      "next_escalation_due": "2025-10-25T06:15:00Z",
+      "escalation_threshold_hours": 48,
+      "escalation_reason": ""
+    }
+  },
+  {
+    "model": "tickets.ticket",
+    "pk": 16,
+    "fields": {
+      "ticket_no": "MAIN-MAINT-00010",
+      "title": "Fire Alarm False Trigger",
+      "description": "Fire alarm triggered twice without cause",
+      "section": 3,
+      "facility": 1,
+      "raised_by": 1,
+      "status": "resolved",
+      "priority": "urgent",
+      "created_at": "2025-10-23T14:00:00Z",
+      "updated_at": "2025-10-24T10:00:00Z",
+      "resolved_at": "2025-10-24T10:00:00Z",
+      "assigned_to": 14,
+      "escalation_level": 0,
+      "escalated_to": null,
+      "escalated_at": null,
+      "auto_escalation_enabled": true,
+      "next_escalation_due": null,
+      "escalation_threshold_hours": 48,
+      "escalation_reason": ""
+    }
+  },
+  {
+    "model": "tickets.ticket",
+    "pk": 17,
+    "fields": {
+      "ticket_no": "MAIN-IT-00007",
+      "title": "Wi-Fi Dead Zone",
+      "description": "No Wi-Fi signal in Conference Room corner",
+      "section": 1,
+      "facility": 6,
+      "raised_by": 1,
+      "status": "pending",
+      "priority": "normal",
+      "created_at": "2025-10-24T11:30:00Z",
+      "updated_at": "2025-10-25T09:00:00Z",
+      "resolved_at": null,
+      "assigned_to": 12,
+      "escalation_level": 0,
+      "escalated_to": null,
+      "escalated_at": null,
+      "auto_escalation_enabled": true,
+      "next_escalation_due": "2025-10-26T11:30:00Z",
+      "escalation_threshold_hours": 48,
+      "escalation_reason": "",
+      "pending_reason": "Waiting for access point delivery"
+    }
+  },
+  {
+    "model": "tickets.ticket",
+    "pk": 18,
+    "fields": {
+      "ticket_no": "NORTH-OPS-00001",
+      "title": "Treadmill Belt Slipping",
+      "description": "Gym equipment treadmill belt slipping",
+      "section": 6,
+      "facility": 10,
+      "raised_by": 2,
+      "status": "open",
+      "priority": "high",
+      "created_at": "2025-10-25T07:00:00Z",
+      "updated_at": "2025-10-25T07:00:00Z",
+      "resolved_at": null,
+      "assigned_to": null,
+      "escalation_level": 0,
+      "escalated_to": null,
+      "escalated_at": null,
+      "auto_escalation_enabled": true,
+      "next_escalation_due": "2025-10-27T07:00:00Z",
+      "escalation_threshold_hours": 48,
+      "escalation_reason": ""
+    }
+  },
+  {
+    "model": "tickets.ticket",
+    "pk": 19,
+    "fields": {
+      "ticket_no": "MAIN-MAINT-00011",
+      "title": "Water Heater Leaking",
+      "description": "Water heater in apartment leaking from bottom",
+      "section": 2,
+      "facility": 4,
+      "raised_by": 2,
+      "status": "closed",
+      "priority": "urgent",
+      "created_at": "2025-10-26T08:00:00Z",
+      "updated_at": "2025-10-27T15:30:00Z",
+      "resolved_at": "2025-10-27T15:30:00Z",
+      "assigned_to": 13,
+      "escalation_level": 0,
+      "escalated_to": null,
+      "escalated_at": null,
+      "auto_escalation_enabled": true,
+      "next_escalation_due": null,
+      "escalation_threshold_hours": 48,
+      "escalation_reason": ""
+    }
+  },
+  {
+    "model": "tickets.ticket",
+    "pk": 20,
+    "fields": {
+      "ticket_no": "MAIN-IT-00008",
+      "title": "Projector Display Issues",
+      "description": "Projector showing distorted colors and lines",
+      "section": 1,
+      "facility": 6,
+      "raised_by": 1,
+      "status": "resolved",
+      "priority": "normal",
+      "created_at": "2025-10-27T09:00:00Z",
+      "updated_at": "2025-10-27T16:00:00Z",
+      "resolved_at": "2025-10-27T16:00:00Z",
+      "assigned_to": 12,
+      "escalation_level": 0,
+      "escalated_to": null,
+      "escalated_at": null,
+      "auto_escalation_enabled": true,
+      "next_escalation_due": null,
+      "escalation_threshold_hours": 48,
+      "escalation_reason": ""
+    }
+  },
+  {
+    "model": "tickets.ticket",
+    "pk": 21,
+    "fields": {
+      "ticket_no": "MAIN-MAINT-00012",
+      "title": "Electrical Panel Noise",
+      "description": "Electrical panel making unusual buzzing sound",
+      "section": 3,
+      "facility": 1,
+      "raised_by": 1,
+      "status": "open",
+      "priority": "high",
+      "created_at": "2025-10-28T10:00:00Z",
+      "updated_at": "2025-10-28T10:00:00Z",
+      "resolved_at": null,
+      "assigned_to": null,
+      "escalation_level": 0,
+      "escalated_to": null,
+      "escalated_at": null,
+      "auto_escalation_enabled": true,
+      "next_escalation_due": "2025-10-30T10:00:00Z",
+      "escalation_threshold_hours": 48,
+      "escalation_reason": ""
+    }
+  },
+  {
+    "model": "tickets.ticket",
+    "pk": 22,
+    "fields": {
+      "ticket_no": "MAIN-MAINT-00013",
+      "title": "Dishwasher Not Draining",
+      "description": "Industrial dishwasher in cafeteria not draining",
+      "section": 2,
+      "facility": 9,
+      "raised_by": 2,
+      "status": "assigned",
+      "priority": "normal",
+      "created_at": "2025-10-29T06:30:00Z",
+      "updated_at": "2025-10-29T08:00:00Z",
+      "resolved_at": null,
+      "assigned_to": 13,
+      "escalation_level": 0,
+      "escalated_to": null,
+      "escalated_at": null,
+      "auto_escalation_enabled": true,
+      "next_escalation_due": "2025-10-31T06:30:00Z",
+      "escalation_threshold_hours": 48,
+      "escalation_reason": ""
+    }
+  },
+  {
+    "model": "tickets.ticket",
+    "pk": 23,
+    "fields": {
+      "ticket_no": "MAIN-MAINT-00014",
+      "title": "HVAC Making Noise",
+      "description": "Data Center HVAC unit producing loud rattling noise",
+      "section": 4,
+      "facility": 7,
+      "raised_by": 1,
+      "status": "in_progress",
+      "priority": "high",
+      "created_at": "2025-10-30T11:00:00Z",
+      "updated_at": "2025-10-30T13:00:00Z",
+      "resolved_at": null,
+      "assigned_to": null,
+      "escalation_level": 0,
+      "escalated_to": null,
+      "escalated_at": null,
+      "auto_escalation_enabled": true,
+      "next_escalation_due": "2025-11-01T11:00:00Z",
+      "escalation_threshold_hours": 48,
+      "escalation_reason": ""
+    }
+  },
+  {
+    "model": "tickets.ticket",
+    "pk": 24,
+    "fields": {
+      "ticket_no": "MAIN-MAINT-00015",
+      "title": "Loose Door Handle",
+      "description": "Main entrance door handle loose and needs tightening",
+      "section": 6,
+      "facility": 8,
+      "raised_by": 2,
+      "status": "closed",
+      "priority": "low",
+      "created_at": "2025-10-31T08:00:00Z",
+      "updated_at": "2025-10-31T10:30:00Z",
+      "resolved_at": "2025-10-31T10:30:00Z",
+      "assigned_to": null,
+      "escalation_level": 0,
+      "escalated_to": null,
+      "escalated_at": null,
+      "auto_escalation_enabled": true,
+      "next_escalation_due": null,
+      "escalation_threshold_hours": 48,
+      "escalation_reason": ""
+    }
+  },
+  {
+    "model": "tickets.ticket",
+    "pk": 25,
+    "fields": {
+      "ticket_no": "MAIN-IT-00009",
+      "title": "Printer Offline",
+      "description": "Network printer in office block keeps going offline",
+      "section": 1,
+      "facility": 1,
+      "raised_by": 2,
+      "status": "pending",
+      "priority": "normal",
+      "created_at": "2025-11-01T09:15:00Z",
+      "updated_at": "2025-11-02T11:00:00Z",
+      "resolved_at": null,
+      "assigned_to": 12,
+      "escalation_level": 0,
+      "escalated_to": null,
+      "escalated_at": null,
+      "auto_escalation_enabled": true,
+      "next_escalation_due": "2025-11-03T09:15:00Z",
+      "escalation_threshold_hours": 48,
+      "escalation_reason": "",
+      "pending_reason": "Ordered replacement network module"
+    }
+  }
+]

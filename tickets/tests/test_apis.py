@@ -1072,3 +1072,244 @@ class APITests(APITestCase):
         response = self.client.patch(url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["status"], "resolved")
+
+
+class BulkOperationsTestCase(APITestCase):
+    """Test case for bulk operations on tickets"""
+
+    def setUp(self):
+        """Set up test data"""
+        # Reset Postgres sequence
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "ALTER SEQUENCE tickets_ticket_id_seq RESTART WITH 1;")
+
+        self.client = APIClient()
+
+        # Create test users
+        self.user = CustomUser.objects.create_user(
+            username="testuser", email="testuser@example.com", password="testpassword"
+        )
+
+        self.technician = CustomUser.objects.create_user(
+            username="techuser",
+            email="techuser@example.com",
+            password="techpassword",
+            role="technician",
+        )
+
+        self.admin = CustomUser.objects.create_user(
+            username="adminuser",
+            email="adminuser@example.com",
+            password="adminpassword",
+            role="admin",
+        )
+
+        # Create section and facility
+        self.section = Section.objects.create(
+            name="IT", description="Information Technology"
+        )
+
+        self.facility = Facility.objects.create(
+            name="Main Office", type="Office", status="Active", location="Building A"
+        )
+
+        # Assign technician to section
+        self.technician.sections.set([self.section.id])
+        self.technician.save()
+
+        # Create multiple tickets for bulk operations
+        self.tickets = []
+        for i in range(5):
+            ticket = Ticket.objects.create(
+                title=f"Test Ticket {i+1}",
+                description=f"This is test ticket {i+1}.",
+                section=self.section,
+                facility=self.facility,
+                raised_by=self.user,
+                status="open",
+            )
+            self.tickets.append(ticket)
+
+    def test_bulk_status_update_requires_authentication(self):
+        """Test that bulk status update requires authentication"""
+        url = reverse("bulk-status-update")
+        data = {
+            "ticket_ids": [self.tickets[0].id],
+            "new_status": "resolved",
+        }
+
+        response = self.client.post(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_bulk_status_update_requires_permission(self):
+        """Test that regular users cannot perform bulk operations"""
+        self.client.login(username="testuser", password="testpassword")
+
+        url = reverse("bulk-status-update")
+        data = {
+            "ticket_ids": [self.tickets[0].id],
+            "new_status": "resolved",
+        }
+
+        response = self.client.post(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_bulk_status_update_missing_ticket_ids(self):
+        """Test that ticket_ids is required"""
+        self.client.login(username="adminuser", password="adminpassword")
+
+        url = reverse("bulk-status-update")
+        data = {
+            "new_status": "resolved",
+        }
+
+        response = self.client.post(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("ticket_ids", response.data["error"])
+
+    def test_bulk_status_update_missing_new_status(self):
+        """Test that new_status is required"""
+        self.client.login(username="adminuser", password="adminpassword")
+
+        url = reverse("bulk-status-update")
+        data = {
+            "ticket_ids": [self.tickets[0].id],
+        }
+
+        response = self.client.post(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("new_status", response.data["error"])
+
+    def test_bulk_status_update_invalid_ticket_ids_type(self):
+        """Test that ticket_ids must be a list"""
+        self.client.login(username="adminuser", password="adminpassword")
+
+        url = reverse("bulk-status-update")
+        data = {
+            "ticket_ids": self.tickets[0].id,  # Should be a list
+            "new_status": "resolved",
+        }
+
+        response = self.client.post(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("ticket_ids must be a list", response.data["error"])
+
+    def test_bulk_status_update_admin_success(self):
+        """Test successful bulk status update by admin"""
+        self.client.login(username="adminuser", password="adminpassword")
+
+        url = reverse("bulk-status-update")
+        ticket_ids = [self.tickets[0].id,
+                      self.tickets[1].id, self.tickets[2].id]
+        data = {
+            "ticket_ids": ticket_ids,
+            "new_status": "resolved",
+        }
+
+        response = self.client.post(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data["success"])
+        self.assertEqual(response.data["updated"], 3)
+        self.assertEqual(response.data["failed"], 0)
+        self.assertEqual(len(response.data["errors"]), 0)
+
+        # Verify tickets were updated
+        for ticket_id in ticket_ids:
+            ticket = Ticket.objects.get(id=ticket_id)
+            self.assertEqual(ticket.status, "resolved")
+
+    def test_bulk_status_update_technician_success(self):
+        """Test that technician can perform bulk status update"""
+        self.client.login(username="techuser", password="techpassword")
+
+        url = reverse("bulk-status-update")
+        # First assign tickets to technician
+        for ticket in self.tickets[:3]:
+            ticket.assigned_to = self.technician
+            ticket.status = "assigned"
+            ticket.save()
+
+        ticket_ids = [self.tickets[0].id,
+                      self.tickets[1].id, self.tickets[2].id]
+        data = {
+            "ticket_ids": ticket_ids,
+            "new_status": "in_progress",
+        }
+
+        response = self.client.post(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data["success"])
+        self.assertEqual(response.data["updated"], 3)
+
+    def test_bulk_status_update_nonexistent_tickets(self):
+        """Test bulk update with some nonexistent tickets"""
+        self.client.login(username="adminuser", password="adminpassword")
+
+        url = reverse("bulk-status-update")
+        ticket_ids = [self.tickets[0].id, 9999]  # 9999 doesn't exist
+        data = {
+            "ticket_ids": ticket_ids,
+            "new_status": "resolved",
+        }
+
+        response = self.client.post(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("not accessible or do not exist", response.data["error"])
+
+    def test_bulk_status_update_partial_failure(self):
+        """Test bulk update with some failing transitions"""
+        self.client.login(username="adminuser", password="adminpassword")
+
+        url = reverse("bulk-status-update")
+
+        # Set one ticket to closed (cannot transition from closed)
+        self.tickets[2].status = "closed"
+        self.tickets[2].save()
+
+        ticket_ids = [
+            self.tickets[0].id,
+            self.tickets[1].id,
+            self.tickets[2].id,
+        ]
+        data = {
+            "ticket_ids": ticket_ids,
+            "new_status": "in_progress",
+        }
+
+        response = self.client.post(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Some should succeed, some should fail
+        self.assertGreater(response.data["updated"], 0)
+        self.assertGreater(response.data["failed"], 0)
+        self.assertEqual(response.data["updated"] +
+                         response.data["failed"], 3)
+
+    def test_bulk_status_update_empty_list(self):
+        """Test bulk update with empty ticket list"""
+        self.client.login(username="adminuser", password="adminpassword")
+
+        url = reverse("bulk-status-update")
+        data = {
+            "ticket_ids": [],
+            "new_status": "resolved",
+        }
+
+        response = self.client.post(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_bulk_status_update_large_batch(self):
+        """Test bulk update with all tickets at once"""
+        self.client.login(username="adminuser", password="adminpassword")
+
+        url = reverse("bulk-status-update")
+        ticket_ids = [ticket.id for ticket in self.tickets]
+        data = {
+            "ticket_ids": ticket_ids,
+            "new_status": "resolved",
+        }
+
+        response = self.client.post(url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data["success"])
+        self.assertEqual(response.data["updated"], len(self.tickets))

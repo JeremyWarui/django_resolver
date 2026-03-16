@@ -26,6 +26,11 @@ from tickets.api.views.index import (
     UserListCreateView,
     UserDetailView,
     TechniciansBySectionView,
+    BulkTicketStatusUpdateView,
+    OrganizationalTicketListView,
+    AssignableUsersView,
+    OrganizationalAnalyticsView,
+    EscalateTicketView,
 )
 
 # Import analytics views
@@ -33,6 +38,9 @@ from tickets.api.analytics.index import (
     TicketAnalyticsView,
     TechnicianAnalyticsView,
     AdminDashboardAnalyticsView,
+    DirectorDashboardView,
+    HODDashboardView,
+    SectionHeadDashboardView,
 )
 
 # Import report views
@@ -63,6 +71,30 @@ urlpatterns = [
     # TICKET ESCALATION
     path("tickets/<int:ticket_id>/escalate/",
          TicketEscalationView.as_view(), name="ticket-escalate"),
+    # BULK OPERATIONS
+    path("tickets/bulk-status-update/",
+         BulkTicketStatusUpdateView.as_view(), name="bulk-status-update"),
+    # ORGANIZATIONAL ENDPOINTS (Phase 6)
+    path(
+        "tickets/organizational/list/",
+        OrganizationalTicketListView.as_view(),
+        name="organizational-ticket-list",
+    ),
+    path(
+        "tickets/<int:ticket_id>/escalate-manual/",
+        EscalateTicketView.as_view(),
+        name="escalate-ticket-manual",
+    ),
+    path(
+        "assignable-users/",
+        AssignableUsersView.as_view(),
+        name="assignable-users",
+    ),
+    path(
+        "analytics/organizational/",
+        OrganizationalAnalyticsView.as_view(),
+        name="analytics-organizational",
+    ),
     # COMMENT
     path("comments/", CommentListCreateView.as_view(), name="comment-list"),
     # FEEDBACK
@@ -99,6 +131,22 @@ urlpatterns = [
         "analytics/admin-dashboard/",
         AdminDashboardAnalyticsView.as_view(),
         name="analytics-admin",
+    ),
+    # ORGANIZATIONAL ANALYTICS ENDPOINTS
+    path(
+        "analytics/director/",
+        DirectorDashboardView.as_view(),
+        name="analytics-director",
+    ),
+    path(
+        "analytics/hod/",
+        HODDashboardView.as_view(),
+        name="analytics-hod",
+    ),
+    path(
+        "analytics/section-head/",
+        SectionHeadDashboardView.as_view(),
+        name="analytics-section-head",
     ),
     # REPORT ENDPOINTS
     path("reports/generate/", GenerateReportView.as_view(), name="report-generate"),

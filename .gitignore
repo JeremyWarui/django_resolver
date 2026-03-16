@@ -42,7 +42,7 @@ docs/DEFAULT_CREDENTIALS.md
 # 🔑 IGNORE FIXTURE JSON FILES WITH SENSITIVE DATA (PASSWORDS)
 # Excludes JSON fixtures within the 'tickets' app's fixtures directory.
 tickets/fixtures/tickets_initial_data.json
-
+tickets/fixtures/tickets_additional_data.json
 
 # Environment
 venv/

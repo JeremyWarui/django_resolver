@@ -267,21 +267,11 @@ class Ticket(models.Model):
         ("escalated", "Escalated"),  # New status
     ]
 
-    PRIORITY_CHOICES = [
-        ("low", "Low"),
-        ("normal", "Normal"),
-        ("high", "High"),
-        ("urgent", "Urgent"),
-        ("critical", "Critical"),
-    ]
-
     # Core ticket information
     # Format: CAMPUS-DEPT-XXXXX
     ticket_no = models.CharField(max_length=15, unique=True, editable=False)
     title = models.CharField(max_length=100)
     description = models.TextField(max_length=500)  # Extended description
-    priority = models.CharField(
-        max_length=10, choices=PRIORITY_CHOICES, default="normal")
 
     # Organizational context
     section = models.ForeignKey(
@@ -355,8 +345,6 @@ class Ticket(models.Model):
                          name='ticket_assignment_idx'),
             models.Index(
                 fields=['escalation_level', '-escalated_at'], name='ticket_escalation_idx'),
-            models.Index(fields=['priority', '-created_at'],
-                         name='ticket_priority_idx'),
             models.Index(fields=[
                          'next_escalation_due', 'auto_escalation_enabled'], name='ticket_auto_escalation_idx'),
             # Keep existing status index
@@ -510,22 +498,16 @@ class Ticket(models.Model):
 
     @property
     def is_overdue(self):
-        """Check if ticket is overdue based on organizational SLA"""
+        """Check if ticket is overdue (exceeds 7 days without resolution)"""
         if self.status in ['resolved', 'closed']:
             return False
 
-        # SLA hours based on priority
-        sla_hours = {
-            'critical': 4,
-            'urgent': 24,
-            'high': 48,
-            'normal': 72,
-            'low': 120
-        }
+        # Standard 7-day SLA for all tickets
+        sla_hours = 7 * 24  # 7 days
 
         hours_since_creation = (
             timezone.now() - self.created_at).total_seconds() / 3600
-        return hours_since_creation > sla_hours.get(self.priority, 72)
+        return hours_since_creation > sla_hours
 
     @property
     def organizational_path(self):

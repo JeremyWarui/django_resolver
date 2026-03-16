@@ -62,7 +62,6 @@ class TicketFilter(filters.FilterSet, OrganizationalScopeFilterMixin):
 
     Supports filtering by:
     - status: open, assigned, in_progress, pending, resolved, closed
-    - priority: low, medium, high, critical
     - escalation_level: 0 (none), 1 (section_head), 2 (hod)
     - escalation_status: not escalated, escalated to section head, escalated to hod
     - assigned_to: specific technician
@@ -73,11 +72,6 @@ class TicketFilter(filters.FilterSet, OrganizationalScopeFilterMixin):
     status = filters.ChoiceFilter(
         choices=Ticket.STATUS_CHOICES,
         help_text="Filter by ticket status"
-    )
-
-    priority = filters.ChoiceFilter(
-        choices=Ticket.PRIORITY_CHOICES,
-        help_text="Filter by ticket priority"
     )
 
     escalation_level = filters.NumberFilter(
@@ -117,7 +111,7 @@ class TicketFilter(filters.FilterSet, OrganizationalScopeFilterMixin):
 
     class Meta:
         model = Ticket
-        fields = ['status', 'priority',
+        fields = ['status',
                   'escalation_level', 'section', 'assigned_to']
 
     def filter_by_escalation_status(self, queryset, name, value):

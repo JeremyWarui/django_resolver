@@ -58,7 +58,6 @@ class OrganizationalTicketService:
         created_by: CustomUser,
         section,
         facility,
-        priority: str = 'medium',
         enable_auto_escalation: bool = True
     ) -> Ticket:
         """
@@ -69,7 +68,6 @@ class OrganizationalTicketService:
             created_by: User creating the ticket
             section: Section object ticket belongs to
             facility: Facility object ticket is for
-            priority: Ticket priority (low/medium/high/critical)
             enable_auto_escalation: Whether to enable auto-escalation (default: True)
 
         Returns:
@@ -100,7 +98,6 @@ class OrganizationalTicketService:
                 section=section,
                 facility=facility,
                 raised_by=created_by,
-                priority=priority,
                 auto_escalation_enabled=enable_auto_escalation,
                 status='open'
             )
@@ -109,13 +106,7 @@ class OrganizationalTicketService:
             TicketLog.objects.create(
                 ticket=ticket,
                 action='created',
-                changed_by=created_by,
-                details={
-                    'section': section.name,
-                    'facility': facility.name,
-                    'priority': priority,
-                    'auto_escalation_enabled': enable_auto_escalation
-                }
+                performed_by=created_by
             )
 
             return ticket
@@ -231,8 +222,12 @@ class OrganizationalTicketService:
 
         with transaction.atomic():
             # Use model's atomic helper
+            # is_auto_escalation is True when manual=False (auto-escalation)
             ticket.escalate(
-                reason=reason, escalated_by=escalated_by, is_manual=manual)
+                escalated_by=escalated_by,
+                reason=reason,
+                is_auto_escalation=not manual
+            )
 
             return ticket
 
@@ -277,9 +272,8 @@ class OrganizationalTicketService:
             if closure_notes:
                 TicketLog.objects.create(
                     ticket=ticket,
-                    action='closed',
-                    changed_by=closed_by,
-                    details={'closure_notes': closure_notes}
+                    action=f'closed - {closure_notes}',
+                    performed_by=closed_by
                 )
 
             return ticket
@@ -333,13 +327,8 @@ class OrganizationalTicketService:
                 # Log auto-escalation event
                 TicketLog.objects.create(
                     ticket=ticket,
-                    action='auto_escalated',
-                    changed_by=system_user,
-                    details={
-                        'escalation_level': ticket.escalation_level,
-                        'escalated_to': str(ticket.escalated_to),
-                        'next_escalation_due': str(ticket.next_escalation_due)
-                    }
+                    action=f'auto_escalated to level {ticket.escalation_level}',
+                    performed_by=system_user
                 )
 
             except Exception as e:
@@ -395,8 +384,6 @@ class OrganizationalTicketService:
         if filters:
             if 'status' in filters:
                 queryset = queryset.filter(status=filters['status'])
-            if 'priority' in filters:
-                queryset = queryset.filter(priority=filters['priority'])
             if 'section_id' in filters:
                 queryset = queryset.filter(section_id=filters['section_id'])
             if 'facility_id' in filters:
@@ -447,6 +434,197 @@ class OrganizationalTicketService:
             return facility.department == user.primary_department
         elif user.role in ['technician', 'user']:
             return facility.campus == user.primary_campus
+
+        return False
+
+    @staticmethod
+    def update_ticket_status(
+        ticket: Ticket,
+        new_status: str,
+        updated_by: CustomUser,
+        notes: Optional[str] = None
+    ) -> Ticket:
+        """
+        Update ticket status with proper validation and logging.
+
+        Validates status transitions and ensures user has permission.
+
+        Args:
+            ticket: Ticket to update
+            new_status: New status value
+            updated_by: User performing the update
+            notes: Optional notes about the status change
+
+        Returns:
+            Updated Ticket object
+
+        Raises:
+            PermissionDenied: User lacks permission to change status
+            ValidationError: Invalid status transition
+        """
+        from tickets.api.services.ticket_services import validate_status_transition
+
+        old_status = ticket.status
+
+        # Validate status transition
+        is_valid, error_msg = validate_status_transition(
+            old_status, new_status, updated_by.role)
+        if not is_valid:
+            raise ValidationError(error_msg)
+
+        # Check permission for this specific transition
+        if new_status == 'closed' and updated_by.role not in ['admin', 'manager']:
+            raise PermissionDenied("Only admins/managers can close tickets")
+
+        if new_status in ['pending', 'in_progress', 'resolved'] and updated_by.role not in ['technician', 'admin', 'manager', 'section_head', 'hod']:
+            raise PermissionDenied(
+                f"User cannot change status to '{new_status}'")
+
+        # Perform status change
+        with transaction.atomic():
+            ticket.change_status(new_status, performed_by=updated_by)
+
+            # Log additional context if provided
+            if notes:
+                TicketLog.objects.create(
+                    ticket=ticket,
+                    action=f'{old_status} → {new_status}: {notes}',
+                    performed_by=updated_by
+                )
+
+        return ticket
+
+    @staticmethod
+    def bulk_update_status(
+        ticket_ids: List[int],
+        new_status: str,
+        updated_by: CustomUser,
+        reason: Optional[str] = None
+    ) -> Dict[str, any]:
+        """
+        Bulk update ticket status for multiple tickets.
+
+        Args:
+            ticket_ids: List of ticket IDs to update
+            new_status: New status for all tickets
+            updated_by: User performing the update
+            reason: Reason for bulk update
+
+        Returns:
+            Dictionary with update statistics
+        """
+        results = {
+            'processed': 0,
+            'updated': 0,
+            'failed': 0,
+            'errors': []
+        }
+
+        # Validate user can bulk update
+        if updated_by.role not in ['admin', 'manager']:
+            raise PermissionDenied(
+                "Only admins/managers can bulk update tickets")
+
+        for ticket_id in ticket_ids:
+            results['processed'] += 1
+            try:
+                ticket = Ticket.objects.get(id=ticket_id)
+
+                # Verify user has scope access to ticket
+                if not OrganizationalTicketService._user_can_access_scope_for_ticket(updated_by, ticket):
+                    results['failed'] += 1
+                    results['errors'].append(
+                        f"Ticket {ticket.ticket_no}: Insufficient scope access")
+                    continue
+
+                # Update status
+                OrganizationalTicketService.update_ticket_status(
+                    ticket=ticket,
+                    new_status=new_status,
+                    updated_by=updated_by,
+                    notes=f"Bulk update: {reason}" if reason else None
+                )
+                results['updated'] += 1
+
+            except Ticket.DoesNotExist:
+                results['failed'] += 1
+                results['errors'].append(f"Ticket ID {ticket_id}: Not found")
+            except (ValidationError, PermissionDenied) as e:
+                results['failed'] += 1
+                results['errors'].append(f"Ticket ID {ticket_id}: {str(e)}")
+
+        return results
+
+    @staticmethod
+    def _notify_ticket_creation(ticket: Ticket) -> None:
+        """
+        Send notification when ticket is created.
+
+        Notifies:
+        - Section head (if exists)
+        - HOD (if exists) 
+
+        Args:
+            ticket: Newly created ticket
+        """
+        try:
+            if ticket.section and ticket.section.section_head:
+                # Log notification event (actual email sending handled elsewhere)
+                TicketLog.objects.create(
+                    ticket=ticket,
+                    action='notification: ticket created',
+                    performed_by=ticket.raised_by
+                )
+        except Exception as e:
+            # Log notification error but don't fail the ticket creation
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(
+                f"Failed to notify on ticket creation {ticket.ticket_no}: {str(e)}")
+
+    @staticmethod
+    def _notify_escalation(ticket: Ticket) -> None:
+        """
+        Send notification when ticket is escalated.
+
+        Notifies escalation recipient with escalation details.
+
+        Args:
+            ticket: Escalated ticket
+        """
+        try:
+            if ticket.escalated_to:
+                # Log escalation notification
+                TicketLog.objects.create(
+                    ticket=ticket,
+                    action=f'notification: escalated to {ticket.escalated_to.username}',
+                    performed_by=ticket.escalated_to
+                )
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(
+                f"Failed to notify on ticket escalation {ticket.ticket_no}: {str(e)}")
+
+    @staticmethod
+    def _user_can_access_scope_for_ticket(user: CustomUser, ticket: Ticket) -> bool:
+        """Check if user can access ticket based on organizational scope"""
+        if user.role == 'admin':
+            return True
+
+        if not ticket.section or not ticket.section.department:
+            return False
+
+        if user.role == 'director':
+            return ticket.section.department.campus.organization == user.primary_campus.organization
+        elif user.role == 'hod':
+            return ticket.section.department.campus == user.primary_campus
+        elif user.role == 'section_head':
+            return ticket.section.department == user.primary_department
+        elif user.role == 'technician':
+            return ticket.section in user.sections.all()
+        elif user.role == 'manager':
+            return True  # Manager can access all (for bulk operations)
 
         return False
 

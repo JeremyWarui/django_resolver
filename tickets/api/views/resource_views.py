@@ -120,8 +120,8 @@ class TicketListCreateView(ListCreateAPIView):
     pagination_class = TicketPagination
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ['status', 'section',
-                        'assigned_to', 'raised_by', 'priority']
-    ordering_fields = ['created_at', 'updated_at', 'status', 'priority']
+                        'assigned_to', 'raised_by']
+    ordering_fields = ['created_at', 'updated_at', 'status']
     ordering = ['-updated_at']  # Default ordering
     permission_classes = [IsWithinOrganizationalScope, IsAuthenticated]
 
@@ -146,10 +146,6 @@ class TicketListCreateView(ListCreateAPIView):
         status = self.request.query_params.get('status')
         if status:
             filters['status'] = status
-
-        priority = self.request.query_params.get('priority')
-        if priority:
-            filters['priority'] = priority
 
         # Get tickets accessible to user based on organizational scope
         queryset = OrganizationalTicketService.get_accessible_tickets(
@@ -194,7 +190,6 @@ class TicketListCreateView(ListCreateAPIView):
                 created_by=user,
                 section=section,
                 facility=facility,
-                priority=serializer.validated_data.get('priority', 'medium'),
                 enable_auto_escalation=serializer.validated_data.get(
                     'auto_escalation_enabled', True)
             )
@@ -392,3 +387,101 @@ class TechniciansBySectionView(generics.ListAPIView):
             queryset = queryset.filter(sections__id=section_id)
 
         return queryset.distinct().order_by('username')
+
+
+# --------------------------------
+# BULK OPERATIONS API
+# ----------------------------------
+
+class BulkTicketStatusUpdateView(CreateAPIView):
+    """
+    Bulk update ticket statuses.
+
+    POST /api/tickets/bulk-status-update/
+    {
+        "ticket_ids": [1, 2, 3],
+        "new_status": "resolved"
+    }
+
+    Returns:
+    {
+        "success": true,
+        "updated": 3,
+        "failed": 0,
+        "errors": []
+    }
+
+    Only admins, managers, and technicians can use this endpoint.
+    """
+    permission_classes = [IsTechnicianOrAdmin, IsAuthenticated]
+    serializer_class = serializers.Serializer  # Use generic serializer for request
+
+    def create(self, request, *args, **kwargs):
+        """Handle bulk status update"""
+        try:
+            # Validate request data
+            ticket_ids = request.data.get('ticket_ids', [])
+            new_status = request.data.get('new_status')
+
+            if not ticket_ids:
+                return Response(
+                    {'error': 'ticket_ids list is required'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if not new_status:
+                return Response(
+                    {'error': 'new_status is required'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if not isinstance(ticket_ids, list):
+                return Response(
+                    {'error': 'ticket_ids must be a list'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Fetch tickets and filter by organizational scope
+            user_accessible_tickets = OrganizationalTicketService.get_accessible_tickets(
+                request.user, {})
+            tickets = user_accessible_tickets.filter(id__in=ticket_ids)
+
+            if tickets.count() != len(ticket_ids):
+                return Response(
+                    {'error': f'Some tickets are not accessible or do not exist. Found {tickets.count()} of {len(ticket_ids)}'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            updated_count = 0
+            failed_count = 0
+            errors = []
+
+            # Update each ticket
+            for ticket in tickets:
+                try:
+                    # Use the ticket's change_status helper for atomic updates
+                    ticket.change_status(new_status, performed_by=request.user)
+                    updated_count += 1
+                except Exception as e:
+                    failed_count += 1
+                    errors.append({
+                        'ticket_id': ticket.id,
+                        'ticket_no': ticket.ticket_no,
+                        'error': str(e)
+                    })
+
+            return Response(
+                {
+                    'success': failed_count == 0,
+                    'updated': updated_count,
+                    'failed': failed_count,
+                    'errors': errors
+                },
+                status=status.HTTP_200_OK
+            )
+
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )

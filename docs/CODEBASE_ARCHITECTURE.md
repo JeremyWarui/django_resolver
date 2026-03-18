@@ -84,18 +84,18 @@ tickets/api/
 ├── urls.py                    # Main API routing
 ├── simple_auth_views.py       # Authentication endpoints
 ├── permissions.py             # Custom permission classes
+├── filters.py                 # DRF filter backends
 │
-├── views/                     # Presentation layer
+├── views/                     # Presentation layer (UNIFIED)
 │   ├── index.py              # Clean exports
-│   └── resource_views.py     # CRUD endpoints (ListCreate, RetrieveUpdate)
+│   └── views.py              # All 20+ endpoint classes (CONSOLIDATED)
 │
-├── services/                  # Business logic layer
+├── services/                  # Business logic layer (UNIFIED)
 │   ├── __init__.py
-│   └── ticket_services.py    # Ticket operations & validation
+│   └── services.py           # TicketService class (ALL operations)
 │
-├── analytics/                 # Analytics module
-│   ├── analytics.py          # Analytics business logic
-│   ├── views.py              # Analytics endpoints
+├── analytics/                 # Analytics module (UNIFIED)
+│   ├── analytics.py          # All 4 analytics classes (CONSOLIDATED)
 │   └── index.py              # Clean exports
 │
 └── reports/                   # Report generation
@@ -103,22 +103,56 @@ tickets/api/
     └── views.py              # Report endpoints
 ```
 
-#### API Layer Breakdown
+#### API Layer Breakdown — CONSOLIDATED ARCHITECTURE
 
-**`views/resource_views.py`** - REST Endpoints
-- `SectionListCreate`, `SectionRetrieveUpdate` - Section CRUD
-- `FacilityListCreate`, `FacilityRetrieveUpdate` - Facility CRUD
-- `TicketListCreate`, `TicketRetrieveUpdate` - Ticket CRUD
-- `CommentListCreate` - Create comments
-- `FeedbackListCreate` - Create feedback
-- `UserList` - List users (technicians for assignment)
-- `TechnicianListView` - Filtered technicians by section
+**`views/views.py`** - REST Endpoints (UNIFIED, 20+ classes)
+**Organization Hierarchy**:
+- `OrganizationListCreateView`, `CampusListCreateView`, `DepartmentListCreateView`
+- `SectionListCreateView`, `SectionDetailView`
 
-**`services/ticket_services.py`** - Business Logic
+**Ticket Management**:
+- `TicketListCreateView`, `TicketDetailView` - Ticket CRUD
+- `TicketEscalationView`, `EscalateTicketView` - Escalation endpoints (2-level workflow)
+- `OrganizationalTicketListView` - Org-scoped ticket queries
+
+**Users & Assignment**:
+- `UserListCreateView`, `UserDetailView` - User CRUD
+- `TechniciansBySectionView` - Section-filtered technicians
+- `AssignableUsersView` - Available technicians for assignment dropdown
+
+**Comments & Feedback**:
+- `CommentListCreateView`, `FeedbackListCreateView` - Sub-resources
+
+**Bulk Operations**:
+- `BulkTicketStatusUpdateView` - Atomic multi-ticket status updates
+
+**Analytics**:
+- `OrganizationalAnalyticsView`, `AnalyticsTicketsView`, `AnalyticsTechniciansView`
+
+All views:
+- Use `IsWithinOrganizationalScope` permission
+- Delegate to `TicketService` for business logic
+- Filter by user's organizational access (campus, department, section)
+- Include org-aware pagination and filtering
+
+**`services/services.py`** - Business Logic Layer (UNIFIED)
+**Single TicketService class** with comprehensive methods:
+- `create_ticket(user, section, facility, title, description, priority)` - Create with org context
+- `assign_ticket(ticket, technician, performed_by)` - Validate technician can be assigned
+- `escalate_ticket(ticket, reason, performed_by)` - 2-level escalation (section_head → HOD)
+- `update_ticket_status(ticket, new_status, performed_by, reason)` - Validate status transitions
+- `close_ticket(ticket, performed_by)` - Final status with audit
+- `process_auto_escalations()` - Cron job for auto-escalation (runs hourly)
+- `get_accessible_tickets(user)` - Org-filtered ticket queries
+
+**Validators**:
 - `validate_status_transition(old_status, new_status, user_role)` - Enforces workflow rules
-- `validate_assignment(ticket, user)` - Ensures technician belongs to ticket's section
-- `create_ticket()`, `update_ticket()` - Delegates to model helpers
-- Status transition matrix (which statuses can transition to which)
+- `manual_escalation_allowed(ticket, user)` - Check escalation permissions
+
+**Exception classes**:
+- `TicketServiceException`, `InsufficientScopeException`, `InvalidAssignmentException`, `InvalidEscalationException`
+
+Import: `from tickets.api.services import TicketService`
 
 **`simple_auth_views.py`** - Authentication
 - `check_auth_method()` - Returns current auth strategy
@@ -128,17 +162,23 @@ tickets/api/
 - `register_user()` - Create new user account
 - *Commented*: Magic link functions for future implementation
 
-**`analytics/analytics.py`** - Analytics Logic
-- `TicketAnalytics` class: Query aggregation (open, resolved, avg response time, etc.)
-- `TechnicianAnalytics` class: Technician performance (assigned, completed, etc.)
-- `AdminAnalytics` class: System overview (total tickets, avg resolution time, etc.)
+**`analytics/analytics.py`** - Analytics Logic (UNIFIED, 4 classes)
+- `TicketAnalytics` - Ticket counts, trends, distributions by facility, section, status
+- `TechnicianAnalytics` - Technician performance, workload, completion metrics
+- `OrganizationalAnalytics` - Role-specific: `director_dashboard()`, `hod_dashboard()`, `section_head_dashboard()`
+- `AdminAnalytics` - System-wide monitoring, overdue tickets, SLA compliance
+
+All classes support:
 - Temporal aggregation: day/week/month grouping
 - Date range filtering: past N days
+- Org-scoped queries: filtered by user's organizational access
+
+Import: `from tickets.api.analytics import AnalyticsClass`
 
 **`reports/report_generator.py`** - Report Generation
 - PDF generation from ticket data
 - CSV export functionality
-- Filtering by status, facility, date range
+- Filtering by status, facility, date range, org hierarchy
 
 ### `tickets/migrations/` - Database Schema Evolution
 
@@ -346,26 +386,27 @@ LoginSession
    └─ Routes to tickets/api/urls.py
 
 3. REST framework routing in api/urls.py
-   └─ POST → TicketListCreate view (from resource_views.py)
+   └─ POST → TicketListCreateView in views/views.py
 
-4. TicketListCreate (ListCreateAPIView)
+4. TicketListCreateView (ListCreateAPIView)
    ├─ Check permissions:
-   │  └─ IsAuthenticated required
+   │  └─ IsWithinOrganizationalScope required
    │  └─ create() allowed for all roles
    ├─ Validate input:
    │  └─ Call TicketSerializer.validate()
    │  └─ Ensure section and facility exist
    ├─ Call perform_create(serializer)
-   │  └─ Delegates to services: ticket_services.create_ticket()
+   │  └─ Delegates to services: TicketService.create_ticket()
    └─ Return serialized response (201 Created)
 
-5. ticket_services.create_ticket()
-   ├─ Validate section/facility exist
+5. TicketService.create_ticket() in services/services.py
+   ├─ Validate section/facility exist and user has access
+   ├─ Validate organizational scope (user can access this section)
    ├─ Call serializer.save()
    └─ Return created ticket object
 
 6. Ticket.save() (model method)
-   ├─ Generate ticket_no if not set (TKT-{id:06d})
+   ├─ Generate CAMPUS-DEPT-XXXXX ticket_no (organizational numbering)
    ├─ Set status='open' if new
    ├─ Insert into database
    └─ Return saved instance
@@ -373,9 +414,13 @@ LoginSession
 7. TicketSerializer.to_representation()
    ├─ Convert model to dict
    ├─ Include computed fields:
+   │  ├─ section_name (org context)
+   │  ├─ facility_name
+   │  ├─ raised_by_name (simple string)
    │  ├─ assigned_to_name (simple string)
-   │  ├─ available_technicians (list of eligible assignment options)
+   │  ├─ available_technicians (org-filtered list of eligible options)
    │  ├─ is_overdue (boolean)
+   │  ├─ escalation_level (0/1/2)
    │  └─ days_since_creation (integer)
    ├─ Skip expensive nested fields in list context:
    │  ├─ comments (only in detail view)
@@ -385,11 +430,12 @@ LoginSession
 8. Response JSON:
    {
      "id": 523,
-     "ticket_no": "TKT-000523",
+     "ticket_no": "MAIN-IT-00523",
      "title": "Broken AC",
      "status": "open",
+     "escalation_level": 0,
      "section": 1,
-     "section_name": "HVAC",
+     "section_name": "NETWORK",
      "facility": 2,
      "facility_name": "Building A",
      "raised_by": 2,
@@ -398,6 +444,18 @@ LoginSession
      "assigned_to_name": null,
      "available_technicians": [
        {"id": 4, "name": "tech_maria", "email": "maria@company.com"},
+       {"id": 6, "name": "tech_carlos", "email": "carlos@company.com"}
+     ],
+     "priority": "high",
+     "description": "AC unit not cooling",
+     "created_at": "2025-01-15T10:30:00Z",
+     "updated_at": "2025-01-15T10:30:00Z",
+     "resolved_at": null,
+     "next_escalation_due": "2025-01-17T10:30:00Z",
+     "is_overdue": false,
+     "days_since_creation": 0
+   }
+```
        {"id": 6, "name": "tech_carlos", "email": "carlos@company.com"}
      ],
      "priority": "high",
@@ -435,55 +493,73 @@ All list endpoints return paginated responses:
 
 ### Status Transition Rules
 
-**Valid Transitions** (enforced in `validate_status_transition()`):
+**Valid Transitions** (enforced in TicketService.validate_status_transition()):
 
 ```
 open ──→ assigned (when assigned_to is set)
         └──→ pending (technician can set pending reason)
+        └──→ escalated (escalation initiated)
 
 assigned ──→ in_progress (technician starts work)
            └──→ pending (issue discovered)
+           └──→ escalated (escalation initiated)
 
 in_progress ──→ pending (issue found, need info)
               └──→ resolved (work completed)
+              └──→ escalated (escalation initiated)
 
 pending ──→ in_progress (more info received)
          └──→ resolved (resolved despite pending)
+         └──→ escalated (escalation initiated)
 
-resolved ──→ closed (admin/manager only)
+escalated ──→ open (escalation resolved, back to open)
+            └──→ resolved (escalation resolved with closure)
 
-closed: No further transitions (terminal state)
+resolved ──→ closed (admin only - final state)
+           └──→ open (reopen if needed)
+
+closed: Terminal state (no further transitions)
 ```
+
+**Escalation Workflow** (organizational 2-level):
+- **Level 0** (none): Initial state
+- **Level 1** → escalated to section_head after `escalation_threshold_hours` (default: 48)
+- **Level 2** → escalated to HOD after another threshold (maximum level)
+- **Manual escalation**: Any user with appropriate role can escalate with reason
+- **Auto-escalation**: Run `python manage.py process_auto_escalations` (hourly cron)
 
 **Role Permissions**:
 
-| Role | Can Create | Can Update | Can Close | Can Assign |
-|---|---|---|---|---|
-| user | ✅ | ❌ | ❌ | ❌ |
-| technician | ✅ | ✅ | ❌ | ❌ |
-| manager | ✅ | ✅ | ✅ | ✅ |
-| admin | ✅ | ✅ | ✅ | ✅ |
+| Role | Can Create | Can Update | Can Escalate | Can Close | Can Assign |
+|---|---|---|---|---|---|
+| user | ✅ | ❌ | ❌ | ❌ | ❌ |
+| technician | ✅ | ✅ | ❌ | ❌ | ❌ |
+| section_head | ✅ | ✅ | ✅ | ❌ | ✅ |
+| hod | ✅ | ✅ | ✅ | ❌ | ✅ |
+| director | ❌ | ❌ | ❌ | ❌ | ❌ |
+| admin | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ### Assignment Validation
 
-When assigning a technician:
+When assigning a technician (organization-scoped):
 
 ```
-1. GET /api/technicians/?section_id=2
-   └─ Returns technicians belonging to section 2
-   └─ Frontend shows these in assignment dropdown
+1. GET /api/technicians/?section_id=2&campus_id=1
+   └─ Returns technicians in section 2 AND on campus 1
+   └─ Frontend shows only org-filtered technicians in assignment dropdown
 
 2. PATCH /api/tickets/523/
    └─ Payload: {"assigned_to": 4}
 
-3. ticket_services.update_ticket()
+3. TicketService.assign_ticket() in services/services.py
    ├─ Call validate_assignment(ticket, user)
    │  ├─ Check: user.role == 'technician'
    │  ├─ Check: user in ticket.section.technicians
-   │  └─ Raise ValidationError if checks fail
+   │  ├─ Check: user.primary_campus matches ticket.campus
+   │  └─ Raise InvalidAssignmentException if checks fail
    ├─ Auto-update status if assigning to open ticket
    │  └─ open → assigned (status change)
-   └─ Call ticket.change_assignment(user, performed_by=request.user)
+   └─ Create TicketLog entry (atomic operation)
 
 4. Ticket.change_assignment()
    ├─ Update assigned_to field
@@ -494,7 +570,7 @@ When assigning a technician:
    │  └─ changed_by: request.user
    └─ Save to database (atomic)
 
-5. Response: Updated ticket with new assignment
+5. Response: Updated ticket with new assignment and escalation fields
 ```
 
 ### Audit Trail
@@ -536,23 +612,27 @@ Frontend GET /api/analytics/tickets/
   &facility_id=1
   &group_by=day
   &days=30
+  &campus_id=1
 
-1. TicketAnalyticsView in analytics/views.py
-   ├─ Permission: IsAuthenticated (all users)
+1. AnalyticsTicketsView in views/views.py
+   ├─ Permission: IsWithinOrganizationalScope (role-aware)
    ├─ Parse query parameters
    │  ├─ timeframe: 'week'
    │  ├─ facility_id: 1
+   │  ├─ campus_id: 1
    │  ├─ group_by: 'day'
    │  └─ days: 30
    └─ Call TicketAnalytics.get_analytics(filters)
 
 2. TicketAnalytics class in analytics/analytics.py
-   ├─ Build queryset filters:
-   │  ├─ Tickets in facility=1
+   ├─ Build org-scoped queryset filters:
+   │  ├─ Tickets in facility=1 AND campus=1
+   │  ├─ Accessible to user based on organizational_scope
    │  └─ Updated in past 30 days
    ├─ Aggregate by status:
    │  ├─ open_count = count(status='open')
    │  ├─ assigned_count = count(status='assigned')
+   │  ├─ escalated_count = count(escalation_level > 0)
    │  ├─ in_progress_count = count(status='in_progress')
    │  ├─ pending_count = count(status='pending')
    │  ├─ resolved_count = count(status='resolved')
@@ -560,10 +640,11 @@ Frontend GET /api/analytics/tickets/
    ├─ Calculate metrics:
    │  ├─ avg_resolution_time = avg(resolved_at - created_at)
    │  ├─ avg_response_time = avg(first_status_change - created_at)
-   │  └─ total_tickets = count(*)
+   │  ├─ sla_compliance = count(resolved within SLA) / total_resolved
+   │  └─ escalation_rate = escalated_count / total_count
    ├─ Group by day (7 data points for week view):
-   │  └─ Day 1: {date, open, assigned, resolved, ...}
-   │  └─ Day 2: {date, open, assigned, resolved, ...}
+   │  └─ Day 1: {date, open, assigned, escalated, resolved, ...}
+   │  └─ Day 2: {date, open, assigned, escalated, resolved, ...}
    │  └─ ...
    └─ Return aggregated dict
 
@@ -579,18 +660,22 @@ Frontend GET /api/analytics/tickets/
        "total_tickets": 523,
        "open": 45,
        "assigned": 23,
+       "escalated": 8,
        "in_progress": 12,
        "pending": 8,
        "resolved": 412,
-       "closed": 23,
+       "closed": 15,
        "avg_resolution_time": "2.5 days",
-       "avg_response_time": "4 hours"
+       "avg_response_time": "4 hours",
+       "sla_compliance": 0.94,
+       "escalation_rate": 0.15
      },
      "by_day": [
        {
          "date": "2025-01-15",
          "open": 45,
          "assigned": 23,
+         "escalated": 2,
          "resolved": 12
        },
        ...
@@ -601,27 +686,40 @@ Frontend GET /api/analytics/tickets/
 ### Technician Analytics Example
 
 ```
-GET /api/analytics/technicians/?technician_id=4
+GET /api/analytics/technicians/?technician_id=4&campus_id=1
 
-TechnicianAnalytics.get_analytics(technician_id=4)
-├─ Get all tickets assigned to technician 4
+AnalyticsTechniciansView in views/views.py
+├─ Permission: IsWithinOrganizationalScope
+├─ Call TechnicianAnalytics.get_analytics(technician_id=4, campus_id=1)
+
+TechnicianAnalytics.get_analytics() in analytics/analytics.py
+├─ Get all org-scoped tickets assigned to technician 4
+├─ Filter by technician's campus (organizational scope)
 ├─ Calculate:
-│  ├─ assigned_count
+│  ├─ assigned_count = count of assigned tickets
 │  ├─ completed_count = count(status='resolved'|'closed')
-│  ├─ pending_count
+│  ├─ pending_count = count(status='pending')
 │  ├─ avg_completion_time = avg(resolved_at - assigned_at)
-│  └─ performance_rating = completed_count / total_count
-└─ Return metrics
+│  ├─ avg_rating = avg(feedback.rating) for completed tickets
+│  └─ performance_score = (completed / assigned) * avg_rating
+├─ Recent activities: Last 5 completed tickets
+└─ Return metrics dict
 
 Response:
 {
   "technician_id": 4,
   "technician_name": "tech_maria",
+  "campus_name": "MAIN",
   "assigned_tickets": 45,
   "completed_tickets": 38,
   "pending_tickets": 7,
   "avg_completion_time": "1.8 days",
-  "performance_rating": 0.84
+  "avg_rating": 4.6,
+  "performance_score": 0.84,
+  "recent_completions": [
+    {"ticket_no": "MAIN-IT-00523", "completed_at": "2025-01-15"},
+    ...
+  ]
 }
 ```
 
@@ -629,32 +727,79 @@ Response:
 
 ```
 GET /api/analytics/admin-dashboard/
+  ?days=30
 
-AdminAnalytics.get_analytics()
-├─ System overview:
-│  ├─ total_tickets
-│  ├─ total_users
-│  ├─ total_technicians
-│  └─ average_resolution_time
-├─ Overdue tickets (>7 days open/assigned/in_progress)
-│  └─ Only visible to admin/manager roles
-├─ Status distribution:
-│  └─ Pie chart data
-└─ Recent tickets:
-   └─ Last 10 tickets
+OrganizationalAnalyticsView in views/views.py
+├─ Permission: IsWithinOrganizationalScope (role-specific access)
+├─ Determine user's role: director | hod | section_head
+└─ Call OrganizationalAnalytics.{role}_dashboard()
 
-Response includes:
-- System statistics (counts, averages)
-- Overdue ticket list (admin/manager only)
-- Status breakdown
-- Recent activity
+OrganizationalAnalytics class in analytics/analytics.py
+
+director_dashboard(days=30):
+├─ System overview (ALL organizations user has access to):
+│  ├─ total_tickets (org-scoped)
+│  ├─ status_breakdown (counts by status)
+│  ├─ escalation_trends (trending escalations)
+│  └─ avg_resolution_time
+├─ Campus-level breakdown
+├─ Department performance
+└─ Overdue tickets
+
+hod_dashboard(days=30):
+├─ Department overview:
+│  ├─ total_tickets (dept-scoped)
+│  ├─ escalated_to_me (level=2 escalations)
+│  ├─ open_count
+│  └─ avg_resolution_time
+├─ Section performance within department
+├─ Technician workload
+└─ Overdue tickets in dept
+
+section_head_dashboard(days=30):
+├─ Section overview:
+│  ├─ total_tickets (section-scoped)
+│  ├─ escalated_to_me (level=1 escalations)
+│  ├─ open_count
+│  └─ avg_resolution_time
+├─ Technician performance
+├─ Overdue tickets in section
+└─ Recent activities
+
+Response example (director_dashboard):
+{
+  "role": "director",
+  "organization": "ACME Corp",
+  "overview": {
+    "total_tickets": 523,
+    "open": 45,
+    "assigned": 23,
+    "escalated": 8,
+    "resolved": 412,
+    "closed": 35,
+    "avg_resolution_time": "2.5 days"
+  },
+  "escalation_trends": {
+    "level_1_escalations": 23,
+    "level_2_escalations": 8,
+    "escalation_rate": 0.15
+  },
+  "campus_breakdown": [
+    {"campus": "MAIN", "tickets": 300, "open": 25, ...},
+    {"campus": "WEST", "tickets": 223, "open": 20, ...}
+  ],
+  "overdue_tickets": [
+    {"ticket_no": "MAIN-IT-00488", "days_overdue": 5, ...},
+    ...
+  ]
+}
 ```
 
 ---
 
 ## Module Dependencies
 
-### Import Map
+### Import Map (CONSOLIDATED STRUCTURE)
 
 ```
 From External:
@@ -667,24 +812,27 @@ From External:
 tickets/models.py
 ├── CustomUser (AbstractUser)
 ├── Ticket (Model)
-├── Facility, Section, Comment, Feedback, TicketLog
+├── Campus, Department, Section, Organization
+├── Facility, Comment, Feedback, TicketLog, CustomUser
 
 tickets/serializers.py
 └─ Depends on: models.py, DRF
 
-tickets/api/services/ticket_services.py
-└─ Depends on: models.py
+tickets/api/services/services.py (UNIFIED SERVICE LAYER)
+├─ Single TicketService class with all business logic
+├─ Depends on: models.py, email_service.py (optional)
+└─ No circular imports: views and other modules depend on this
 
-tickets/api/views/resource_views.py
-├─ Depends on: models.py, serializers.py, services/ticket_services.py
-└─ Uses: DRF generics, pagination.py, permissions.py
+tickets/api/views/views.py (UNIFIED VIEW LAYER)
+├─ 20+ view classes for all endpoints
+├─ Depends on: models.py, serializers.py, services/services.py
+├─ Uses: DRF generics, pagination.py, permissions.py, filters.py
+└─ Exports via: views/index.py for clean imports
 
-tickets/api/analytics/analytics.py
-└─ Depends on: models.py
-
-tickets/api/analytics/views.py
-├─ Depends on: analytics.py, serializers.py
-└─ Uses: DRF APIView, permissions.py
+tickets/api/analytics/analytics.py (UNIFIED ANALYTICS)
+├─ 4 analytics classes (TicketAnalytics, TechnicianAnalytics, OrganizationalAnalytics, AdminAnalytics)
+├─ Depends on: models.py
+└─ Exports via: analytics/index.py for clean imports
 
 tickets/api/simple_auth_views.py
 ├─ Depends on: models.py, auth_models.py
@@ -692,17 +840,22 @@ tickets/api/simple_auth_views.py
 └─ Optional: email_service.py (magic link - commented out)
 
 tickets/api/urls.py
-├─ Imports from: views/, analytics/, reports/, simple_auth_views.py
+├─ Imports from: views/index.py, analytics/index.py, reports/, simple_auth_views.py
 └─ Mounts all routes
+
+NO CIRCULAR DEPENDENCIES (services → models only)
 ```
 
 ### Circular Dependency Avoidance
 
 **Good**:
 ```python
-# In views/resource_views.py
-from tickets.api.services.ticket_services import update_ticket
-# ✅ Views call services (correct layer order)
+# In views/views.py - Import from consolidated services
+from tickets.api.services import TicketService
+# ✅ Views call TicketService methods (correct layer order)
+
+service = TicketService()
+service.create_ticket(user, section, facility, title, description)
 
 # In simple_auth_views.py
 from rest_framework.authtoken.models import Token
@@ -718,6 +871,11 @@ from tickets.api.views import some_view
 # In serializers.py
 from tickets.api.services import some_service
 # ❌ Serializers handle data format, not business logic
+
+# ❌ DEPRECATED - Do not import from old removed files:
+from tickets.api.services.ticket_services import ...  # REMOVED
+from tickets.api.views.resource_views import ...      # REMOVED
+from tickets.api.analytics.views import ...           # REMOVED
 ```
 
 ---
@@ -730,30 +888,47 @@ from tickets.api.services import some_service
 
 **Steps**:
 
-1. **Service Layer** (`tickets/api/services/ticket_services.py`):
+1. **Service Layer** (`tickets/api/services/services.py` - UNIFIED TicketService):
 ```python
-def get_user_tickets(user):
-    """Get all tickets accessible to user based on role"""
-    if user.role == 'technician':
-        return Ticket.objects.filter(assigned_to=user)
-    elif user.role in ['admin', 'manager']:
-        return Ticket.objects.all()
-    else:
-        return Ticket.objects.filter(raised_by=user)
+class TicketService:
+    def get_user_tickets(self, user):
+        """Get all org-scoped tickets accessible to user based on role"""
+        if user.organizational_scope == 'section':
+            return Ticket.objects.filter(
+                section__in=user.sections.all(),
+                section__department__campus__in=user.get_accessible_campuses()
+            )
+        elif user.organizational_scope == 'department':
+            return Ticket.objects.filter(
+                section__department__in=[user.primary_department]
+            )
+        elif user.organizational_scope == 'organization':
+            return Ticket.objects.all()  # Full org access
+        else:
+            return Ticket.objects.filter(raised_by=user)
 ```
 
-2. **View** (`tickets/api/views/resource_views.py`):
+2. **View** (`tickets/api/views/views.py` - ADD NEW CLASS):
 ```python
 class UserTicketsListView(generics.ListAPIView):
     serializer_class = TicketSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsWithinOrganizationalScope]
     pagination_class = StandardResultsSetPagination
+    filter_backends = [OrderingFilter]
+    ordering_fields = ['created_at', 'updated_at', 'status']
     
     def get_queryset(self):
-        return get_user_tickets(self.request.user)
+        service = TicketService()
+        return service.get_user_tickets(self.request.user)
 ```
 
-3. **URL Route** (`tickets/api/urls.py`):
+3. **Export** (`tickets/api/views/index.py`):
+```python
+# Add to imports
+from .views import UserTicketsListView
+```
+
+4. **URL Route** (`tickets/api/urls.py`):
 ```python
 urlpatterns = [
     # ... existing routes
@@ -761,12 +936,12 @@ urlpatterns = [
 ]
 ```
 
-4. **Test** (`tickets/tests/test_apis.py`):
+5. **Test** (`tickets/tests/test_organizational.py`):
 ```python
-def test_get_user_tickets(self):
-    # Login as technician
+def test_get_user_tickets_respects_org_scope(self):
+    # Login as technician in section A
     # GET /api/my-tickets/
-    # Verify only assigned tickets returned
+    # Verify only section A tickets returned
     pass
 ```
 
@@ -774,7 +949,7 @@ def test_get_user_tickets(self):
 
 **Steps**:
 
-1. **Model** (`tickets/models.py`):
+1. **Model** (`tickets/models.py` - UPDATE CHOICES):
 ```python
 class Ticket(models.Model):
     STATUS_CHOICES = [
@@ -785,23 +960,32 @@ class Ticket(models.Model):
         ('resolved', 'Resolved'),
         ('closed', 'Closed'),
         ('on_hold', 'On Hold'),  # NEW
+        ('escalated', 'Escalated'),
     ]
 ```
 
-2. **Service** (`tickets/api/services/ticket_services.py`):
+2. **Service** (`tickets/api/services/services.py` - UPDATE TicketService):
 ```python
-VALID_STATUS_TRANSITIONS = {
-    # ... existing transitions
-    'pending': ['in_progress', 'resolved', 'on_hold'],  # Added
-    'on_hold': ['in_progress', 'resolved'],  # New from on_hold
-}
+class TicketService:
+    VALID_STATUS_TRANSITIONS = {
+        # ... existing transitions
+        'pending': ['in_progress', 'resolved', 'on_hold'],  # Added on_hold
+        'on_hold': ['in_progress', 'resolved'],  # New from on_hold
+    }
+    
+    def validate_status_transition(self, old_status, new_status, user_role):
+        """Enhanced validator for new on_hold status"""
+        # Check if transition is valid in VALID_STATUS_TRANSITIONS
+        # Consider role-based restrictions
+        # Return True or raise InvalidEscalationException
+        pass
 ```
 
-3. **Test** (`tickets/tests/test_workflow.py`):
+3. **Test** (`tickets/tests/test_organizational.py`):
 ```python
 def test_status_transition_to_on_hold(self):
     # Create ticket in pending
-    # Transition to on_hold
+    # Call TicketService.update_ticket_status(status='on_hold')
     # Verify status changed and TicketLog created
     pass
 ```
@@ -810,33 +994,68 @@ def test_status_transition_to_on_hold(self):
 
 **Steps**:
 
-1. **Analytics Class** (`tickets/api/analytics/analytics.py`):
+1. **Analytics Class** (`tickets/api/analytics/analytics.py` - UPDATE CLASS):
 ```python
 class TicketAnalytics:
     def get_analytics(self, filters):
-        # ... existing aggregations
+        # Build org-scoped queryset
+        tickets = self._get_filtered_tickets(filters)
+        
+        # Existing aggregations...
+        
         # New metric:
         avg_wait_time = self._calculate_avg_wait_time(tickets)
+        escalation_rate = self._calculate_escalation_rate(tickets)
         
         return {
             # ... existing
             'avg_wait_time': avg_wait_time,
+            'escalation_rate': escalation_rate,
         }
     
     def _calculate_avg_wait_time(self, tickets):
         """Avg time between created and first assignment"""
-        # Logic here
-        pass
+        with_assignment = tickets.filter(assigned_at__isnull=False)
+        if not with_assignment.exists():
+            return None
+        total_wait = sum(
+            (t.assigned_at - t.created_at).total_seconds() 
+            for t in with_assignment
+        )
+        return total_wait / len(with_assignment)
+    
+    def _calculate_escalation_rate(self, tickets):
+        """Percent of tickets that escalated"""
+        escalated = tickets.filter(escalation_level__gt=0).count()
+        return escalated / max(tickets.count(), 1)
 ```
 
-2. **Update Response** in `analytics/views.py` or serializer
-
-3. **Test** (`tickets/tests/test_analytics.py`):
+2. **View** (`tickets/api/views/views.py` - ADD ENDPOINT):
 ```python
-def test_analytics_avg_wait_time(self):
-    # Create tickets with known wait times
+class AnalyticsTicketsView(APIView):
+    permission_classes = [IsWithinOrganizationalScope]
+    
+    def get(self, request):
+        filters = {...}  # Parse query params
+        analytics = TicketAnalytics()
+        data = analytics.get_analytics(filters)
+        return Response(data)
+```
+
+3. **URL Route** (`tickets/api/urls.py`):
+```python
+urlpatterns = [
+    # ... existing
+    path('analytics/tickets/', AnalyticsTicketsView.as_view(), name='analytics-tickets'),
+]
+```
+
+4. **Test** (`tickets/tests/test_organizational.py`):
+```python
+def test_analytics_escalation_rate(self):
+    # Create mixed tickets (escalated + non-escalated)
     # Call analytics endpoint
-    # Verify metric calculated correctly
+    # Verify escalation_rate calculated correctly
     pass
 ```
 

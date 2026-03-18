@@ -1,33 +1,44 @@
-"""Services package for the tickets app API."""
+"""Services package for the tickets app API.
 
-from .ticket_services import (
+Consolidated service layer providing all ticket management operations with
+organizational hierarchy validation. All operations respect role-based permissions,
+organizational scope, and escalation rules.
+
+Main classes:
+- TicketService: Central service for all ticket operations
+- Validators: Pure validation functions for status transitions
+
+Legacy aliases are maintained for backwards compatibility.
+"""
+
+from .services import (
+    TicketService,
     validate_status_transition,
-    update_ticket,
-    create_ticket,
-    create_comment,
-    create_feedback,
-)
-from .organizational_ticket_service import (
-    OrganizationalTicketService,
-    OrganizationalTicketServiceException,
+    manual_escalation_allowed,
+    # Exceptions
+    TicketServiceException,
     InsufficientScopeException,
     InvalidAssignmentException,
     InvalidEscalationException,
-    manual_escalation_allowed,
 )
 
+# Backwards compatibility aliases
+OrganizationalTicketService = TicketService
+OrganizationalTicketServiceException = TicketServiceException
+
+
 __all__ = [
-    # Legacy services
+    # Main service class
+    'TicketService',
+    # Validators
     'validate_status_transition',
-    'update_ticket',
-    'create_ticket',
-    'create_comment',
-    'create_feedback',
-    # Organizational services
-    'OrganizationalTicketService',
-    'OrganizationalTicketServiceException',
+    'manual_escalation_allowed',
+    # Exceptions
+    'TicketServiceException',
     'InsufficientScopeException',
     'InvalidAssignmentException',
     'InvalidEscalationException',
-    'manual_escalation_allowed',
+    # Backwards compatibility
+    'OrganizationalTicketService',
+    'OrganizationalTicketServiceException',
 ]

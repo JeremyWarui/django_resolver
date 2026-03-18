@@ -9,8 +9,7 @@ from rest_framework.views import APIView
 from tickets.api.permissions import IsTechnicianOrAdmin, IsAdminOrManager
 
 from tickets.models import Ticket, CustomUser, Feedback, Section, Facility
-from tickets.api.analytics.analytics import TicketAnalytics, TechnicianAnalytics, AdminAnalytics
-from tickets.api.analytics.organizational_analytics import OrganizationalAnalytics
+from tickets.api.analytics.analytics import TicketAnalytics, TechnicianAnalytics, AdminAnalytics, OrganizationalAnalytics
 
 
 class TicketAnalyticsView(generics.GenericAPIView):

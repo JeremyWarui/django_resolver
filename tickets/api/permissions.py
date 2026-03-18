@@ -232,8 +232,8 @@ class IsTechnicianOrAdmin(permissions.BasePermission):
 
 class CanManageUsers(permissions.BasePermission):
     """
-    Custom permission for user management:
-    - Admins and managers can create/update/delete users
+    Custom permission for user management and bulk operations:
+    - Admins and managers can create/update/delete users and perform bulk operations
     - Regular users can only update their own profile
     """
 
@@ -241,11 +241,22 @@ class CanManageUsers(permissions.BasePermission):
         if not request.user.is_authenticated:
             return False
 
-        # For user creation (registration), allow if admin/manager or if it's self-registration
-        if request.method == "POST" and not hasattr(view, "get_object"):
-            return True  # This will be handled by the view logic
+        # For bulk operations, only allow admins and managers
+        if isinstance(view, type) and view.__name__ == 'BulkTicketStatusUpdateView':
+            return request.user.role in ['admin', 'manager']
 
-        return True
+        # For bulk update endpoint (by checking view name contains 'bulk')
+        view_name = view.__class__.__name__ if hasattr(
+            view, '__class__') else ''
+        if 'bulk' in view_name.lower():
+            return request.user.role in ['admin', 'manager']
+
+        # For user creation (registration), allow if admin/manager
+        if request.method == "POST" and not hasattr(view, "get_object"):
+            # Registration is handled by view logic
+            return request.user.role in ['admin', 'manager'] or True
+
+        return request.user.role in ['admin', 'manager']
 
     def has_object_permission(self, request, view, obj):
         user = request.user

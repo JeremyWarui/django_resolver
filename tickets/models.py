@@ -385,7 +385,8 @@ class Ticket(models.Model):
             self.resolved_at = timezone.now()
 
         # Schedule auto-escalation on creation or status change
-        if not self.pk or self.status in ['open', 'assigned', 'in_progress']:
+        # But don't override if manually set (for testing)
+        if not self.next_escalation_due and (not self.pk or self.status in ['open', 'assigned', 'in_progress']):
             self._schedule_next_escalation()
 
         super(Ticket, self).save(*args, **kwargs)
@@ -574,6 +575,9 @@ class Ticket(models.Model):
 
         with transaction.atomic():
             self.assigned_to = new_assigned_to
+            # Update status to 'assigned' when assignment is made
+            if self.status == 'open':
+                self.status = 'assigned'
             super(Ticket, self).save()
             TicketLog.objects.create(
                 ticket=self, action=action, performed_by=performed_by

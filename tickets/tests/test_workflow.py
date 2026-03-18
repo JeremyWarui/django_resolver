@@ -9,6 +9,9 @@ from tickets.models import (
     Comment,
     Feedback,
     TicketLog,
+    Organization,
+    Campus,
+    Department,
 )
 
 
@@ -19,32 +22,80 @@ def api_client():
 
 @pytest.fixture
 def setup_data(db):
-    # Create sections
-    section = Section.objects.create(
-        name="IT", description="Information Technology")
-
-    hvac = Section.objects.create(
-        name="HVAC", description="Air Conditioning systems.")
-
-    electrical = Section.objects.create(
-        name="Electrical", description="Electricity installations and fixtures."
+    # Create organizational hierarchy
+    organization = Organization.objects.create(
+        name="Test Organization",
+        code="TEST",
+        organization_type="corporate"
     )
 
-    # Create facility
+    campus = Campus.objects.create(
+        name="Main Campus",
+        code="MAIN",
+        organization=organization,
+        location="123 Main St"
+    )
+
+    it_department = Department.objects.create(
+        name="IT Department",
+        code="IT",
+        campus=campus
+    )
+
+    facilities_department = Department.objects.create(
+        name="Facilities Department",
+        code="FAC",
+        campus=campus
+    )
+
+    # Create sections with department relationships
+    section = Section.objects.create(
+        name="IT",
+        code="IT",
+        description="Information Technology",
+        department=it_department
+    )
+
+    hvac = Section.objects.create(
+        name="HVAC",
+        code="HVAC",
+        description="Air Conditioning systems.",
+        department=facilities_department
+    )
+
+    electrical = Section.objects.create(
+        name="Electrical",
+        code="ELEC",
+        description="Electricity installations and fixtures.",
+        department=facilities_department
+    )
+
+    # Create facility with organizational context
     facility = Facility.objects.create(
-        name="Main Building", type="building", status="active", location="123 Main St"
+        name="Main Building",
+        type="building",
+        status="active",
+        location="123 Main St",
+        campus=campus,
+        department=it_department
     )
 
     # Create users with different roles
     user = CustomUser.objects.create_user(
-        username="testuser", email="testuser@example.com", password="testpass"
+        username="testuser",
+        email="testuser@example.com",
+        password="testpass",
+        role="user",
+        primary_campus=campus
     )
+    user.sections.add(section, hvac, electrical)  # Add user to all sections
 
     technician = CustomUser.objects.create_user(
         username="techuser",
         email="techuser@example.com",
         password="techpass",
         role="technician",
+        primary_campus=campus
     )
 
     hvac_technician = CustomUser.objects.create_user(
@@ -52,6 +103,7 @@ def setup_data(db):
         email="hvactech@example.com",
         password="hvac123",
         role="technician",
+        primary_campus=campus
     )
 
     electrician = CustomUser.objects.create_user(
@@ -59,6 +111,7 @@ def setup_data(db):
         email="electricaltech@example.com",
         password="electrician123",
         role="technician",
+        primary_campus=campus
     )
 
     admin = CustomUser.objects.create_user(
@@ -73,6 +126,7 @@ def setup_data(db):
         email="manager@example.com",
         password="managerpass",
         role="manager",
+        primary_campus=campus
     )
 
     # Assign technicians to their respective sections
@@ -81,6 +135,10 @@ def setup_data(db):
     electrician.sections.add(electrical)
 
     return {
+        "organization": organization,
+        "campus": campus,
+        "it_department": it_department,
+        "facilities_department": facilities_department,
         "section": section,
         "hvac_section": hvac,
         "electrical_section": electrical,
@@ -255,7 +313,8 @@ def test_user_cant_update_ticket_status(api_client, setup_data):
     response = api_client.patch(
         reverse("ticket-detail", args=[ticket.id]), payload, format="json"
     )
-    assert response.status_code in [400, 404]
+    # User doesn't have permission to update other users' tickets
+    assert response.status_code == 403
     ticket.refresh_from_db()
     assert ticket.status == "assigned"
 
@@ -464,8 +523,7 @@ def test_complete_ticket_lifecycle(api_client, setup_data):
         reverse("ticket-detail", args=[ticket_id]), modified_payload, format="json"
     )
     assert modified_response.status_code == 400
-    assert "Cannot modify a closed ticket" in str(modified_response.data)
-
+    assert "Closed tickets cannot be modified" in str(modified_response.data)
     # Step 9: Verify ticket history through logs
     ticket_logs = TicketLog.objects.filter(
         ticket_id=ticket_id).order_by("timestamp")
@@ -529,7 +587,7 @@ def test_section_based_routing(api_client, setup_data):
         format="json",
     )
     assert wrong_response.status_code == 400
-    assert "does not belong to section" in str(wrong_response.data)
+    assert "is not part of section" in str(wrong_response.data)
 
     # Assign IT ticket to IT technician (should succeed)
     correct_it_assignment_payload = {

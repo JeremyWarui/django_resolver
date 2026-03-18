@@ -78,8 +78,14 @@ Welcome to the comprehensive documentation for Django Resolver - a Django REST A
 
 ```
 docs/
+├── 📘 Master Guides (Start Here)
+│   ├── FIRST_TIME_SETUP.md          # Setup guide for new developers
+│   ├── ARCHITECTURE_GUIDE.md        # System architecture overview
+│   └── API_INTEGRATION_GUIDE.md     # API integration manual
+│
 ├── INDEX.md                          # This file - documentation navigation
-├── CODEBASE_ARCHITECTURE.md          # Complete architecture overview
+├── README (root)                     # Project overview
+├── CODEBASE_ARCHITECTURE.md          # Complete architecture reference
 ├── AUTHENTICATION.md                 # Authentication system
 ├── ARCHITECTURE_DIAGRAMS.md          # Visual diagrams
 ├── DEFAULT_CREDENTIALS.md            # Test credentials
@@ -102,6 +108,28 @@ docs/
 ```
 
 ## 🔍 Finding Documentation
+
+### 📘 Master Guides (Recommended Entry Points)
+
+**Choose based on your role:**
+
+1. **[First Time Setup](FIRST_TIME_SETUP.md)** - New developers setting up locally
+   - Complete 12-section setup guide
+   - Covers: clone, venv, database, dependencies, migrations, verification
+   - Includes troubleshooting section
+   
+2. **[Architecture Guide](ARCHITECTURE_GUIDE.md)** - Backend developers learning the system
+   - System overview and technology stack
+   - 4-layer architecture explanation
+   - Ticket lifecycle and state machine
+   - Organizational hierarchy
+   - Role-based access control
+   
+3. **[API Integration Guide](API_INTEGRATION_GUIDE.md)** - Frontend developers building integrations
+   - Complete authentication guide
+   - All endpoint documentation with examples
+   - Escalation, analytics, error handling
+   - Code examples in JavaScript and Python
 
 ### By Task
 

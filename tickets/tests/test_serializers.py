@@ -7,6 +7,7 @@ from tickets.serializers import (
     CommentSerializer,
     UserSerializer,
     FeedbackSerializer,
+    SectionSerializer,
 )
 from tickets.models import CustomUser
 from tickets.api.services import TicketService
@@ -129,3 +130,39 @@ class SerializerTests(BaseTicketTestCase):
         self.assertEqual(feedback.rated_by, self.user)
         self.assertEqual(feedback.rating, 4)
         self.assertEqual(feedback.comment, "Good service.")
+
+    def test_section_serializer_includes_campus_context(self):
+        """Test SectionSerializer exposes campus and organization context - R1 enhancement"""
+        # Serialize section
+        serializer = SectionSerializer(instance=self.section)
+        data: Any = serializer.data
+
+        # Verify basic fields
+        self.assertEqual(data["id"], self.section.id)
+        self.assertEqual(data["name"], self.section.name)
+        self.assertEqual(data["code"], self.section.code)
+
+        # Verify department context
+        self.assertEqual(data["department_id"], self.section.department.id)
+        self.assertIn("department_display", data)
+
+        # Verify NEW campus context fields
+        self.assertIn("campus_id", data)
+        self.assertIn("campus_display", data)
+        self.assertIn("organization_id", data)
+
+        # Verify values are correct
+        self.assertEqual(
+            data["campus_id"],
+            self.section.department.campus.id,
+            "campus_id should match section's department's campus"
+        )
+        self.assertEqual(
+            data["organization_id"],
+            self.section.department.campus.organization.id,
+            "organization_id should match section's department's campus's organization"
+        )
+
+        # Verify display fields contain string representations
+        self.assertIsNotNone(data["campus_display"])
+        self.assertIsNotNone(data["organization_id"])

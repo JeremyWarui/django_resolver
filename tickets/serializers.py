@@ -2,6 +2,13 @@ from rest_framework import serializers
 from .models import *
 
 
+class UsernameField(serializers.RelatedField):
+    """Custom field that returns just the username for user references"""
+
+    def to_representation(self, value):
+        return value.username
+
+
 class FacilitySerializer(serializers.ModelSerializer):
     campus_display = serializers.CharField(
         source='campus', read_only=True, allow_null=True)
@@ -119,7 +126,7 @@ class TinyTicketSerializer(serializers.ModelSerializer):
 class CommentSerializer(serializers.ModelSerializer):
     """Serializer for ticket comments. Author and ticket are set from context."""
 
-    author = serializers.StringRelatedField(read_only=True)
+    author = UsernameField(read_only=True)
     ticket = TinyTicketSerializer(read_only=True)
 
     class Meta:
@@ -131,7 +138,7 @@ class FeedbackSerializer(serializers.ModelSerializer):
     """Serializer for ticket feedback. Rated_by and ticket are set from context."""
 
     ticket = TinyTicketSerializer(read_only=True)
-    rated_by = serializers.StringRelatedField(read_only=True)
+    rated_by = UsernameField(read_only=True)
 
     class Meta:
         model = Feedback
@@ -158,7 +165,7 @@ class TicketListSerializer(serializers.ModelSerializer):
 
     section = serializers.StringRelatedField(read_only=True)
     facility = serializers.StringRelatedField(read_only=True)
-    raised_by = serializers.StringRelatedField(read_only=True)
+    raised_by = UsernameField(read_only=True)
 
     class Meta:
         model = Ticket
@@ -238,7 +245,7 @@ class TicketSerializer(serializers.ModelSerializer):
 
     section = serializers.StringRelatedField(read_only=True)
     facility = serializers.StringRelatedField(read_only=True)
-    raised_by = serializers.StringRelatedField(read_only=True)
+    raised_by = UsernameField(read_only=True)
     assigned_to = UserSerializer(read_only=True)
     escalated_to = serializers.StringRelatedField(read_only=True)
     comments = CommentSerializer(many=True, read_only=True)
@@ -288,37 +295,70 @@ class TicketSerializer(serializers.ModelSerializer):
 
     def get_available_technicians(self, obj):
         """Return list of technicians who can be assigned to this ticket."""
-        if obj.section:
+        # Handle both dict (validated_data) and Ticket instance cases
+        section = None
+        if isinstance(obj, dict):
+            section = obj.get('section')
+        else:
+            section = obj.section if hasattr(obj, 'section') else None
+
+        if section:
             technicians = CustomUser.objects.filter(
-                role="technician", sections=obj.section
+                role="technician", sections=section
             ).values("id", "username", "first_name", "last_name")
             return list(technicians)
         return []
 
     def get_escalation_status(self, obj):
         """Return human-readable escalation status"""
-        if obj.escalation_level == 0:
+        # Handle both dict (validated_data) and Ticket instance cases
+        escalation_level = None
+        if isinstance(obj, dict):
+            escalation_level = obj.get('escalation_level', 0)
+        else:
+            escalation_level = obj.escalation_level if hasattr(
+                obj, 'escalation_level') else 0
+
+        if escalation_level == 0:
             return "Not escalated"
-        elif obj.escalation_level == 1:
+        elif escalation_level == 1:
             return "Escalated to Section Head"
-        elif obj.escalation_level == 2:
+        elif escalation_level == 2:
             return "Escalated to HOD (Maximum Level)"
         return "Unknown"
 
     def get_organizational_path(self, obj):
         """Return full organizational hierarchy path for the ticket"""
-        try:
-            if obj.section and obj.section.department:
-                campus = obj.section.department.campus
-                org = campus.organization if campus else None
-                return {
-                    'organization': str(org) if org else None,
-                    'campus': str(campus) if campus else None,
-                    'department': str(obj.section.department) if obj.section.department else None,
-                    'section': str(obj.section) if obj.section else None,
-                }
-        except (AttributeError, TypeError):
-            pass
+        # Handle both dict (validated_data) and Ticket instance cases
+        if isinstance(obj, dict):
+            section = obj.get('section')
+            if not section:
+                return None
+            try:
+                if section.department:
+                    campus = section.department.campus
+                    org = campus.organization if campus else None
+                    return {
+                        'organization': str(org) if org else None,
+                        'campus': str(campus) if campus else None,
+                        'department': str(section.department) if section.department else None,
+                        'section': str(section) if section else None,
+                    }
+            except (AttributeError, TypeError):
+                pass
+        else:
+            try:
+                if obj.section and obj.section.department:
+                    campus = obj.section.department.campus
+                    org = campus.organization if campus else None
+                    return {
+                        'organization': str(org) if org else None,
+                        'campus': str(campus) if campus else None,
+                        'department': str(obj.section.department) if obj.section.department else None,
+                        'section': str(obj.section) if obj.section else None,
+                    }
+            except (AttributeError, TypeError):
+                pass
         return None
 
     def update(self, instance, validated_data):

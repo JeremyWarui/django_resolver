@@ -1,49 +1,81 @@
 """
 Index file for exporting all views.
 This makes imports more convenient in other modules.
+
+Consolidated views with organizational hierarchy awareness.
 """
 
-# Resource Views
-from .resource_views import (
+# All views are now consolidated in views.py
+from .views import (
+    # Organization Hierarchy
+    OrganizationListCreateView,
+    OrganizationDetailView,
+    CampusListCreateView,
+    CampusDetailView,
+    DepartmentListCreateView,
+    DepartmentDetailView,
+    # Sections
     SectionListCreateView,
     SectionDetailView,
+    # Facilities
     FacilityListCreateView,
     FacilityDetailView,
+    # Tickets
     TicketListCreateView,
     TicketDetailView,
     TicketEscalationView,
+    OrganizationalTicketListView,
+    EscalateTicketView,
+    # Comments
     CommentListCreateView,
+    # Feedback
     FeedbackListCreateView,
+    # Users
     UserListCreateView,
     UserDetailView,
     TechniciansBySectionView,
-    BulkTicketStatusUpdateView,
-)
-
-# Organizational Views (Phase 6)
-from .organizational_views import (
-    OrganizationalTicketListView,
     AssignableUsersView,
+    # Bulk Operations
+    BulkTicketStatusUpdateView,
+    # Analytics
     OrganizationalAnalyticsView,
-    EscalateTicketView,
+    AnalyticsTicketsView,
+    AnalyticsTechniciansView,
 )
 
 __all__ = [
+    # Organization Hierarchy
+    'OrganizationListCreateView',
+    'OrganizationDetailView',
+    'CampusListCreateView',
+    'CampusDetailView',
+    'DepartmentListCreateView',
+    'DepartmentDetailView',
+    # Sections
     'SectionListCreateView',
     'SectionDetailView',
+    # Facilities
     'FacilityListCreateView',
     'FacilityDetailView',
+    # Tickets
     'TicketListCreateView',
     'TicketDetailView',
     'TicketEscalationView',
+    'OrganizationalTicketListView',
+    'EscalateTicketView',
+    # Comments
     'CommentListCreateView',
+    # Feedback
     'FeedbackListCreateView',
+    # Users
     'UserListCreateView',
     'UserDetailView',
     'TechniciansBySectionView',
-    'BulkTicketStatusUpdateView',
-    'OrganizationalTicketListView',
     'AssignableUsersView',
+    # Bulk Operations
+    'BulkTicketStatusUpdateView',
+    # Analytics
     'OrganizationalAnalyticsView',
-    'EscalateTicketView',
+    'AnalyticsTicketsView',
+    'AnalyticsTechniciansView',
 ]

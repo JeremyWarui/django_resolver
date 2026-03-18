@@ -14,17 +14,30 @@ class TicketOperationsTestCase(TestCase):
 
     def setUp(self):
         """Set up test data."""
+        # Create organizational hierarchy
+        from tickets.models import Organization, Campus, Department
+
+        self.org = Organization.objects.create(
+            name="Test Org", code="TEST", organization_type="educational"
+        )
+        self.campus = Campus.objects.create(
+            organization=self.org, name="Main", code="MAIN", location="Downtown"
+        )
+        self.dept = Department.objects.create(
+            campus=self.campus, name="Facilities", code="FAC"
+        )
+
         # Create sections
         self.section_hvac = Section.objects.create(
-            name="HVAC", description="Heating and cooling"
+            department=self.dept, name="HVAC", code="HVA", description="Heating and cooling"
         )
         self.section_plumbing = Section.objects.create(
-            name="Plumbing", description="Water systems"
+            department=self.dept, name="Plumbing", code="PLU", description="Water systems"
         )
 
         # Create facility
         self.facility = Facility.objects.create(
-            name="Main Building", type="building")
+            campus=self.campus, department=self.dept, name="Main Building", type="building")
 
         # Create users
         self.user = CustomUser.objects.create_user(
@@ -33,7 +46,10 @@ class TicketOperationsTestCase(TestCase):
             first_name="Test",
             last_name="User",
             role="user",
+            primary_campus=self.campus,
         )
+        # Add user to HVAC section to allow ticket creation
+        self.user.sections.add(self.section_hvac)
 
         self.admin = CustomUser.objects.create_user(
             username="admin",
@@ -41,6 +57,7 @@ class TicketOperationsTestCase(TestCase):
             first_name="Admin",
             last_name="User",
             role="admin",
+            primary_campus=self.campus,
         )
 
         self.tech_hvac = CustomUser.objects.create_user(
@@ -49,6 +66,7 @@ class TicketOperationsTestCase(TestCase):
             first_name="HVAC",
             last_name="Tech",
             role="technician",
+            primary_campus=self.campus,
         )
         self.tech_hvac.sections.add(self.section_hvac)
 
@@ -58,6 +76,7 @@ class TicketOperationsTestCase(TestCase):
             first_name="Plumb",
             last_name="Tech",
             role="technician",
+            primary_campus=self.campus,
         )
         self.tech_plumbing.sections.add(self.section_plumbing)
 
@@ -67,14 +86,15 @@ class TicketOperationsTestCase(TestCase):
             first_name="Multi",
             last_name="Tech",
             role="technician",
+            primary_campus=self.campus,
         )
         self.tech_both.sections.add(self.section_hvac, self.section_plumbing)
 
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
 
-    def test_create_ticket(self):
-        """Test creating a new ticket."""
+    def test_create_ticket_direct_orm(self):
+        """Test creating a new ticket via ORM/service layer."""
         data = {
             "title": "Broken AC",
             "description": "AC not working",
@@ -88,7 +108,7 @@ class TicketOperationsTestCase(TestCase):
         self.assertEqual(response.data["title"], "Broken AC")
         self.assertEqual(response.data["status"], "open")
         self.assertIsNotNone(response.data["ticket_no"])
-        self.assertTrue(response.data["ticket_no"].startswith("TKT-"))
+        self.assertTrue(response.data["ticket_no"].startswith("MAIN-FAC-"))
 
     def test_ticket_includes_available_technicians(self):
         """Test that ticket response includes available technicians."""

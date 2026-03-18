@@ -1,5 +1,7 @@
 from typing import Any
 
+from typing import Any
+
 from tickets.serializers import (
     TicketSerializer,
     CommentSerializer,
@@ -7,7 +9,7 @@ from tickets.serializers import (
     FeedbackSerializer,
 )
 from tickets.models import CustomUser
-from tickets.api.services import ticket_services as services
+from tickets.api.services import TicketService
 from tickets.tests.base import BaseTicketTestCase
 
 
@@ -78,7 +80,13 @@ class SerializerTests(BaseTicketTestCase):
         serializer = TicketSerializer(data=data)
         self.assertTrue(serializer.is_valid(), serializer.errors)
 
-        ticket = services.create_ticket(serializer, self.user)
+        ticket = TicketService.create_ticket(
+            data=serializer.validated_data,
+            created_by=self.user,
+            section=self.section,
+            facility=self.facility,
+            enable_auto_escalation=True
+        )
         self.assertEqual(ticket.title, "New Ticket")
         self.assertEqual(ticket.raised_by, self.user)
         self.assertEqual(ticket.status, "open")
@@ -94,7 +102,8 @@ class SerializerTests(BaseTicketTestCase):
         serializer = CommentSerializer(data=data)
         self.assertTrue(serializer.is_valid(), serializer.errors)
 
-        comment = services.create_comment(serializer, self.technician, self.ticket.id)
+        comment = TicketService.create_comment(
+            serializer, self.technician, self.ticket.id)
         self.assertEqual(comment.text, "This is another comment.")
         self.assertEqual(comment.author, self.technician)
         self.assertEqual(comment.ticket, self.ticket)
@@ -113,7 +122,7 @@ class SerializerTests(BaseTicketTestCase):
 
         serializer = FeedbackSerializer(data=data)
         self.assertTrue(serializer.is_valid(), serializer.errors)
-        feedback = services.create_feedback(
+        feedback = TicketService.create_feedback(
             serializer, self.user, ticket_id=self.ticket.id
         )
         self.assertEqual(feedback.ticket, self.ticket)

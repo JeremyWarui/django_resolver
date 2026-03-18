@@ -1,53 +1,109 @@
 # Copilot Instructions for Django Resolver
 
 ## Project Overview
-**Django Resolver** is a Django REST API for maintenance ticket management with token-based authentication, role-based access, analytics, and reporting. Core app is `tickets/` with a layered architecture separating concerns across models, serializers, views, services, and analytics.
+**Django Resolver** is an enterprise-grade REST API for multi-tiered organizational maintenance ticket management with:
+- **Organizational Hierarchy**: Organization → Campus → Department → Section hierarchy
+- **Role-Based Access Control**: 6 roles (user, technician, section_head, hod, director, admin) with scope-based permissions
+- **Escalation Workflows**: Automatic 2-level escalation (section_head → HOD) with customizable timing
+- **Organizational Ticket Numbering**: CAMPUS-DEPT-XXXXX format (e.g., MAIN-IT-00001)
+- **Token Authentication**: Password-based login + commented magic link support
+- **Analytics & Reporting**: Organization-scoped analytics and PDF/CSV reports
+
+Core app is `tickets/` with layered architecture: Models → Services (business logic) → Views (HTTP handling) → Serializers (data transformation).
 
 ## Authentication System
 **Current**: Password-based authentication for all user roles
-- All users authenticate with username/password
-- Simple and reliable, no email configuration required
-- Test accounts have unique passwords defined in fixtures (e.g., `janedoe123`, `alexsmith123`, `adminuser123`)
-- See `docs/DEFAULT_CREDENTIALS.md` for complete test account list
+- All users authenticate with username/password via `/api/auth/login/`
+- Token generated on login; used in `Authorization: Token {token}` header
+- No email configuration required; works out of the box
+- Test accounts with unique passwords in fixtures (e.g., `janedoe123`, `alexsmith123`, `adminuser123`)
+- See `docs/DEFAULT_CREDENTIALS.md` for complete test account list (20+ test users)
 
-**Magic Link (Future)**: Code is preserved but commented out
-- Located in `tickets/api/simple_auth_views.py`
-- Can be enabled later when email service is configured
-- See `docs/AUTHENTICATION.md` for enable instructions
+**Magic Link (Future)**: Code preserved but commented out for future implementation
+- Located in `tickets/api/simple_auth_views.py` (search for `MagicLink`)
+- Enable later when email service configured
+- See `docs/AUTHENTICATION.md` for implementation instructions
 
 ## Architecture & Critical Patterns
 
-### Layered Architecture
-- **Models** (`tickets/models.py`): Data schema with custom behaviors
-  - `CustomUser`: Extends AbstractUser with role field (user/admin/technician/manager) and M2M to sections
-  - `Ticket`: Auto-generates `TKT-XXXXXX` numbers via `save()`, tracks lifecycle with `resolved_at`, uses helper methods `change_status()` and `change_assignment()` for atomic updates + logging
-  - Status flow: open → assigned → in_progress → pending ⇄ resolved → closed
-- **Services** (`tickets/api/services/`): Business logic layer - **NEVER put business logic in views**
-  - `ticket_services.py`: Validates status transitions, enforces role permissions, handles assignment rules (technician must belong to ticket's section)
-  - Use `validate_status_transition(old_status, new_status, user_role)` before status changes
-- **Views** (`tickets/api/views/`): Request/response handling only
-  - `resource_views.py`: DRF generics for CRUD, delegates to services via `perform_create()`/`perform_update()`
-  - Custom filters: `?assigned_to__isnull=true`, `?is_overdue=true` (>7 days old in open/assigned/in_progress)
-- **Analytics** (`tickets/api/analytics/`): Separate module with `analytics.py` (logic) and `views.py` (endpoints)
-- **Reports** (`tickets/api/reports/`): PDF/CSV generation with `report_generator.py`
+### Organizational Models (`tickets/models.py`)
+**Hierarchy (all in single file per Django best practice)**:
+- `Organization`: Root entity (corporate, educational, government, healthcare)
+- `Campus`: Geographic/operational divisions within org (e.g., MAIN, WEST, DOWNTOWN)
+- `Department`: Functional divisions within campus (e.g., IT, FACILITIES, OPS) - has `head_of_department` FK
+- `Section`: Specialized units within dept (e.g., ELECTRICAL, PLUMBING, NETWORK) - has `section_head` FK
+- `Facility`: Physical/equipment assets linked to campus + department
+- `CustomUser`: 6 roles (user, technician, section_head, hod, director, admin) with `primary_campus`, `primary_department`, sections M2M
+- `Ticket`: Auto-generates `CAMPUS-DEPT-XXXXX` numbers, tracks escalation (level 0→1→2), status includes 'escalated'
+- `TicketLog`: Immutable audit trail for all ticket changes
+
+### Layered Architecture (Consolidated, Organization-First)
+✅ **CONSOLIDATED STRUCTURE** - All functionality unified into organization-first design:
+
+- **Models** (`tickets/models.py`): Data schema with organizational context
+  - `CustomUser.organizational_scope` → returns access level (section/dept/org/system)
+  - `Ticket.save()` → auto-generates CAMPUS-DEPT-XXXXX; schedules auto-escalation
+  - Single model file: All models in `tickets/models.py` per Django best practice
+  
+- **Services** (`tickets/api/services/services.py`) - **UNIFIED SERVICE LAYER**
+  - Single `TicketService` class with all business logic
+  - Methods: `create_ticket()`, `assign_ticket()`, `escalate_ticket()`, `update_ticket_status()`, `close_ticket()`, `process_auto_escalations()`, `get_accessible_tickets()`
+  - Validators: `validate_status_transition()`, `manual_escalation_allowed()`
+  - Exceptions: `TicketServiceException`, `InsufficientScopeException`, `InvalidAssignmentException`, `InvalidEscalationException`
+  - Helpers: Scope validation, notification, system user retrieval, auto-escalation logic
+  - Import: `from tickets.api.services import TicketService`
+  - Backwards compatibility: `OrganizationalTicketService = TicketService` alias
+  
+- **Views** (`tickets/api/views/views.py`) - **UNIFIED VIEW LAYER**
+  - All 20+ endpoint classes consolidated in single file
+  - Organization Hierarchy: `OrganizationListCreateView`, `CampusListCreateView`, `DepartmentListCreateView`, `SectionListCreateView`/`SectionDetailView`
+  - Ticket Management: `TicketListCreateView`, `TicketDetailView`, `TicketEscalationView`, `OrganizationalTicketListView`, `EscalateTicketView`
+  - Users: `UserListCreateView`, `UserDetailView`, `TechniciansBySectionView`, `AssignableUsersView`
+  - Comments/Feedback: `CommentListCreateView`, `FeedbackListCreateView`
+  - Bulk Operations: `BulkTicketStatusUpdateView`
+  - Filtering: `?status=open&escalation_level=1&section=1&is_overdue=true`
+  - All views use `IsWithinOrganizationalScope` permission + service layer delegation
+  - Import via: `from tickets.api.views.index import <ViewName>`
+  
+- **Analytics** (`tickets/api/analytics/analytics.py`) - **UNIFIED ANALYTICS**
+  - Single file with all analytics classes:
+    - `TicketAnalytics`: Ticket counts, trends, distributions
+    - `TechnicianAnalytics`: Performance metrics, workload analysis
+    - `OrganizationalAnalytics`: Role-specific dashboards (Director, HOD, Section Head)
+    - `AdminAnalytics`: System-wide monitoring
+  - Role-specific dashboards: `director_dashboard()`, `hod_dashboard()`, `section_head_dashboard()`
+  - SLA compliance tracking and escalation trend analysis
+  - Import: `from tickets.api.analytics import OrganizationalAnalytics`
+  
+- **Reports** (`tickets/api/reports/`): PDF/CSV generation with org context
 
 ### Key Architectural Decisions
+- **Unified service layer**: Single `TicketService` class - no legacy vs. organizational split
+- **Unified views**: All endpoints consolidated in `views.py` with consistent organizational awareness
+- **Unified analytics**: All analytics classes in one file (`analytics.py`)
 - **Index files**: Use `index.py` in submodules for clean imports (see `tickets/api/views/index.py`, `tickets/api/analytics/index.py`)
-- **Atomic operations**: Status/assignment changes use model helper methods (`ticket.change_status(new_status, performed_by=user)`) to ensure atomic DB updates + `TicketLog` creation
+- **Atomic operations**: Status/assignment changes use service methods to ensure DB updates + `TicketLog` creation
 - **Pagination**: Custom classes in `tickets/api/pagination.py` add metadata (`total_pages`, `current_page`) to DRF responses
+- **Single source of truth**: Each architectural layer has one primary consolidated file (services.py, views.py, analytics.py)
 
 ## Developer Workflows
 
 ### Setup
-```bash
-# 1. Environment
-cp .env.example .env  # Configure SECRET_KEY, DEBUG, ALLOWED_HOSTS, DATABASE_URL
+```bash -v 2
 
-# 2. Dependencies
-pip install -r requirements.txt
+# Organizational tests (6 test classes, 75+ tests)
+python manage.py test tickets.tests.test_organizational -v 2
 
-# 3. Database
-python manage.py migrate
+# Escalation workflow tests
+python manage.py test tickets.tests.test_organizational.EscalationWorkflowTestCase -v 2
+
+# Specific test
+python manage.py test tickets.tests.test_apis.TicketAPITestCase.test_ticket_lifecycle_workflow
+```
+**Test organization** (`tickets/tests/`):
+- `test_organizational.py` - 6 classes, 75+ tests: hierarchy, escalation, permissions, APIs, analytics
+- `test_models.py`, `test_serializers.py`, `test_apis.py` (permissions, filters, lifecycle)
+- `test_workflow.py` (status transitions), `test_analytics.py` (analytics endpoints)
 python manage.py createsuperuser
 
 # 4. Sample data (118 records: users, tickets, comments, feedback)
@@ -68,56 +124,97 @@ python manage.py test tickets.tests.test_apis.TicketAPITestCase.test_ticket_life
 **Test organization** (`tickets/tests/`): `test_models.py`, `test_serializers.py`, `test_apis.py` (permissions, filters, lifecycle), `test_workflow.py` (status transitions), `test_analytics.py`
 
 ### Debugging Fixtures
-```bash
-python manage.py shell
-from tickets.models import *
-# Example: See SAMPLE_QUERIES.md for 20+ pre-built queries
-Ticket.objects.filter(status='pending').values('ticket_no', 'pending_reason')
-```
+```bash & Escalation
+**Valid status flows** (enforced in services):
+- `open` → `assigned` (auto-set when `assigned_to` assigned) → `in_progress` → `pending` ↔ `resolved` → `closed`
+- `escalated`: Separate status indicating escalation in progress
+- Status includes `escalated` option for parallel tracking
 
-## Critical Business Rules
+**Escalation workflow** (auto via `process_auto_escalations` command):
+- **Level 0** (none): Initial state
+- **Level 1** → Section Head escalation after `escalation_threshold_hours` (default: 48)
+- **Level 2** → HOD escalation after another threshold (max level)
+- **Manual escalation**: Any user can escalate with reason
+- Closed tickets cannot escalate
 
-### Ticket Status Transitions
-**Valid flows** (enforced in `validate_status_transition()`):
-- `open` → `assigned` (auto-set when `assigned_to` is set)
-- `assigned` → `in_progress` OR `pending`
-- `in_progress` → `pending` OR `resolved`
-- `pending` → `in_progress` OR `resolved`
-- `resolved` → `closed` (admin/manager only)
-- `closed`: No further transitions allowed
+### Role Permissions (Organizational Scope)
+| Role | Organizational Scope | Permissions |
+|------|-----|---|
+| `user` | Section | Create tickets, comment on own, feedback |
+| `technician` | Section | Update status, assign within section + user perms |
+| `section_head` | Section | Escalation resolution, section oversight |
+| `hod` (Head of Department) | Department | Final escalation point, dept-wide overview |
+| `director` | Organization | Analytics only (no ticket management) |
+| `admin` | System | Full access, close tickets, config |
 
-**Role permissions**:
-- `user`: Can create tickets, add comments (if related), submit feedback
-- `technician`: Can update status (except `closed`), must belong to ticket's section
-- `admin`/`manager`: Full access including closing tickets
-
-### Assignment Rules
-- Only technicians can be assigned (`user.role == 'technician'`)
+### Assignment Rules (Organizational)
+- Only technicians can be assigned
 - Technician must have ticket's section in `user.sections.all()`
-- Cannot reassign resolved/closed tickets
-
-### Auto-behaviors
-- Ticket numbers: Generated in `Ticket.save()` as `TKT-{id:06d}`
-- Username generation: `UserSerializer.create()` uses `{first_name}.{last_name}`, appends `-{counter}` if taken
-- `resolved_at`: Auto-set when status → `resolved` or `closed`
-
-## API Patterns
+- TeOrganizational Hierarchy Endpoints
+```
+GET/POST     /api/organizations/
+GET/PATCH    /api/organizations/{id}/
+GET/POST     /api/campuses/
+GET/PATCH    /api/campuses/{id}/
+GET/POST     /api/departments/
+GET/PATCH    /api/departments/{id}/
+GET/POST     /api/sections/
+GET/PATCH    /api/sections/{id}/
+```
 
 ### Resource Endpoints
 ```
-/api/sections/, /api/facilities/, /api/tickets/, /api/comments/, /api/feedback/, /api/users/
+GET/POST     /api/tickets/               # Org-aware ticket CRUD
+GET/PATCH    /api/tickets/{id}/          # Include escalation fields
+POST         /api/tickets/{id}/escalate/ # Manual escalation endpoint
+GET/POST     /api/facilities/
+GET/POST     /api/comments/              # Sub-resource of tickets
+GET/POST     /api/feedback/              # Sub-resource of tickets
+GET/POST     /api/users/
 ```
 - Use `StandardResultsSetPagination` (10/page) by default
+- **Org-aware filtering**: `?status=open&section=1&campus=1&escalation_level=1&is_overdue=true`
+- **Escalation filters**: `?escalation_level=1`, `?escalation_level=2`, `?next_escalation_due__lte={date}`
+
+### Technician Assignment (Organization-scoped)
+```
+GET /api/technicians/?section_id={id}&campus_id={id}  # Technicians in section + campus
+```
+- Only returns technicians matching both section AND user's accessible campus
+- Tickets include `available_technicians` field (org-filtered)
+- Frontend uses this for assignment dropdowns
+
+### Analytics Endpoints (Org-scoped)
+```
+GET /api/analytics/tickets/?timeframe=week&campus_id=1&section_id=1&days=30
+GET /api/analytics/technicians/?technician_id=5&campus_id=1
+GET /api/analytics/admin-dashboard/  # Director/Admin only
+```
+Query params: `timeframe` (day/week/month), `campus_id`, `section_id`, `facility_id`, `days`, `group_by`
+
+### Escalation Management
+```
+GET  /api/tickets/?escalation_level=1  # Escalated to section_head
+GET  /api/tickets/?escalation_level=2  # Escalated to HOD
+POST /api/tickets/{id}/escalate/       # Manual escalation
+```
+
+### Reports
+```
+GET /api/reports/types/
+GET /api/reports/generate/?report_type=tickets&format=pdf&campus=1&section=1ltsSetPagination` (10/page) by default
 - Filtering: `?status=open&section=1&assigned_to__isnull=true&is_overdue=true`
 
 ### Technician Assignment
-```
-/api/technicians/?section_id={id}  # Get technicians filtered by section for assignment
-```
-- Tickets include `available_technicians` field showing who can be assigned
-- Only technicians belonging to ticket's section can be assigned
-- Frontend should use this endpoint to populate assignment dropdowns
-
+```6 indexes (including organizational):
+  - `ticket_section_status_idx` - Composite on `(status, section, -updated_at)` (org filtering)
+  - `ticket_assignment_idx` - Composite on `(assigned_to, status)`
+  - `ticket_escalation_idx` - Composite on `(escalation_level, -escalated_at)` (escalation queries)
+  - `ticket_auto_escalation_idx` - Composite on `(next_escalation_due, auto_escalation_enabled)` (scheduler)
+  - `ticket_status_updated_idx` - Composite on `(status, -updated_at)`
+  - Plus specialized org-hierarchy indexes on Campus, Department, Section
+- Default ordering: `Ticket.Meta.ordering = ['-updated_at']`
+- Performance impact: 66x improvement on org-filtered queries
 ### Analytics Endpoints
 ```
 /api/analytics/tickets/?timeframe=week&facility_id=1&group_by=day&days=30
@@ -130,27 +227,55 @@ Query params: `timeframe` (day/week/month), `facility_id`, `section_id`, `techni
 ```
 /api/reports/generate/?report_type=tickets&format=pdf&status=open
 /api/reports/types/
-```
+``` & Patterns
 
-## Frontend Integration
+### Code Style
+- Follow PEP 8
+- Use DRF generics for CRUD (`ListCreateAPIView`, `RetrieveUpdateDestroyAPIView`)
+- Custom views for analytics and escalation (inherit `APIView`)
 
-### CORS Configuration
-- Configured in `resolver/settings.py` using `django-cors-headers`
-- Allowed origins from env var `ALLOWED_ORIGINS` (comma-separated): `http://localhost:5173,http://127.0.0.1:5173`
-- `CORS_ALLOW_CREDENTIALS = True` enables cookies/auth headers
-- CORS middleware positioned before `CommonMiddleware` in middleware stack
+### Organizational Access Control
+- Always call `user.get_accessible_campuses()` before querying org resources
+- Filter querysets by `campus__in=user.get_accessible_campuses()` in views
+- Use `organizational_scope` property to determine access level
+- Services should validate user has access to resource's org unit
 
-### API Response Format
-All paginated endpoints return:
-```json
-{
-  "count": 100,
-  "next": "http://api.example.org/accounts/?page=3",
-  "previous": "http://api.example.org/accounts/?page=1",
-  "total_pages": 10,
-  "current_page": 2,
-  "results": [...]
-}
+### Escalation Management
+- Call `process_auto_escalations()` via cron (hourly or every 30 min)
+- Manual escalation: call `TicketService.escalate_ticket()` from `tickets/api/services/services.py`
+- Check `next_escalation_due` before auto-escalating
+- Update `escalation_reason` for audit trail
+
+### Adding Features
+1. **Model changes**: Add to `tickets/models.py` (keep all models in one file), then `python manage.py makemigrations`
+2. **Business logic**: Add method to `TicketService` class in `tickets/api/services/services.py`, NOT views
+3. **Escalation logic**: Add to TicketService escalation methods in consolidated `services.py`
+4. **API endpoint**: Add view class to `tickets/api/views/views.py`, import in `index.py`, route in `urls.py`
+5. **Analytics feature**: Add method to appropriate class in `tickets/api/analytics/analytics.py`
+6. **Tests**: Add to `test_organizational.py` for org features, appropriate `test_*.py` file
+7. **Management command**: Use `tickets/management/commands/` pattern for scheduled jobs
+
+### Common Pitfalls
+- ❌ Don't put business logic in views - put in TicketService (consolidated services.py)
+- ❌ Don't skip org access validation (check `get_accessible_*()` methods)
+- ❌ Don't modify closed/escalated tickets without explicit business rule
+- ❌ Don't bypass `process_auto_escalations()` for escalation - always use it
+- ❌ Don't split models across multiple files (Django best practice: keep in `models.py`)
+- ❌ Don't import from old deprecated files (ticket_services, organizational_ticket_service, resource_views, organizational_views)
+- ✅ Always use `TicketService` for business logic (consolidated single class)
+- ✅ Always import from: `from tickets.api.services import TicketService` or `from tickets.api.views.index import ViewName`
+- ✅ Filter by `campus__in=user.get_accessible_campuses()` when querying
+- ✅ Use `TicketService` methods for escalation operations
+- ✅ Add database indexes on frequently filtered fields (escalation_level, next_escalation_due)
+- ✅ Log escalations and role-based access decisions in TicketLog
+
+## Key Documentation Files
+- `docs/ORGANIZATIONAL_IMPLEMENTATION_PLAN.md` - Complete spec, phase tracking, design decisions
+- `docs/organizational/SETUP.md` - Setting up org hierarchy features
+- `docs/organizational/TESTING.md` - Testing org workflows
+- `docs/CODEBASE_ARCHITECTURE.md` - General architecture overview
+- `docs/DEFAULT_CREDENTIALS.md` - Test user credentials (20+ test accounts)
+- `CONSOLIDATION_SUMMARY.md` - Overview of consolidated structure (services.py, views.py, analytics.py)
 ```
 
 ## Performance Optimizations
@@ -182,21 +307,29 @@ All paginated endpoints return:
 ### Code Style
 - Follow PEP 8
 - Use DRF generics for CRUD (`ListCreateAPIView`, `RetrieveUpdateDestroyAPIView`)
-- Custom views for analytics (inherit `APIView`)
+- Custom views for analytics and escalation (inherit `APIView`)
+
+### Organizational Access Control
+- Always call `user.get_accessible_campuses()` before querying org resources
+- Filter querysets by `campus__in=user.get_accessible_campuses()`
+- Use `organizational_scope` property to determine access level
+- Services should validate user has access to resource's org unit via `TicketService` helpers
 
 ### Adding Features
 1. **Model changes**: Add to `tickets/models.py`, then `python manage.py makemigrations`
-2. **Business logic**: Add to relevant service file, NOT views
-3. **API endpoint**: Add view to `tickets/api/views/`, import in `index.py`, add route to `tickets/api/urls.py`
-4. **Tests**: Add to appropriate `tickets/tests/test_*.py` file
+2. **Business logic**: Add method to `TicketService` class in `tickets/api/services/services.py`, NOT views
+3. **API endpoint**: Add view to `tickets/api/views/views.py`, import in `index.py`, add route to `urls.py`
+4. **Tests**: Add to `test_organizational.py` for org features, appropriate `test_*.py` file
+5. **Analytics**: Add method to class in `tickets/api/analytics/analytics.py`
 
 ### Common Pitfalls
-- ❌ Don't modify closed tickets (enforced in `update_ticket()`)
-- ❌ Don't bypass services - always call service functions from views
-- ❌ Don't create `TicketLog` manually - use `ticket.change_status()` or `ticket.change_assignment()`
-- ❌ Don't remove database indexes without profiling performance impact first
-- ✅ Use `performed_by` parameter in model helpers for audit trail
-- ✅ Add database indexes on frequently filtered/ordered fields
+- ❌ Don't put business logic in views - use TicketService
+- ❌ Don't import from deprecated files (removed after consolidation)
+- ❌ Don't split functionality across multiple files per layer
+- ✅ Always use `from tickets.api.services import TicketService`
+- ✅ Always use `from tickets.api.views.index import ViewName`
+- ✅ Always use `from tickets.api.analytics import AnalyticsClass`
+- ✅ Delegate to service layer from views via `TicketService` methods
 
 ## Key Files Reference
 - `tickets/api/README.md`: API architecture deep-dive

@@ -23,6 +23,9 @@ from tickets.models import (
     Ticket,
     Comment,
     Feedback,
+    Organization,
+    Campus,
+    Department,
 )
 
 
@@ -52,6 +55,57 @@ class BaseTicketTestCase(TestCase):
         after the class completes. Don't modify these objects in tests, or create
         new instances if you need to test mutations.
         """
+        # Create organizational hierarchy
+        cls.organization = Organization.objects.create(
+            name="Test Organization",
+            code="TEST",
+            organization_type="corporate"
+        )
+
+        cls.campus = Campus.objects.create(
+            name="Main Campus",
+            code="MAIN",
+            organization=cls.organization,
+            location="123 Main St"
+        )
+
+        cls.department = Department.objects.create(
+            name="IT Department",
+            code="IT",
+            campus=cls.campus
+        )
+
+        cls.department_hvac = Department.objects.create(
+            name="Facilities Department",
+            code="FAC",
+            campus=cls.campus
+        )
+
+        # Create sections with department relationships
+        cls.section = Section.objects.create(
+            name="IT",
+            code="IT",
+            description="Information Technology",
+            department=cls.department
+        )
+
+        cls.section_hvac = Section.objects.create(
+            name="HVAC",
+            code="HVAC",
+            description="Heating and cooling",
+            department=cls.department_hvac
+        )
+
+        # Create facility with organizational context
+        cls.facility = Facility.objects.create(
+            name="Main Building",
+            type="building",
+            status="active",
+            location="123 Main St",
+            campus=cls.campus,
+            department=cls.department
+        )
+
         # Create regular user
         cls.user = CustomUser.objects.create_user(
             username="testuser",
@@ -60,7 +114,9 @@ class BaseTicketTestCase(TestCase):
             first_name="Test",
             last_name="User",
             role="user",
+            primary_campus=cls.campus,
         )
+        cls.user.sections.add(cls.section)
 
         # Create admin user
         cls.admin = CustomUser.objects.create_user(
@@ -73,23 +129,6 @@ class BaseTicketTestCase(TestCase):
             is_staff=True,
         )
 
-        # Create sections
-        cls.section = Section.objects.create(
-            name="IT", description="Information Technology"
-        )
-
-        cls.section_hvac = Section.objects.create(
-            name="HVAC", description="Heating and cooling"
-        )
-
-        # Create facility
-        cls.facility = Facility.objects.create(
-            name="Main Building",
-            type="building",
-            status="active",
-            location="123 Main St",
-        )
-
         # Create technician and assign to IT section
         cls.technician = CustomUser.objects.create_user(
             username="techuser",
@@ -98,6 +137,7 @@ class BaseTicketTestCase(TestCase):
             first_name="Tech",
             last_name="User",
             role="technician",
+            primary_campus=cls.campus,
         )
         cls.technician.sections.add(cls.section)
 
@@ -124,7 +164,8 @@ class BaseTicketTestCase(TestCase):
                 self.reset_ticket_sequence()
         """
         with connection.cursor() as cursor:
-            cursor.execute("ALTER SEQUENCE tickets_ticket_id_seq RESTART WITH 1;")
+            cursor.execute(
+                "ALTER SEQUENCE tickets_ticket_id_seq RESTART WITH 1;")
 
     def create_ticket(self, **kwargs):
         """

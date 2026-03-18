@@ -2,15 +2,12 @@
 
 Welcome to the comprehensive documentation for Django Resolver - a Django REST API for maintenance ticket management.
 
-**[📖 START HERE: Documentation Guide](DOCUMENTATION_GUIDE.md)** - Choose your role and follow the recommended reading path
-
 ## 📚 Quick Navigation
 
 ### 🚀 Getting Started
 
 - **[Main README](../README.md)** - Project overview, quick start guide, and installation
-- **[Developer Quick Reference](DEVELOPER_QUICK_REFERENCE.md)** - Checklists, patterns, and common tasks
-- **[Project Structure](PROJECT_STRUCTURE.md)** - Complete directory structure and organization
+- **[Codebase Architecture](CODEBASE_ARCHITECTURE.md)** - Complete codebase structure, file roles, data flows, and directory organization
 
 ### 🔌 API Documentation
 
@@ -23,6 +20,12 @@ Welcome to the comprehensive documentation for Django Resolver - a Django REST A
 - **[Architecture Diagrams](ARCHITECTURE_DIAGRAMS.md)** - Visual flow diagrams and module interactions
 - **[API Layers](architecture/LAYERS.md)** - Layered architecture and design patterns
 
+### 🔐 Authentication & Setup
+
+- **[Authentication](AUTHENTICATION.md)** - Authentication system (password-based + future magic links)
+- **[Default Credentials](DEFAULT_CREDENTIALS.md)** - Test account information
+- **[Organizational Setup](organizational/SETUP.md)** - Setting up organizational hierarchy features
+
 ### 🚢 Deployment
 
 - **[Build Configuration](../build.sh)** - Build script for deployment
@@ -32,6 +35,7 @@ Welcome to the comprehensive documentation for Django Resolver - a Django REST A
 
 - **[Testing Guide](testing/TESTING.md)** - Complete testing documentation including test organization, running tests, and using BaseTicketTestCase
 - **[Sample Queries](testing/SAMPLE_QUERIES.md)** - 20+ pre-built Django ORM query examples for exploring fixture data
+- **[Organizational Testing](organizational/TESTING.md)** - Testing organizational features and hierarchies
 
 ### 📋 Reference
 
@@ -44,12 +48,19 @@ Welcome to the comprehensive documentation for Django Resolver - a Django REST A
 ```
 docs/
 ├── INDEX.md                          # This file - documentation navigation
-├── PROJECT_STRUCTURE.md              # Complete project structure overview
+├── CODEBASE_ARCHITECTURE.md          # Complete architecture overview
+├── AUTHENTICATION.md                 # Authentication system
+├── ARCHITECTURE_DIAGRAMS.md          # Visual diagrams
+├── DEFAULT_CREDENTIALS.md            # Test credentials
+├── ORGANIZATIONAL_IMPLEMENTATION_PLAN.md  # Implementation tracking
 ├── api/                              # API documentation
 │   ├── GUIDE.md                     # Complete API reference
 │   └── ANALYTICS.md                 # Analytics endpoints
 ├── architecture/                     # Architecture and design docs
 │   └── LAYERS.md                    # API layered architecture
+├── organizational/                   # Organizational features
+│   ├── SETUP.md                     # Setup guide
+│   └── TESTING.md                   # Testing guide
 └── testing/                          # Testing documentation
     ├── TESTING.md                    # Complete testing guide
     └── SAMPLE_QUERIES.md             # Query examples
@@ -61,6 +72,7 @@ docs/
 
 **Setting Up Development Environment:**
 1. [Main README](../README.md) - Installation steps
+2. [Codebase Architecture](CODEBASE_ARCHITECTURE.md) - Project structure
 
 **Building Frontend Integration:**
 1. [API Guide](api/GUIDE.md) - All endpoints
@@ -68,7 +80,12 @@ docs/
 
 **Understanding Architecture:**
 1. [API Layers](architecture/LAYERS.md) - Code organization
-2. [Project Structure](PROJECT_STRUCTURE.md) - Complete directory overview
+2. [Codebase Architecture](CODEBASE_ARCHITECTURE.md) - Complete directory overview
+3. [Architecture Diagrams](ARCHITECTURE_DIAGRAMS.md) - Visual references
+
+**Setting Up Organizational Features:**
+1. [Organizational Setup](organizational/SETUP.md) - Implementation guide
+2. [Organizational Implementation Plan](ORGANIZATIONAL_IMPLEMENTATION_PLAN.md) - Phase tracking
 
 **Deploying to Production:**
 1. [Render Config](../render.yaml) - Cloud deployment configuration
@@ -76,6 +93,7 @@ docs/
 **Writing Tests:**
 1. [Testing Guide](testing/TESTING.md) - Complete test documentation including BaseTicketTestCase usage
 2. [Sample Queries](testing/SAMPLE_QUERIES.md) - Query examples for exploring data
+3. [Organizational Testing](organizational/TESTING.md) - Testing organizational features
 
 ### By Component
 
@@ -86,11 +104,21 @@ docs/
 **Analytics:**
 - [Analytics API](api/ANALYTICS.md) - Analytics endpoints and usage
 
+**Authentication:**
+- [Authentication Guide](AUTHENTICATION.md) - System details and configuration
+
+**Organizational Hierarchy:**
+- [Organizational Setup](organizational/SETUP.md) - Feature setup
+- [Organizational Testing](organizational/TESTING.md) - Test examples
+- [Implementation Plan](ORGANIZATIONAL_IMPLEMENTATION_PLAN.md) - Phase tracking
+
 ## 🆘 Common Issues
-TESTING.md)  
+
+**API Integration:** See [API Guide](api/GUIDE.md)  
+**Testing:** See [Testing Guide](testing/TESTING.md)  
 **Database Queries:** See [Sample Queries](testing/SAMPLE_QUERIES.md)  
-**API Integration:** See [API Guide](api/GUID
-**Test Failures:** See [Testing Guide](testing/README.md)
+**Authentication:** See [Authentication](AUTHENTICATION.md)  
+**Organizational Features:** See [Organizational Setup](organizational/SETUP.md)
 
 ## 📝 Contributing
 

@@ -11,7 +11,7 @@ Usage:
 
 from django.core.management.base import BaseCommand
 from django.utils import timezone
-from tickets.api.services import OrganizationalTicketService
+from tickets.api.services import TicketService
 from tickets.models import Ticket
 
 
@@ -77,7 +77,7 @@ class Command(BaseCommand):
             return
 
         # Process escalations
-        results = OrganizationalTicketService.process_auto_escalations()
+        results = TicketService.process_auto_escalations()
 
         self.stdout.write(self.style.SUCCESS(
             f'\n✓ Auto-escalation processing complete'))

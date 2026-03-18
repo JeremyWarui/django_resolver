@@ -116,12 +116,12 @@ def manual_escalation_allowed(ticket: Ticket) -> bool:
 def validate_pending_transition(new_status: str, pending_reason: str, pending_comment: str) -> Tuple[bool, str]:
     """
     Validate that PENDING status transitions include required reason and comment.
-    
+
     Args:
         new_status: Proposed new status
         pending_reason: Reason for pending (if applicable)
         pending_comment: Comment for pending (if applicable)
-        
+
     Returns:
         tuple: (is_valid, message)
     """
@@ -130,7 +130,7 @@ def validate_pending_transition(new_status: str, pending_reason: str, pending_co
             return False, "pending_reason is required when marking ticket as PENDING"
         if not pending_comment:
             return False, "pending_comment is required when marking ticket as PENDING"
-    
+
     return True, ""
 
 
@@ -392,7 +392,7 @@ class TicketService:
             old_status, new_status, updated_by.role)
         if not is_valid:
             raise DRFValidationError(error_msg)
-        
+
         # Validate pending fields if marking as PENDING
         if new_status == 'pending':
             is_valid, error_msg = validate_pending_transition(
@@ -402,12 +402,13 @@ class TicketService:
 
         # Check permission for this specific transition
         if new_status == 'closed' and updated_by.role not in ['admin', 'manager', 'user']:
-            raise DRFPermissionDenied("Only admins/managers or ticket raiser can close tickets")
+            raise DRFPermissionDenied(
+                "Only admins/managers or ticket raiser can close tickets")
 
         # Perform status change
         with transaction.atomic():
             ticket.change_status(new_status, performed_by=updated_by)
-            
+
             # Set pending fields if applicable
             if new_status == 'pending':
                 ticket.pending_reason = pending_reason
@@ -457,11 +458,11 @@ class TicketService:
 
         # Get all tickets
         tickets = Ticket.objects.filter(id__in=ticket_ids)
-        
+
         # Track which ticket IDs were found
         found_ids = set(tickets.values_list('id', flat=True))
         missing_ids = set(ticket_ids) - found_ids
-        
+
         # Add errors for missing tickets
         for missing_id in missing_ids:
             results['failed'] += 1
@@ -518,7 +519,7 @@ class TicketService:
     ) -> Ticket:
         """
         Close a resolved ticket.
-        
+
         Allowed for:
         - Ticket raiser (user who created the ticket)
         - Admin or manager roles

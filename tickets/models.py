@@ -359,7 +359,7 @@ class Ticket(models.Model):
         null=True,
         help_text="Detailed explanation when marking ticket as pending",
     )
-    
+
     # Additional context
     # Room, building, etc.
     location_details = models.CharField(max_length=200, blank=True)
@@ -473,7 +473,7 @@ class Ticket(models.Model):
             self.escalation_reason = reason
             if self.status != 'escalated':
                 self.status = 'escalated'
-            
+
             # Update priority based on escalation level
             if next_escalation_level == 1:
                 self.priority = 'medium'  # First escalation -> MEDIUM
@@ -564,10 +564,10 @@ class Ticket(models.Model):
         """Auto-mark ticket as CRITICAL if unresolved for >72 hours"""
         if self.status in ['resolved', 'closed']:
             return False
-        
+
         hours_since_creation = (
             timezone.now() - self.created_at).total_seconds() / 3600
-        
+
         # Mark CRITICAL if >72 hours without resolution
         if hours_since_creation > 72 and self.priority != 'critical':
             self.priority = 'critical'

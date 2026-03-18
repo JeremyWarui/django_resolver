@@ -24,6 +24,20 @@ Core app is `tickets/` with layered architecture: Models → Services (business 
 - Enable later when email service configured
 - See `docs/AUTHENTICATION.md` for implementation instructions
 
+## Documentation Structure
+**Primary Documentation Location**: `docs/` directory with organized subsections:
+- **Specifications**: [`docs/specifications/WORKFLOW_SPEC.md`](../docs/specifications/WORKFLOW_SPEC.md) - Complete ticket workflow specification with organizational scope and architectural decisions
+- **Compliance**: [`docs/compliance/AUDIT_STATUS.md`](../docs/compliance/AUDIT_STATUS.md) - Consolidated compliance audit (96% compliance - all critical requirements met)
+- **API**: `docs/api/` - API reference and analytics documentation
+- **Architecture**: `docs/architecture/` - Layered architecture documentation
+- **Organizational**: `docs/organizational/` - Setup and testing guides
+- **Testing**: `docs/testing/` - Test organization and sample queries
+- **Navigation**: [`docs/INDEX.md`](../docs/INDEX.md) - Master index for all documentation
+
+**Key Documentation References**:
+- See [`docs/specifications/WORKFLOW_SPEC.md`](../docs/specifications/WORKFLOW_SPEC.md) for complete workflow requirements
+- See [`docs/compliance/AUDIT_STATUS.md`](../docs/compliance/AUDIT_STATUS.md) for compliance findings and implementation status
+
 ## Architecture & Critical Patterns
 
 ### Organizational Models (`tickets/models.py`)
@@ -268,16 +282,6 @@ Query params: `timeframe` (day/week/month), `facility_id`, `section_id`, `techni
 - ✅ Use `TicketService` methods for escalation operations
 - ✅ Add database indexes on frequently filtered fields (escalation_level, next_escalation_due)
 - ✅ Log escalations and role-based access decisions in TicketLog
-
-## Key Documentation Files
-- `docs/ORGANIZATIONAL_IMPLEMENTATION_PLAN.md` - Complete spec, phase tracking, design decisions
-- `docs/organizational/SETUP.md` - Setting up org hierarchy features
-- `docs/organizational/TESTING.md` - Testing org workflows
-- `docs/CODEBASE_ARCHITECTURE.md` - General architecture overview
-- `docs/DEFAULT_CREDENTIALS.md` - Test user credentials (20+ test accounts)
-- `CONSOLIDATION_SUMMARY.md` - Overview of consolidated structure (services.py, views.py, analytics.py)
-```
-
 ## Performance Optimizations
 
 ### Database Indexes

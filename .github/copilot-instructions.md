@@ -25,18 +25,25 @@ Core app is `tickets/` with layered architecture: Models → Services (business 
 - See `docs/AUTHENTICATION.md` for implementation instructions
 
 ## Documentation Structure
+
+**🎯 Master Guides (Start Here)**:
+- **[First Time Setup](../docs/FIRST_TIME_SETUP.md)** - Complete setup guide for new developers
+- **[Architecture Guide](../docs/ARCHITECTURE_GUIDE.md)** - System architecture and design
+- **[API Integration Guide](../docs/API_INTEGRATION_GUIDE.md)** - API endpoints and integration
+
 **Primary Documentation Location**: `docs/` directory with organized subsections:
 - **Specifications**: [`docs/specifications/WORKFLOW_SPEC.md`](../docs/specifications/WORKFLOW_SPEC.md) - Complete ticket workflow specification with organizational scope and architectural decisions
 - **Compliance**: [`docs/compliance/AUDIT_STATUS.md`](../docs/compliance/AUDIT_STATUS.md) - Consolidated compliance audit (96% compliance - all critical requirements met)
-- **API**: `docs/api/` - API reference and analytics documentation
-- **Architecture**: `docs/architecture/` - Layered architecture documentation
-- **Organizational**: `docs/organizational/` - Setup and testing guides
-- **Testing**: `docs/testing/` - Test organization and sample queries
+- **API Reference**: `docs/api/` - Detailed API endpoints and analytics documentation
+- **Architecture Reference**: `docs/architecture/` - Layered architecture and design patterns
+- **Testing**: `docs/testing/` - Test organization (157 tests), guides, and sample queries
 - **Navigation**: [`docs/INDEX.md`](../docs/INDEX.md) - Master index for all documentation
 
 **Key Documentation References**:
+- Start with master guides above for your role/task
 - See [`docs/specifications/WORKFLOW_SPEC.md`](../docs/specifications/WORKFLOW_SPEC.md) for complete workflow requirements
 - See [`docs/compliance/AUDIT_STATUS.md`](../docs/compliance/AUDIT_STATUS.md) for compliance findings and implementation status
+- See [`docs/testing/TESTING.md`](../docs/testing/TESTING.md) for comprehensive test coverage (157 tests)
 
 ## Architecture & Critical Patterns
 

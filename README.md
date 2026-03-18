@@ -1,5 +1,8 @@
 # Django Resolver - Ticket Management System
 
+> 📚 **For detailed setup instructions, see [First Time Setup Guide](docs/FIRST_TIME_SETUP.md)** (NEW)  
+> This README provides quick start steps. The Setup Guide includes detailed troubleshooting and comprehensive explanation.
+
 A Django REST API for managing maintenance tickets, facilities, and user feedback. Designed for organizations with up to 100 users.
 
 **Stack**: Django 5.2.7 | DRF 3.16.1 | PostgreSQL | pytest (89 tests, 86% coverage)

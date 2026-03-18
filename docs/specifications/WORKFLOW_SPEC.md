@@ -1,5 +1,7 @@
 # Ticket Management System Workflow - REVISED (March 2026)
 
+[← Back to Index](../INDEX.md) | [Compliance Audit →](../compliance/AUDIT_STATUS.md)
+
 **This document clarifies and updates the original workflow specification to align with implementation decisions.**
 
 ---

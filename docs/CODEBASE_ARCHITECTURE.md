@@ -1,5 +1,11 @@
 # Django Resolver - Codebase Architecture & Data Flow
 
+⚠️ **STATUS**: This comprehensive reference is being reorganized into focused master guides:
+- **System Architecture** → See [Architecture Guide](ARCHITECTURE_GUIDE.md) (NEW)
+- **Frontend Integration** → See [API Integration Guide](API_INTEGRATION_GUIDE.md) (NEW)  
+- **Setup Instructions** → See [First Time Setup](FIRST_TIME_SETUP.md) (NEW)
+- **Complete Reference** → This document remains your comprehensive resource
+
 ## 📋 Table of Contents
 1. [Project Overview](#project-overview)
 2. [Directory Structure & File Roles](#directory-structure--file-roles)

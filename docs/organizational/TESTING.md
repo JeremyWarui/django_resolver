@@ -1,5 +1,8 @@
 # Testing the Organizational Implementation
 
+> 📌 **For comprehensive testing guide, see [Testing Guide](../testing/TESTING.md)**  
+> This document covers **organizational testing workflows only**. For complete test coverage (157 tests), see the main Testing Guide.
+
 ## Quick Start: Load Data & Run Tests
 
 ### 1. Update Database

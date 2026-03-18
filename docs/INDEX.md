@@ -2,7 +2,33 @@
 
 Welcome to the comprehensive documentation for Django Resolver - a Django REST API for maintenance ticket management.
 
-## 📚 Quick Navigation
+## � Find Docs by Your Role
+
+**I'm a Frontend Developer** → Build your integration:
+- [API Integration Guide](API_INTEGRATION_GUIDE.md) - Complete frontend guide (NEW)
+- [API Guide](api/GUIDE.md) - All API endpoints
+- [Authentication](AUTHENTICATION.md) - Implement login
+- [Analytics API](api/ANALYTICS.md) - Add dashboards
+
+**I'm a Backend Developer** → Build your feature:
+- [Architecture Guide](ARCHITECTURE_GUIDE.md) - How the system works (NEW)
+- [Codebase Architecture](CODEBASE_ARCHITECTURE.md) - Complete reference
+- [Workflow Specification](specifications/WORKFLOW_SPEC.md) - Complete spec
+- [Testing Guide](testing/TESTING.md) - Write and run tests
+
+**I'm Setting Up Locally** → Get running:
+- [First Time Setup](FIRST_TIME_SETUP.md) - Complete setup guide (NEW)
+- [Default Credentials](DEFAULT_CREDENTIALS.md) - Test user accounts
+- [Main README](../README.md) - Quick start
+
+**I'm DevOps/Deploying** → Deploy to production:
+- [build.sh](../build.sh) - Build script
+- [render.yaml](../render.yaml) - Render deployment config
+- [Architecture Guide](ARCHITECTURE_GUIDE.md) - System design
+
+---
+
+## �📚 Quick Navigation
 
 ### 🚀 Getting Started
 

@@ -1,5 +1,8 @@
 # Django Resolver API Structure
 
+> 📌 **For complete architecture overview, see [Architecture Guide](../ARCHITECTURE_GUIDE.md)** (NEW)  
+> This document details the **API layer structure specifically**. For full system architecture, see the Architecture Guide.
+
 This document outlines the organization of the Django Resolver project's API structure.
 
 ## Directory Structure

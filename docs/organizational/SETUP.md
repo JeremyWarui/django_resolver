@@ -41,81 +41,35 @@ exit()
 
 ## Test Users & Credentials
 
-```
-Role: User (Personal Access Only)
-Username: user_sarah
-Password: (same as fixture - needs to be set manually after load)
-Access: Can see only own tickets
+> 📌 **For complete list of test users and credentials, see [Default Credentials](../DEFAULT_CREDENTIALS.md)**
 
-Role: Technician (Section-level Access)
-Username: tech_alex (IT Network)
-Username: tech_john (Plumbing)
-Username: tech_carol (Electrical)
-Username: tech_mike (Carpentry)
-Access: Can see section tickets + own assignments
+Quick reference of user roles (passwords available in Default Credentials):
 
-Role: Section Head (Department-level Access)
-Username: section_head_ben (Networks)
-Username: section_head_mike (Plumbing)
-Username: section_head_linda (Electrical)
-Username: section_head_david (HVAC)
-Username: section_head_emily (Carpentry)
-Username: section_head_general (General Maintenance)
-Access: Can manage all department tickets, escalate to HOD
-
-Role: HOD (Campus-level Access)
-Username: hod_alex (IT Department)
-Username: hod_maria (Operations Department)
-Access: Can see all campus tickets, escalate scope
-
-Role: Director (Organization-wide Analytics)
-Username: director_jane
-Access: Analytics only - sees organization-wide metrics
-
-Role: Admin (Complete Access)
-Username: admin_user
-Access: Everything
-```
+- **User** (user_sarah) - Personal ticket access only
+- **Technician** (tech_alex, tech_john, tech_carol, tech_mike) - Section-level access
+- **Section Head** (section_head_ben, section_head_mike, etc.) - Department-level access  
+- **HOD** (hod_alex, hod_maria) - Campus-level access
+- **Director** (director_jane) - Organization-wide analytics
+- **Admin** (admin_user) - Complete system access
 
 ---
 
 ## Set Test User Passwords
-
-After loading fixture, set passwords so you can log in:
 
 ```bash
 python manage.py shell
 
 from tickets.models import CustomUser
 
-# Set all test user passwords
-users = {
-    'admin_user': 'adminuser123',
-    'user_sarah': 'user_sarah123',
-    'director_jane': 'director123',
-    'hod_alex': 'hod_alex123',
-    'hod_maria': 'hod_maria123',
-    'section_head_ben': 'section_head_ben123',
-    'section_head_mike': 'section_head_mike123',
-    'section_head_linda': 'section_head_linda123',
-    'section_head_david': 'section_head_david123',
-    'section_head_emily': 'section_head_emily123',
-    'section_head_general': 'section_head_general123',
-    'tech_alex': 'tech_alex123',
-    'tech_john': 'tech_john123',
-    'tech_carol': 'tech_carol123',
-    'tech_mike': 'tech_mike123',
-}
-
-for username, password in users.items():
-    user = CustomUser.objects.get(username=username)
-    user.set_password(password)
-    user.save()
-    print(f'✓ Set password for {username}')
-
-print('\nAll passwords set!')
-exit()
+# See Default Credentials document for all passwords
+# Setting example admin user:
+user = CustomUser.objects.get(username='admin_user')
+user.set_password('adminuser123')  # From DEFAULT_CREDENTIALS.md
+user.save()
+print('✓ Password set')
 ```
+
+For complete password setup, reference [Default Credentials](../DEFAULT_CREDENTIALS.md)
 
 ---
 

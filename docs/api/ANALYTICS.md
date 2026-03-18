@@ -1,5 +1,8 @@
 # Analytics Module
 
+> 📌 **For complete API reference and other endpoints, see [API Integration Guide](../API_INTEGRATION_GUIDE.md)** (NEW)  
+> This document provides detailed specifications for **analytics endpoints only**.
+
 This module provides comprehensive analytics and reporting capabilities for the Django Resolver ticket management system.
 
 ## Available Analytics

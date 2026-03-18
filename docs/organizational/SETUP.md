@@ -1,5 +1,10 @@
 # Organizational Implementation - Setup & Testing Guide
 
+⚠️ **STATUS**: For new setup, see:
+- **Complete Setup Guide** → [First Time Setup](../FIRST_TIME_SETUP.md) (master guide, recommended)
+- **Testing Guide** → [Testing Guide](../testing/TESTING.md) (complete test documentation)
+- **Test Credentials** → [Default Credentials](../DEFAULT_CREDENTIALS.md) (single source of truth)
+
 ## Quick Start (5 minutes)
 
 ### Step 1: Backup Original Fixture

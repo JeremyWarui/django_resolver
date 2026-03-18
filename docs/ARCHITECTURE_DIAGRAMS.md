@@ -1,5 +1,9 @@
 # Django Resolver - Module Interaction & Data Flow Diagrams
 
+⚠️ **STATUS**: Architecture documentation is now consolidated in:
+- **System Architecture Overview** → See [Architecture Guide](ARCHITECTURE_GUIDE.md)
+- **Complete Reference** → This document provides detailed diagrams and flow visualization
+
 ## Quick Reference: Module Interactions
 
 ### Authentication Flow Diagram

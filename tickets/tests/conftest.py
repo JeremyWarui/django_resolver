@@ -15,6 +15,7 @@ Usage:
 """
 
 import pytest
+import uuid
 from django.contrib.auth import get_user_model
 from tickets.models import (
     Organization,
@@ -37,7 +38,11 @@ from rest_framework.test import APIClient
 @pytest.fixture
 def user_factory(db):
     """Factory for creating regular users (role='user')"""
-    def create_user(username="testuser", email="test@example.com", password="testpass", **kwargs):
+    def create_user(username=None, email=None, password="testpass", **kwargs):
+        if username is None:
+            username = f"testuser_{uuid.uuid4().hex[:8]}"
+        if email is None:
+            email = f"test_{uuid.uuid4().hex[:8]}@example.com"
         return get_user_model().objects.create_user(
             username=username,
             email=email,
@@ -51,7 +56,11 @@ def user_factory(db):
 @pytest.fixture
 def admin_user_factory(db):
     """Factory for creating admin users"""
-    def create_admin(username="admin", email="admin@example.com", password="admin123", **kwargs):
+    def create_admin(username=None, email=None, password="admin123", **kwargs):
+        if username is None:
+            username = f"admin_{uuid.uuid4().hex[:8]}"
+        if email is None:
+            email = f"admin_{uuid.uuid4().hex[:8]}@example.com"
         return get_user_model().objects.create_user(
             username=username,
             email=email,
@@ -65,7 +74,11 @@ def admin_user_factory(db):
 @pytest.fixture
 def technician_factory(db):
     """Factory for creating technician users"""
-    def create_technician(username="technician", email="tech@example.com", password="techpass", **kwargs):
+    def create_technician(username=None, email=None, password="techpass", **kwargs):
+        if username is None:
+            username = f"technician_{uuid.uuid4().hex[:8]}"
+        if email is None:
+            email = f"tech_{uuid.uuid4().hex[:8]}@example.com"
         return get_user_model().objects.create_user(
             username=username,
             email=email,
@@ -79,7 +92,11 @@ def technician_factory(db):
 @pytest.fixture
 def section_head_factory(db):
     """Factory for creating section head users"""
-    def create_section_head(username="section_head", email="head@example.com", password="headpass", **kwargs):
+    def create_section_head(username=None, email=None, password="headpass", **kwargs):
+        if username is None:
+            username = f"section_head_{uuid.uuid4().hex[:8]}"
+        if email is None:
+            email = f"head_{uuid.uuid4().hex[:8]}@example.com"
         return get_user_model().objects.create_user(
             username=username,
             email=email,
@@ -93,7 +110,11 @@ def section_head_factory(db):
 @pytest.fixture
 def hod_factory(db):
     """Factory for creating HOD (Head of Department) users"""
-    def create_hod(username="hod", email="hod@example.com", password="hodpass", **kwargs):
+    def create_hod(username=None, email=None, password="hodpass", **kwargs):
+        if username is None:
+            username = f"hod_{uuid.uuid4().hex[:8]}"
+        if email is None:
+            email = f"hod_{uuid.uuid4().hex[:8]}@example.com"
         return get_user_model().objects.create_user(
             username=username,
             email=email,
@@ -107,7 +128,11 @@ def hod_factory(db):
 @pytest.fixture
 def director_factory(db):
     """Factory for creating director users"""
-    def create_director(username="director", email="director@example.com", password="dirpass", **kwargs):
+    def create_director(username=None, email=None, password="dirpass", **kwargs):
+        if username is None:
+            username = f"director_{uuid.uuid4().hex[:8]}"
+        if email is None:
+            email = f"director_{uuid.uuid4().hex[:8]}@example.com"
         return get_user_model().objects.create_user(
             username=username,
             email=email,
@@ -116,6 +141,32 @@ def director_factory(db):
             **kwargs
         )
     return create_director
+
+
+# ============================================================================
+# ORGANIZATIONAL-AWARE USER FIXTURES
+# ============================================================================
+
+@pytest.fixture
+def org_aware_user_factory(db, campus, department):
+    """Factory for creating users with organizational assignments"""
+    def create_user(username=None, email=None, password="testpass", role="user", **kwargs):
+        if username is None:
+            username = f"org_user_{uuid.uuid4().hex[:8]}"
+        if email is None:
+            email = f"org_user_{uuid.uuid4().hex[:8]}@example.com"
+        
+        user = get_user_model().objects.create_user(
+            username=username,
+            email=email,
+            password=password,
+            role=role,
+            primary_campus=campus,
+            primary_department=department,
+            **kwargs
+        )
+        return user
+    return create_user
 
 
 # ============================================================================
@@ -244,16 +295,16 @@ def ticket_factory(db, section, facility, user_factory, technician_factory):
 @pytest.fixture
 def comment_factory(db, ticket_factory, user_factory):
     """Factory for creating comments"""
-    def create_comment(text="Test comment", ticket=None, created_by=None):
+    def create_comment(text="Test comment", ticket=None, author=None):
         if ticket is None:
             ticket = ticket_factory()
-        if created_by is None:
-            created_by = user_factory()
+        if author is None:
+            author = user_factory()
 
         return Comment.objects.create(
             ticket=ticket,
             text=text,
-            created_by=created_by
+            author=author
         )
     return create_comment
 
@@ -261,17 +312,17 @@ def comment_factory(db, ticket_factory, user_factory):
 @pytest.fixture
 def feedback_factory(db, ticket_factory, user_factory):
     """Factory for creating feedback"""
-    def create_feedback(rating=5, comment="Great service", ticket=None, submitted_by=None):
+    def create_feedback(rating=5, comment="Great service", ticket=None, rated_by=None):
         if ticket is None:
             ticket = ticket_factory()
-        if submitted_by is None:
-            submitted_by = user_factory()
+        if rated_by is None:
+            rated_by = user_factory()
 
         return Feedback.objects.create(
             ticket=ticket,
             rating=rating,
             comment=comment,
-            submitted_by=submitted_by
+            rated_by=rated_by
         )
     return create_feedback
 
@@ -303,9 +354,9 @@ def api_client():
 
 
 @pytest.fixture
-def authenticated_client(api_client, user_factory):
-    """Create an authenticated API client"""
-    user = user_factory(username="authuser", password="authpass")
+def authenticated_client(api_client, org_aware_user_factory, campus):
+    """Create an authenticated API client with organizational context"""
+    user = org_aware_user_factory(username="authuser", password="authpass")
     api_client.force_authenticate(user=user)
     return {
         'client': api_client,
@@ -315,9 +366,11 @@ def authenticated_client(api_client, user_factory):
 
 
 @pytest.fixture
-def authenticated_admin_client(api_client, admin_user_factory):
-    """Create an authenticated admin API client"""
+def authenticated_admin_client(api_client, admin_user_factory, campus):
+    """Create an authenticated admin API client with organizational context"""
     admin = admin_user_factory(username="authadmin", password="adminpass")
+    admin.primary_campus = campus
+    admin.save()
     api_client.force_authenticate(user=admin)
     return {
         'client': api_client,
@@ -327,10 +380,13 @@ def authenticated_admin_client(api_client, admin_user_factory):
 
 
 @pytest.fixture
-def authenticated_technician_client(api_client, technician_factory, section):
-    """Create an authenticated technician API client"""
+def authenticated_technician_client(api_client, technician_factory, section, campus, department):
+    """Create an authenticated technician API client with organizational context"""
     technician = technician_factory(username="authtech", password="techpass")
     technician.sections.add(section)
+    technician.primary_campus = campus
+    technician.primary_department = department
+    technician.save()
     api_client.force_authenticate(user=technician)
     return {
         'client': api_client,

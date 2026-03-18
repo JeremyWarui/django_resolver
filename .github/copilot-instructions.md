@@ -110,16 +110,15 @@ Core app is `tickets/` with layered architecture: Models → Services (business 
 ## Developer Workflows
 
 ### Setup
-```bash -v 2
-
+```bash
 # Organizational tests (6 test classes, 75+ tests)
-python manage.py test tickets.tests.test_organizational -v 2
+pytest tickets/tests/test_organizational.py -v
 
 # Escalation workflow tests
-python manage.py test tickets.tests.test_organizational.EscalationWorkflowTestCase -v 2
+pytest tickets/tests/test_organizational.py::EscalationWorkflowTestCase -v
 
 # Specific test
-python manage.py test tickets.tests.test_apis.TicketAPITestCase.test_ticket_lifecycle_workflow
+pytest tickets/tests/test_apis.py::TicketAPITestCase::test_ticket_lifecycle_workflow -v
 ```
 **Test organization** (`tickets/tests/`):
 - `test_organizational.py` - 6 classes, 75+ tests: hierarchy, escalation, permissions, APIs, analytics
@@ -134,13 +133,13 @@ python manage.py loaddata tickets/fixtures/tickets_initial_data.json
 ### Testing
 ```bash
 # All tests
-python manage.py test tickets
+pytest tickets/tests/ -v
 
 # Specific test file
-python manage.py test tickets.tests.test_apis
+pytest tickets/tests/test_apis.py -v
 
 # Single test
-python manage.py test tickets.tests.test_apis.TicketAPITestCase.test_ticket_lifecycle_workflow
+pytest tickets/tests/test_apis.py::TicketAPITestCase::test_ticket_lifecycle_workflow -v
 ```
 **Test organization** (`tickets/tests/`): `test_models.py`, `test_serializers.py`, `test_apis.py` (permissions, filters, lifecycle), `test_workflow.py` (status transitions), `test_analytics.py`
 

@@ -25,7 +25,7 @@ def test_ticket_serializer(ticket_factory, user_factory, technician_factory):
         raised_by=user,
         assigned_to=technician
     )
-    
+
     serializer = TicketSerializer(instance=ticket)
     data = serializer.data
 
@@ -42,14 +42,14 @@ def test_comment_serializer(db, comment_factory, ticket_factory, user_factory):
     comment = comment_factory(
         text="This is a comment.",
         ticket=ticket,
-        created_by=user
+        author=user
     )
-    
+
     serializer = CommentSerializer(instance=comment)
     data = serializer.data
 
     assert data["text"] == "This is a comment."
-    assert data["created_by"] == user.username
+    assert data["author"] == user.username
     assert data["ticket"]["id"] == ticket.id
 
 
@@ -84,7 +84,7 @@ def test_user_create_serializer(db):
 def test_ticket_serializer_create(db, user_factory, section, facility):
     """Test ticket serializer create method"""
     user = user_factory()
-    
+
     data = {
         "title": "New Ticket",
         "description": "This is a new ticket.",
@@ -93,7 +93,7 @@ def test_ticket_serializer_create(db, user_factory, section, facility):
         "raised_by": user.id,
         "status": "open",
     }
-    
+
     serializer = TicketSerializer(data=data)
     assert serializer.is_valid(), serializer.errors
 
@@ -104,7 +104,7 @@ def test_ticket_serializer_create(db, user_factory, section, facility):
         facility=facility,
         enable_auto_escalation=True
     )
-    
+
     assert ticket.title == "New Ticket"
     assert ticket.raised_by == user
     assert ticket.status == "open"
@@ -116,22 +116,22 @@ def test_comment_serializer_create(db, comment_factory, ticket_factory, user_fac
     user = user_factory()
     technician = technician_factory()
     ticket = ticket_factory(raised_by=user)
-    
+
     data = {
         "ticket": ticket.id,
         "text": "This is another comment.",
-        "created_by": technician.id,
+        "author": technician.id,
     }
-    
+
     serializer = CommentSerializer(data=data)
     assert serializer.is_valid(), serializer.errors
 
     comment = TicketService.create_comment(
         serializer, technician, ticket.id
     )
-    
+
     assert comment.text == "This is another comment."
-    assert comment.created_by == technician
+    assert comment.author == technician
     assert comment.ticket == ticket
 
 
@@ -142,20 +142,20 @@ def test_feedback_serializer_create(db, feedback_factory, ticket_factory, user_f
 
     data = {
         "ticket": ticket.id,
-        "submitted_by": user.id,
+        "rated_by": user.id,
         "rating": 4,
         "comment": "Good service.",
     }
 
     serializer = FeedbackSerializer(data=data)
     assert serializer.is_valid(), serializer.errors
-    
+
     feedback = TicketService.create_feedback(
         serializer, user, ticket_id=ticket.id
     )
-    
+
     assert feedback.ticket == ticket
-    assert feedback.submitted_by == user
+    assert feedback.rated_by == user
     assert feedback.rating == 4
     assert feedback.comment == "Good service."
 

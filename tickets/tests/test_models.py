@@ -238,11 +238,11 @@ def test_comment_creation(db, comment_factory, ticket_factory, user_factory):
     ticket = ticket_factory(raised_by=user)
 
     comment = comment_factory(
-        text="This is a test comment.", ticket=ticket, created_by=user)
+        text="This is a test comment.", ticket=ticket, author=user)
 
     assert comment.ticket == ticket
     assert comment.text == "This is a test comment."
-    assert comment.created_by == user
+    assert comment.author == user
     assert comment.created_at is not None
 
 
@@ -256,12 +256,12 @@ def test_feedback_creation(db, feedback_factory, ticket_factory, user_factory):
     ticket = ticket_factory(raised_by=user)
 
     feedback = feedback_factory(
-        rating=5, comment="Great service", ticket=ticket, submitted_by=user)
+        rating=5, comment="Great service", ticket=ticket, rated_by=user)
 
     assert feedback.ticket == ticket
     assert feedback.rating == 5
     assert feedback.comment == "Great service"
-    assert feedback.submitted_by == user
+    assert feedback.rated_by == user
     assert feedback.created_at is not None
 
 
@@ -272,12 +272,12 @@ def test_feedback_one_per_ticket_constraint(db, feedback_factory, ticket_factory
 
     # Create first feedback
     feedback_factory(rating=4, comment="Good service",
-                     ticket=ticket, submitted_by=user)
+                     ticket=ticket, rated_by=user)
 
     # Try to create another feedback for the same ticket - should raise IntegrityError
     with pytest.raises(IntegrityError):
         feedback_factory(rating=5, comment="Great service",
-                         ticket=ticket, submitted_by=user)
+                         ticket=ticket, rated_by=user)
 
 
 # ============================================================================

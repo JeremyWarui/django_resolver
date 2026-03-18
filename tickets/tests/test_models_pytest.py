@@ -20,7 +20,8 @@ from tickets.models import (
 
 def test_user_creation(user_factory):
     """Test user creation with valid data"""
-    user = user_factory(username="testuser", email="testuser@example.com", password="testpass")
+    user = user_factory(username="testuser",
+                        email="testuser@example.com", password="testpass")
     assert user.username == "testuser"
     assert user.email == "testuser@example.com"
     assert user.check_password("testpass")
@@ -28,7 +29,8 @@ def test_user_creation(user_factory):
 
 def test_technician_creation(technician_factory):
     """Test technician user creation"""
-    technician = technician_factory(username="techuser", email="techuser@example.com", password="techpass")
+    technician = technician_factory(
+        username="techuser", email="techuser@example.com", password="techpass")
     assert technician.username == "techuser"
     assert technician.email == "techuser@example.com"
     assert technician.role == "technician"
@@ -38,14 +40,17 @@ def test_technician_creation(technician_factory):
 def test_user_role_validation(db):
     """Test that user roles are validated properly"""
     # Test valid roles
-    user = CustomUser.objects.create_user(username="user1", email="user1@example.com", password="pass123", role="user")
+    user = CustomUser.objects.create_user(
+        username="user1", email="user1@example.com", password="pass123", role="user")
     assert user.role == "user"
 
-    admin = CustomUser.objects.create_user(username="admin1", email="admin1@example.com", password="pass123", role="admin")
+    admin = CustomUser.objects.create_user(
+        username="admin1", email="admin1@example.com", password="pass123", role="admin")
     assert admin.role == "admin"
 
     # Test default role
-    default_user = CustomUser.objects.create_user(username="default", email="default@example.com", password="pass123")
+    default_user = CustomUser.objects.create_user(
+        username="default", email="default@example.com", password="pass123")
     assert default_user.role == "user"  # Default should be 'user'
 
 
@@ -63,14 +68,19 @@ def test_section_creation(section):
 def test_section_technician_relationship(db, user_factory, technician_factory):
     """Test M2M relationship between sections and technicians"""
     # Create departments and sections
-    org = Organization.objects.create(name="Test Org", code="TEST", organization_type="corporate")
+    org = Organization.objects.create(
+        name="Test Org", code="TEST", organization_type="corporate")
     campus = Campus.objects.create(name="Main", code="MAIN", organization=org)
     dept1 = Department.objects.create(name="IT", code="IT", campus=campus)
-    dept2 = Department.objects.create(name="Facilities", code="FAC", campus=campus)
+    dept2 = Department.objects.create(
+        name="Facilities", code="FAC", campus=campus)
 
-    plumbing = Section.objects.create(name="Plumbing", code="PLUMB", department=dept2)
-    electrical = Section.objects.create(name="Electrical", code="ELEC", department=dept2)
-    it_section = Section.objects.create(name="IT Section", code="IT", department=dept1)
+    plumbing = Section.objects.create(
+        name="Plumbing", code="PLUMB", department=dept2)
+    electrical = Section.objects.create(
+        name="Electrical", code="ELEC", department=dept2)
+    it_section = Section.objects.create(
+        name="IT Section", code="IT", department=dept1)
 
     # Create technicians
     tech1 = technician_factory(username="plumber")
@@ -120,7 +130,7 @@ def test_ticket_creation(ticket_factory, user_factory, technician_factory, secti
     """Test ticket creation with all relationships"""
     user = user_factory()
     technician = technician_factory()
-    
+
     ticket = ticket_factory(
         title="Faulty Printer",
         description="The printer in the IT section is not working.",
@@ -130,7 +140,7 @@ def test_ticket_creation(ticket_factory, user_factory, technician_factory, secti
         section=section,
         facility=facility
     )
-    
+
     assert ticket.title == "Faulty Printer"
     assert ticket.description == "The printer in the IT section is not working."
     assert ticket.section == section
@@ -144,12 +154,13 @@ def test_ticket_status_choices(db, ticket_factory, user_factory):
     """Test ticket status choices and default"""
     user = user_factory()
     ticket = ticket_factory(raised_by=user)
-    
+
     # Test default status
     assert ticket.status == "open"
 
     # Test valid status transitions
-    valid_statuses = ["open", "assigned", "in_progress", "pending", "resolved", "closed"]
+    valid_statuses = ["open", "assigned",
+                      "in_progress", "pending", "resolved", "closed"]
 
     for status in valid_statuses:
         ticket.change_status(status, performed_by=user)
@@ -160,10 +171,10 @@ def test_ticket_status_choices(db, ticket_factory, user_factory):
 def test_ticket_auto_numbering(db, ticket_factory, user_factory, section, facility):
     """Test automatic ticket number generation with correct format"""
     user = user_factory()
-    
+
     # Create first ticket
     ticket1 = ticket_factory(raised_by=user)
-    
+
     # Check format of first ticket
     assert ticket1.ticket_no.startswith("TKT-")
     assert len(ticket1.ticket_no) == 10
@@ -188,15 +199,15 @@ def test_ticket_auto_numbering(db, ticket_factory, user_factory, section, facili
 def test_ticket_creation_and_auto_increment_ticket_no(db, ticket_factory, user_factory):
     """Test ticket creation and auto-increment ticket_no"""
     user = user_factory()
-    
+
     ticket1 = ticket_factory(raised_by=user)
     initial_ticket_no = ticket1.ticket_no
-    
+
     ticket2 = ticket_factory(title="Faulty Monitor", raised_by=user)
-    
+
     prev_number = int(initial_ticket_no.split("-")[-1])
     new_number = int(ticket2.ticket_no.split("-")[-1])
-    
+
     assert ticket2.ticket_no != initial_ticket_no
     assert ticket2.ticket_no.startswith("TKT-")
     assert len(ticket2.ticket_no) == 10
@@ -208,11 +219,11 @@ def test_ticket_status_after_assignment(db, user_factory, technician_factory, ti
     user = user_factory()
     technician = technician_factory()
     ticket = ticket_factory(raised_by=user, assigned_to=None, status="open")
-    
+
     # Change assignment using model helper
     ticket.change_assignment(technician, performed_by=user)
     ticket.refresh_from_db()
-    
+
     assert ticket.assigned_to == technician
     assert ticket.status == "assigned"
 
@@ -225,9 +236,10 @@ def test_comment_creation(db, comment_factory, ticket_factory, user_factory):
     """Test comment creation on a ticket"""
     user = user_factory()
     ticket = ticket_factory(raised_by=user)
-    
-    comment = comment_factory(text="This is a test comment.", ticket=ticket, created_by=user)
-    
+
+    comment = comment_factory(
+        text="This is a test comment.", ticket=ticket, created_by=user)
+
     assert comment.ticket == ticket
     assert comment.text == "This is a test comment."
     assert comment.created_by == user
@@ -242,9 +254,10 @@ def test_feedback_creation(db, feedback_factory, ticket_factory, user_factory):
     """Test feedback creation on a ticket"""
     user = user_factory()
     ticket = ticket_factory(raised_by=user)
-    
-    feedback = feedback_factory(rating=5, comment="Great service", ticket=ticket, submitted_by=user)
-    
+
+    feedback = feedback_factory(
+        rating=5, comment="Great service", ticket=ticket, submitted_by=user)
+
     assert feedback.ticket == ticket
     assert feedback.rating == 5
     assert feedback.comment == "Great service"
@@ -258,11 +271,13 @@ def test_feedback_one_per_ticket_constraint(db, feedback_factory, ticket_factory
     ticket = ticket_factory(raised_by=user)
 
     # Create first feedback
-    feedback_factory(rating=4, comment="Good service", ticket=ticket, submitted_by=user)
+    feedback_factory(rating=4, comment="Good service",
+                     ticket=ticket, submitted_by=user)
 
     # Try to create another feedback for the same ticket - should raise IntegrityError
     with pytest.raises(IntegrityError):
-        feedback_factory(rating=5, comment="Great service", ticket=ticket, submitted_by=user)
+        feedback_factory(rating=5, comment="Great service",
+                         ticket=ticket, submitted_by=user)
 
 
 # ============================================================================
@@ -273,7 +288,7 @@ def test_ticket_log_creation(db, ticket_factory, user_factory):
     """Test automatic creation of ticket logs"""
     user = user_factory()
     ticket = ticket_factory(raised_by=user)
-    
+
     # Create a log entry
     log_entry = TicketLog.objects.create(
         ticket=ticket,
@@ -292,12 +307,12 @@ def test_ticket_log_on_status_change(db, ticket_factory, user_factory):
     """Test that ticket logs are created when status changes"""
     user = user_factory()
     ticket = ticket_factory(raised_by=user)
-    
+
     initial_logs = TicketLog.objects.filter(ticket=ticket).count()
-    
+
     # Change status
     ticket.change_status("in_progress", performed_by=user)
-    
+
     # Check that log was created
     final_logs = TicketLog.objects.filter(ticket=ticket).count()
     assert final_logs > initial_logs
@@ -312,11 +327,11 @@ def test_ticket_change_assignment_creates_log(db, ticket_factory, user_factory, 
     user = user_factory()
     technician = technician_factory()
     ticket = ticket_factory(raised_by=user, assigned_to=None)
-    
+
     logs_before = TicketLog.objects.filter(ticket=ticket).count()
-    
+
     ticket.change_assignment(technician, performed_by=user)
-    
+
     logs_after = TicketLog.objects.filter(ticket=ticket).count()
     assert logs_after > logs_before
 
@@ -325,13 +340,13 @@ def test_change_status_sets_resolved_at_and_logs(db, ticket_factory, user_factor
     """Test that changing status to resolved sets resolved_at timestamp"""
     user = user_factory()
     ticket = ticket_factory(raised_by=user, status="in_progress")
-    
+
     assert ticket.resolved_at is None
-    
+
     # Change to resolved
     ticket.change_status("resolved", performed_by=user)
     ticket.refresh_from_db()
-    
+
     assert ticket.status == "resolved"
     assert ticket.resolved_at is not None
 
@@ -340,11 +355,14 @@ def test_change_status_sets_resolved_at_and_logs(db, ticket_factory, user_factor
 def test_bulk_ticket_creation(db, user_factory):
     """Test creating many tickets (slow test)"""
     user = user_factory()
-    org = Organization.objects.create(name="Test", code="TEST", organization_type="corporate")
+    org = Organization.objects.create(
+        name="Test", code="TEST", organization_type="corporate")
     campus = Campus.objects.create(name="Main", code="MAIN", organization=org)
     dept = Department.objects.create(name="IT", code="IT", campus=campus)
-    section = Section.objects.create(name="IT Section", code="IT", department=dept)
-    facility = Facility.objects.create(name="Building", type="building", status="active", location="Main", campus=campus, department=dept)
+    section = Section.objects.create(
+        name="IT Section", code="IT", department=dept)
+    facility = Facility.objects.create(
+        name="Building", type="building", status="active", location="Main", campus=campus, department=dept)
 
     tickets = [
         Ticket(

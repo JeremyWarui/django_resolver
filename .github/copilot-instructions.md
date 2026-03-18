@@ -27,23 +27,23 @@ Core app is `tickets/` with layered architecture: Models → Services (business 
 ## Documentation Structure
 
 **🎯 Master Guides (Start Here)**:
-- **[First Time Setup](../docs/FIRST_TIME_SETUP.md)** - Complete setup guide for new developers
-- **[Architecture Guide](../docs/ARCHITECTURE_GUIDE.md)** - System architecture and design
-- **[API Integration Guide](../docs/API_INTEGRATION_GUIDE.md)** - API endpoints and integration
+- **`docs/FIRST_TIME_SETUP.md`** - Complete setup guide for new developers
+- **`docs/ARCHITECTURE_GUIDE.md`** - System architecture and design
+- **`docs/API_INTEGRATION_GUIDE.md`** - API endpoints and integration
 
 **Primary Documentation Location**: `docs/` directory with organized subsections:
-- **Specifications**: [`docs/specifications/WORKFLOW_SPEC.md`](../docs/specifications/WORKFLOW_SPEC.md) - Complete ticket workflow specification with organizational scope and architectural decisions
-- **Compliance**: [`docs/compliance/AUDIT_STATUS.md`](../docs/compliance/AUDIT_STATUS.md) - Consolidated compliance audit (96% compliance - all critical requirements met)
-- **API**: [`docs/API_INTEGRATION_GUIDE.md`](../docs/API_INTEGRATION_GUIDE.md) - Complete API endpoints and integration; [`docs/api/ANALYTICS.md`](../docs/api/ANALYTICS.md) - Analytics specifications
-- **Architecture**: [`docs/ARCHITECTURE_GUIDE.md`](../docs/ARCHITECTURE_GUIDE.md) - System design; [`docs/architecture/LAYERS.md`](../docs/architecture/LAYERS.md) - Layered architecture details; [`docs/CODEBASE_ARCHITECTURE.md`](../docs/CODEBASE_ARCHITECTURE.md) - Complete technical reference
-- **Testing**: [`docs/testing/TESTING.md`](../docs/testing/TESTING.md) - Test organization (157 tests); [`docs/testing/SAMPLE_QUERIES.md`](../docs/testing/SAMPLE_QUERIES.md) - Django ORM query examples
-- **Navigation**: [`docs/INDEX.md`](../docs/INDEX.md) - Master index for all documentation
+- **Specifications**: `docs/specifications/WORKFLOW_SPEC.md` - Complete ticket workflow specification with organizational scope and architectural decisions
+- **Compliance**: `docs/compliance/AUDIT_STATUS.md` - Consolidated compliance audit (96% compliance - all critical requirements met)
+- **API**: `docs/API_INTEGRATION_GUIDE.md` - Complete API endpoints and integration; `docs/api/ANALYTICS.md` - Analytics specifications
+- **Architecture**: `docs/ARCHITECTURE_GUIDE.md` - System design; `docs/architecture/LAYERS.md` - Layered architecture details; `docs/CODEBASE_ARCHITECTURE.md` - Complete technical reference
+- **Testing**: `docs/testing/TESTING.md` - Test organization (157 tests); `docs/testing/SAMPLE_QUERIES.md` - Django ORM query examples
+- **Navigation**: `docs/INDEX.md` - Master index for all documentation
 
 **Key Documentation References**:
 - Start with master guides above for your role/task
-- See [`docs/specifications/WORKFLOW_SPEC.md`](../docs/specifications/WORKFLOW_SPEC.md) for complete workflow requirements
-- See [`docs/compliance/AUDIT_STATUS.md`](../docs/compliance/AUDIT_STATUS.md) for compliance findings and implementation status
-- See [`docs/testing/TESTING.md`](../docs/testing/TESTING.md) for comprehensive test coverage (157 tests)
+- See `docs/specifications/WORKFLOW_SPEC.md` for complete workflow requirements
+- See `docs/compliance/AUDIT_STATUS.md` for compliance findings and implementation status
+- See `docs/testing/TESTING.md` for comprehensive test coverage (157 tests)
 
 ## Architecture & Critical Patterns
 
@@ -343,7 +343,7 @@ Query params: `timeframe` (day/week/month), `facility_id`, `section_id`, `techni
 - ✅ Delegate to service layer from views via `TicketService` methods
 
 ## Key Files Reference
-- [`docs/API_INTEGRATION_GUIDE.md`](../docs/API_INTEGRATION_GUIDE.md): Complete API integration guide
-- [`docs/api/ANALYTICS.md`](../docs/api/ANALYTICS.md): Analytics query params and response schemas
-- [`docs/testing/SAMPLE_QUERIES.md`](../docs/testing/SAMPLE_QUERIES.md): 40+ ready-to-use Django ORM examples
-- [`docs/testing/TESTING.md`](../docs/testing/TESTING.md): Test organization and coverage (157 tests)
+- `docs/API_INTEGRATION_GUIDE.md` - Complete API integration guide
+- `docs/api/ANALYTICS.md` - Analytics query params and response schemas
+- `docs/testing/SAMPLE_QUERIES.md` - 40+ ready-to-use Django ORM examples
+- `docs/testing/TESTING.md` - Test organization and coverage (157 tests)

@@ -1,5 +1,9 @@
 # Authentication & Authorization Implementation
 
+⚠️ **STATUS**: Authentication details are now consolidated in:
+- **Frontend Integration** → See [API Integration Guide - Authentication Section](API_INTEGRATION_GUIDE.md#authentication)
+- **Complete Reference** → This document provides detailed implementation information
+
 ## Overview
 This Django Resolver project now has **Token-based Authentication** with **Role-based Authorization** implemented. This provides secure, stateless authentication perfect for REST APIs and modern frontend applications.
 

@@ -2,6 +2,8 @@
 
 [← Back to Index](../INDEX.md) | [← Back to README](../../README.md) | [Analytics Endpoints →](ANALYTICS.md)
 
+⚠️ **STATUS**: For most frontend integrations, see the new [API Integration Guide](../API_INTEGRATION_GUIDE.md) master guide (covers all endpoints, authentication, examples, with better organization). This document provides additional detailed reference material.
+
 > **Last Updated:** February 2026  
 > **Version:** 1.0  
 > **Base URL:** `/api/`

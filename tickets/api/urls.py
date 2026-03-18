@@ -21,6 +21,7 @@ from tickets.api.views.index import (
     TicketListCreateView,
     TicketDetailView,
     TicketEscalationView,
+    TicketCloseView,
     CommentListCreateView,
     FeedbackListCreateView,
     UserListCreateView,
@@ -71,6 +72,9 @@ urlpatterns = [
     # TICKET ESCALATION
     path("tickets/<int:ticket_id>/escalate/",
          TicketEscalationView.as_view(), name="ticket-escalate"),
+    # TICKET CLOSURE
+    path("tickets/<int:ticket_id>/close/",
+         TicketCloseView.as_view(), name="ticket-close"),
     # BULK OPERATIONS
     path("tickets/bulk-status-update/",
          BulkTicketStatusUpdateView.as_view(), name="bulk-status-update"),

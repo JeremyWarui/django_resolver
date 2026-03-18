@@ -464,6 +464,65 @@ class TicketEscalationView(CreateAPIView):
             )
 
 
+class TicketCloseView(CreateAPIView):
+    """
+    Close a resolved ticket.
+
+    POST /api/tickets/{ticket_id}/close/
+    {
+        "closure_notes": "Issue resolved successfully"
+    }
+
+    Permission:
+    - Ticket raiser (user who created the ticket) can close their own tickets
+    - Admin/Manager roles can close any resolved ticket
+    """
+    permission_classes = [IsWithinOrganizationalScope]
+    serializer_class = TicketSerializer
+
+    def create(self, request, *args, **kwargs):
+        """Handle ticket closure"""
+        try:
+            ticket_id = self.kwargs.get('ticket_id')
+            ticket = Ticket.objects.get(id=ticket_id)
+
+            # Check permission on the specific ticket
+            self.check_object_permissions(request, ticket)
+
+            # Get optional closure notes from request body
+            closure_notes = request.data.get('closure_notes', None)
+
+            # Close the ticket using the service layer
+            closed_ticket = TicketService.close_ticket(
+                ticket=ticket,
+                closed_by=request.user,
+                closure_notes=closure_notes
+            )
+
+            # Return updated ticket
+            serializer = TicketSerializer(closed_ticket)
+            return Response(
+                serializer.data,
+                status=status.HTTP_200_OK
+            )
+
+        except Ticket.DoesNotExist:
+            return Response(
+                {'error': 'Ticket not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except PermissionDenied as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        except ValidationError as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+
 # ============================================================================
 # COMMENTS API
 # ============================================================================

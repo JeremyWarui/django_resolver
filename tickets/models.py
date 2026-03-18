@@ -267,6 +267,22 @@ class Ticket(models.Model):
         ("escalated", "Escalated"),  # New status
     ]
 
+    PRIORITY_CHOICES = [
+        ("low", "Low"),
+        ("medium", "Medium"),
+        ("high", "High"),
+        ("critical", "Critical"),
+    ]
+
+    PENDING_REASON_CHOICES = [
+        ("material_shortage", "Material Shortage"),
+        ("awaiting_procurement", "Awaiting Procurement"),
+        ("awaiting_approval", "Awaiting Approval"),
+        ("vendor_dependency", "Vendor Dependency"),
+        ("access_issue", "Access Issue"),
+        ("other", "Other"),
+    ]
+
     # Core ticket information
     # Format: CAMPUS-DEPT-XXXXX
     ticket_no = models.CharField(max_length=15, unique=True, editable=False)
@@ -296,6 +312,12 @@ class Ticket(models.Model):
     # Status and lifecycle
     status = models.CharField(
         max_length=20, choices=STATUS_CHOICES, default="open")
+    priority = models.CharField(
+        max_length=10,
+        choices=PRIORITY_CHOICES,
+        default="low",
+        help_text="Ticket priority - escalates with ticket level"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     resolved_at = models.DateTimeField(
@@ -323,13 +345,22 @@ class Ticket(models.Model):
     escalation_threshold_hours = models.IntegerField(
         default=48)  # Hours before auto-escalation
 
-    # Additional context
-    pending_reason = models.TextField(
+    # Pending state (only used when status='pending')
+    pending_reason = models.CharField(
+        max_length=50,
+        choices=PENDING_REASON_CHOICES,
+        blank=True,
+        null=True,
+        help_text="Reason ticket is marked as pending",
+    )
+    pending_comment = models.TextField(
         max_length=500,
         blank=True,
         null=True,
-        help_text="Reason provided when ticket status is changed to pending (e.g., waiting for parts)",
+        help_text="Detailed explanation when marking ticket as pending",
     )
+    
+    # Additional context
     # Room, building, etc.
     location_details = models.CharField(max_length=200, blank=True)
     estimated_resolution_hours = models.IntegerField(null=True, blank=True)
@@ -442,6 +473,12 @@ class Ticket(models.Model):
             self.escalation_reason = reason
             if self.status != 'escalated':
                 self.status = 'escalated'
+            
+            # Update priority based on escalation level
+            if next_escalation_level == 1:
+                self.priority = 'medium'  # First escalation -> MEDIUM
+            elif next_escalation_level == 2:
+                self.priority = 'high'    # Second escalation -> HIGH
 
             # Schedule next auto-escalation if applicable
             self._schedule_next_escalation()
@@ -522,6 +559,26 @@ class Ticket(models.Model):
                 f"{self.section.name}"
             )
         return "No organizational context"
+
+    def check_and_mark_critical(self):
+        """Auto-mark ticket as CRITICAL if unresolved for >72 hours"""
+        if self.status in ['resolved', 'closed']:
+            return False
+        
+        hours_since_creation = (
+            timezone.now() - self.created_at).total_seconds() / 3600
+        
+        # Mark CRITICAL if >72 hours without resolution
+        if hours_since_creation > 72 and self.priority != 'critical':
+            self.priority = 'critical'
+            self.save()
+            TicketLog.objects.create(
+                ticket=self,
+                action=f"Priority auto-escalated to CRITICAL (unresolved >72 hours)",
+                performed_by=None
+            )
+            return True
+        return False
 
     def change_status(self, new_status, performed_by=None):
         """Atomically change ticket status, update resolved_at, and create a TicketLog.

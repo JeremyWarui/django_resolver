@@ -113,6 +113,27 @@ def manual_escalation_allowed(ticket: Ticket) -> bool:
     return timezone.now() > ticket.next_escalation_due
 
 
+def validate_pending_transition(new_status: str, pending_reason: str, pending_comment: str) -> Tuple[bool, str]:
+    """
+    Validate that PENDING status transitions include required reason and comment.
+    
+    Args:
+        new_status: Proposed new status
+        pending_reason: Reason for pending (if applicable)
+        pending_comment: Comment for pending (if applicable)
+        
+    Returns:
+        tuple: (is_valid, message)
+    """
+    if new_status == 'pending':
+        if not pending_reason:
+            return False, "pending_reason is required when marking ticket as PENDING"
+        if not pending_comment:
+            return False, "pending_comment is required when marking ticket as PENDING"
+    
+    return True, ""
+
+
 # ============================================================================
 # TICKET SERVICE - Organizational-focused
 # ============================================================================
@@ -340,7 +361,9 @@ class TicketService:
         ticket: Ticket,
         new_status: str,
         updated_by: CustomUser,
-        notes: Optional[str] = None
+        notes: Optional[str] = None,
+        pending_reason: Optional[str] = None,
+        pending_comment: Optional[str] = None
     ) -> Ticket:
         """
         Update ticket status with proper validation and logging.
@@ -352,13 +375,15 @@ class TicketService:
             new_status: New status value
             updated_by: User performing the update
             notes: Optional notes about the status change
+            pending_reason: Reason if marking as PENDING (required for PENDING status)
+            pending_comment: Comment if marking as PENDING (required for PENDING status)
 
         Returns:
             Updated Ticket object
 
         Raises:
             DRFPermissionDenied: User lacks permission to change status
-            DRFValidationError: Invalid status transition
+            DRFValidationError: Invalid status transition or missing PENDING fields
         """
         old_status = ticket.status
 
@@ -367,14 +392,27 @@ class TicketService:
             old_status, new_status, updated_by.role)
         if not is_valid:
             raise DRFValidationError(error_msg)
+        
+        # Validate pending fields if marking as PENDING
+        if new_status == 'pending':
+            is_valid, error_msg = validate_pending_transition(
+                new_status, pending_reason, pending_comment)
+            if not is_valid:
+                raise DRFValidationError(error_msg)
 
         # Check permission for this specific transition
-        if new_status == 'closed' and updated_by.role not in ['admin', 'manager']:
-            raise DRFPermissionDenied("Only admins/managers can close tickets")
+        if new_status == 'closed' and updated_by.role not in ['admin', 'manager', 'user']:
+            raise DRFPermissionDenied("Only admins/managers or ticket raiser can close tickets")
 
         # Perform status change
         with transaction.atomic():
             ticket.change_status(new_status, performed_by=updated_by)
+            
+            # Set pending fields if applicable
+            if new_status == 'pending':
+                ticket.pending_reason = pending_reason
+                ticket.pending_comment = pending_comment
+                ticket.save()
 
             # Log additional context if provided
             if notes:
@@ -479,24 +517,34 @@ class TicketService:
         closure_notes: Optional[str] = None
     ) -> Ticket:
         """
-        Close a resolved ticket (admin/manager only).
+        Close a resolved ticket.
+        
+        Allowed for:
+        - Ticket raiser (user who created the ticket)
+        - Admin or manager roles
 
         Args:
             ticket: Ticket to close
-            closed_by: User closing the ticket (must be admin/manager)
+            closed_by: User closing the ticket
             closure_notes: Optional notes about closure
 
         Returns:
             Updated Ticket object
 
         Raises:
-            DRFPermissionDenied: User is not admin or manager
+            DRFPermissionDenied: User is not authorized to close
             DRFValidationError: Ticket is not resolved
         """
-        # Check permission
-        if closed_by.role not in ['admin', 'manager']:
+        # Check permission - allow requester OR admin/manager
+        if closed_by.role == 'user':
+            # User can only close their own tickets
+            if ticket.raised_by != closed_by:
+                raise DRFPermissionDenied(
+                    "Only the ticket creator or administrators can close this ticket"
+                )
+        elif closed_by.role not in ['admin', 'manager']:
             raise DRFPermissionDenied(
-                f"Only admins/managers can close tickets, not {closed_by.role}"
+                f"Only ticket raiser, admins, or managers can close tickets, not {closed_by.role}"
             )
 
         # Check ticket is resolved

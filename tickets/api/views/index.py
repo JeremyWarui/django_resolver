@@ -24,6 +24,7 @@ from .views import (
     TicketListCreateView,
     TicketDetailView,
     TicketEscalationView,
+    TicketCloseView,
     OrganizationalTicketListView,
     EscalateTicketView,
     # Comments
@@ -61,6 +62,7 @@ __all__ = [
     'TicketListCreateView',
     'TicketDetailView',
     'TicketEscalationView',
+    'TicketCloseView',
     'OrganizationalTicketListView',
     'EscalateTicketView',
     # Comments

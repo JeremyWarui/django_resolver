@@ -39,11 +39,21 @@ class SectionSerializer(serializers.ModelSerializer):
         source='section_head', read_only=True, allow_null=True)
     section_head_id = serializers.IntegerField(
         source='section_head.id', read_only=True, allow_null=True)
+    # Campus context - NEW
+    campus_id = serializers.IntegerField(
+        source='department.campus.id', read_only=True, allow_null=True)
+    campus_display = serializers.CharField(
+        source='department.campus', read_only=True, allow_null=True)
+    # Organization context - NEW
+    organization_id = serializers.IntegerField(
+        source='department.campus.organization.id', read_only=True, allow_null=True)
 
     class Meta:
         model = Section
         fields = [
             "id", "name", "description", "code",
+            "organization_id",
+            "campus_id", "campus_display",
             "department_id", "department_display",
             "section_head_id", "section_head_display",
             "technicians", "is_active"

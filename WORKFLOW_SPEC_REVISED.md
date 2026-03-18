@@ -26,6 +26,52 @@ Organisation
 
 ---
 
+## 1.1 Organizational Scope & Ticket Placement (ARCHITECTURAL - NEW)
+
+### Ticket Placement: Primary Key-Based (NOT Name-Based)
+
+**Principle**: Tickets are deterministically placed using **Section ID** (primary key), not section name.
+
+#### Why This Matters:
+
+Multiple sections can share the same name across different campuses:
+```
+Campus MAIN → Department IT → Section "Networks" (ID=1)
+Campus WEST → Department IT → Section "Networks" (ID=5)
+```
+
+These are **two different sections** with different IDs. Naming collisions cause **no ambiguity** because:
+
+### Ticket Creation Flow:
+
+1. **User authenticates** with organizational context (Campus + Department)
+   - System knows: `User.primary_campus = MAIN`
+   - System knows: `User.primary_department = IT`
+
+2. **User selects Section** when creating ticket
+   - Frontend shows: `Section ID=1, name="Networks"`
+   - System stores: `ticket.section_id = 1` (NOT the name)
+
+3. **Ticket belongs to Section #1**
+   - `ticket.section_id = 1` (deterministic FK to specific section)
+   - `ticket.section.department.campus_id = 1` (MAIN campus guaranteed by FK chain)
+
+### Consequence:
+
+- **No naming conflicts** - sections identified by ID, not name
+- **No scope leakage** - user in MAIN campus cannot accidentally create ticket in WEST campus
+- **Organizational hierarchy is namespace** - same section name in different campuses = different records with different IDs
+- **Filters always use IDs** - `GET /api/tickets/?section_id=1` is unambiguous
+
+### Rules (ENFORCED):
+
+✅ Tickets created ONLY in sections the user can access (FK validation)  
+✅ Only sections within user's campus are shown in selection (business logic filtering)  
+✅ Ticket-to-campus mapping is deterministic (derived from section FK chain)  
+✅ No manual campus assignment needed (automatically derived)
+
+---
+
 ## 2. User Roles (REVISED - Clarification)
 
 ### The 6 Roles:
@@ -353,6 +399,8 @@ PENDING_REASON_CHOICES = [
 
 | Change | Reason | Impact |
 |--------|--------|--------|
+| **Ticket placement via Section ID** (not name) | Deterministic scope enforcement, prevents naming collisions | API always uses section_id parameter |
+| **Organizational scope enforcement** | User in campus X → can only create tickets in sections within campus X | Frontend section selector filters by user's campus |
 | Supervisor = Section Head (role clarification) | Naming consistency with implementation | No code changes needed (semantic) |
 | Add Priority field | SLA tracking and user severity indication | Model migration required |
 | Add Pending Comment field | Spec compliance - track reason + comment separately | Model migration required |

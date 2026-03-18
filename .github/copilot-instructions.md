@@ -22,7 +22,7 @@ Core app is `tickets/` with layered architecture: Models → Services (business 
 **Magic Link (Future)**: Code preserved but commented out for future implementation
 - Located in `tickets/api/simple_auth_views.py` (search for `MagicLink`)
 - Enable later when email service configured
-- See `docs/AUTHENTICATION.md` for implementation instructions
+- See `docs/API_INTEGRATION_GUIDE.md` for authentication details
 
 ## Documentation Structure
 
@@ -34,9 +34,9 @@ Core app is `tickets/` with layered architecture: Models → Services (business 
 **Primary Documentation Location**: `docs/` directory with organized subsections:
 - **Specifications**: [`docs/specifications/WORKFLOW_SPEC.md`](../docs/specifications/WORKFLOW_SPEC.md) - Complete ticket workflow specification with organizational scope and architectural decisions
 - **Compliance**: [`docs/compliance/AUDIT_STATUS.md`](../docs/compliance/AUDIT_STATUS.md) - Consolidated compliance audit (96% compliance - all critical requirements met)
-- **API Reference**: `docs/api/` - Detailed API endpoints and analytics documentation
-- **Architecture Reference**: `docs/architecture/` - Layered architecture and design patterns
-- **Testing**: `docs/testing/` - Test organization (157 tests), guides, and sample queries
+- **API**: [`docs/API_INTEGRATION_GUIDE.md`](../docs/API_INTEGRATION_GUIDE.md) - Complete API endpoints and integration; [`docs/api/ANALYTICS.md`](../docs/api/ANALYTICS.md) - Analytics specifications
+- **Architecture**: [`docs/ARCHITECTURE_GUIDE.md`](../docs/ARCHITECTURE_GUIDE.md) - System design; [`docs/architecture/LAYERS.md`](../docs/architecture/LAYERS.md) - Layered architecture details; [`docs/CODEBASE_ARCHITECTURE.md`](../docs/CODEBASE_ARCHITECTURE.md) - Complete technical reference
+- **Testing**: [`docs/testing/TESTING.md`](../docs/testing/TESTING.md) - Test organization (157 tests); [`docs/testing/SAMPLE_QUERIES.md`](../docs/testing/SAMPLE_QUERIES.md) - Django ORM query examples
 - **Navigation**: [`docs/INDEX.md`](../docs/INDEX.md) - Master index for all documentation
 
 **Key Documentation References**:
@@ -343,7 +343,7 @@ Query params: `timeframe` (day/week/month), `facility_id`, `section_id`, `techni
 - ✅ Delegate to service layer from views via `TicketService` methods
 
 ## Key Files Reference
-- `tickets/api/README.md`: API architecture deep-dive
-- `docs/api/ANALYTICS.md`: Analytics query params, response schemas
-- `tickets/fixtures/SAMPLE_QUERIES.md`: 20+ ready-to-use Django ORM examples
-- `tickets/tests/README.md`: Test coverage map (40+ test cases)
+- [`docs/API_INTEGRATION_GUIDE.md`](../docs/API_INTEGRATION_GUIDE.md): Complete API integration guide
+- [`docs/api/ANALYTICS.md`](../docs/api/ANALYTICS.md): Analytics query params and response schemas
+- [`docs/testing/SAMPLE_QUERIES.md`](../docs/testing/SAMPLE_QUERIES.md): 40+ ready-to-use Django ORM examples
+- [`docs/testing/TESTING.md`](../docs/testing/TESTING.md): Test organization and coverage (157 tests)

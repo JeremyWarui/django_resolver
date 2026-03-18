@@ -15,106 +15,249 @@ Complete testing documentation for the Django Ticket Resolver System, including 
 
 ## Test Organization
 
-### Test Files
+### Test Files Overview
 
-#### `test_apis.py` - API Endpoint Tests
-API tests using Django REST Framework's `APITestCase`. Verifies correct functioning of all API endpoints and their associated business logic.
+**Total Test Coverage**: 157 test methods across 10 test files
 
-**Basic API Functionality**
+#### `test_apis.py` (41 tests) - API Endpoint Tests
+Comprehensive API tests using Django REST Framework's `APITestCase`. Organized into two test classes: `APITests` and `BulkOperationsTestCase`.
+
+**Class: `APITests` - Core API Functionality**
 - `test_get_tickets` - Verify retrieving ticket list
-- `test_create_ticket` - Ensure tickets can be created with proper data
-- `test_get_ticket_detail` - Test retrieving a specific ticket with nested comments & feedback
-- `test_delete_ticket` - Test ticket deletion functionality
+- `test_create_ticket_via_api` - Create ticket through API endpoint
+- `test_get_ticket_detail` - Retrieve specific ticket with nested data
+- `test_delete_ticket` - Test ticket deletion
 
-**Role-Based Permissions**
-- `test_update_ticket_status_technician` - Technicians can update ticket status
-- `test_update_ticket_status_admin` - Admins can update ticket status
-- `test_update_ticket_user_cant` - Regular users cannot update ticket status
-- `test_user_cannot_assign_ticket` - Regular users cannot assign tickets
-- `test_assign_ticket_admin` - Admins can assign tickets to technicians
+**Role-Based Access Control**
+- `test_update_ticket_status_technician` - Technicians can update status
+- `test_update_ticket_status_admin` - Admins can update status
+- `test_update_ticket_user_cant` - Regular users cannot update status
+- `test_user_cannot_assign_ticket` - Users cannot assign tickets
+- `test_assign_ticket_admin` - Admins can assign tickets
 
-**Filtering**
-- `test_filter_tickets_by_status` - Filter tickets by different status values
-- `test_filter_tickets_by_section` - Filter tickets by section
+**Filtering & Visibility**
+- `test_filter_tickets_by_status` - Filter by status field
+- `test_filter_tickets_by_section` - Filter by section ID
+- `test_user_can_only_view_their_tickets` - Scope enforcement
+- `test_technician_can_list_assigned_tickets` - Technician visibility
 
-**Comment and Feedback**
-- `test_user_can_add_comment` - Test comment creation functionality
-- `test_feedback_one_per_ticket` - Ensure only one feedback per ticket is allowed
-- `test_feedback_on_unresolved_ticket` - Feedback only allowed on resolved tickets
-- `test_comment_on_closed_ticket` - Comments not allowed on closed tickets
+**Comment & Feedback Management**
+- `test_user_can_add_comment` - Comment creation
+- `test_feedback_one_per_ticket` - Single feedback constraint
+- `test_feedback_on_unresolved_ticket` - Feedback only on resolved
+- `test_comment_on_closed_ticket` - Comments blocked on closed
+- `test_admin_and_technician_can_view_comments` - Comment visibility
 
-**Workflow**
-- `test_ticket_lifecycle_workflow` - Test full ticket lifecycle from open to resolved
-- `test_changing_ticket_status` - Test status transitions for different roles
-- `test_status_transition_validation` - Test validation of status transitions
-- `test_valid_status_transitions` - Test various status transition scenarios
-- `test_resolve_ticket_technician` - Technicians can mark tickets as resolved
+**Ticket Lifecycle & Status Transitions**
+- `test_ticket_lifecycle_workflow` - Full open→assigned→resolved→closed flow
+- `test_changing_ticket_status` - Status transitions by role
+- `test_status_transition_validation` - Invalid transition detection
+- `test_valid_status_transitions` - Valid state flows
+- `test_resolve_ticket_technician` - Technician resolution
 
-**Edge Cases**
-- `test_assign_resolved_ticket_fails` - Cannot reassign resolved tickets
-- `test_invalid_data_handling` - Test handling of invalid input data
-- `test_anonymous_user_cannot_create_ticket` - Anonymous users cannot create tickets
-- `test_unrelated_user_cannot_comment` - Users not related to ticket cannot comment
+**Closed Ticket Restrictions**
+- `test_admin_can_close_resolved_ticket` - Only admins can close resolved
+- `test_cannot_close_unresolved_ticket` - Must be resolved first
+- `test_cannot_modify_closed_ticket` - Closed is immutable
+- `test_assign_resolved_ticket_fails` - Cannot reassign resolved
 
-**Closed Status**
-- `test_admin_can_close_resolved_ticket` - Only admins can close resolved tickets
-- `test_cannot_close_unresolved_ticket` - Tickets must be resolved before closing
-- `test_cannot_modify_closed_ticket` - Closed tickets cannot be modified
-- `test_comment_on_closed_ticket` - Closed tickets cannot receive comments
+**Error Handling**
+- `test_invalid_data_handling` - Invalid input handling
+- `test_anonymous_user_cannot_create_ticket` - Auth required
+- `test_unrelated_user_cannot_comment` - Comment permissions
 
-**Comment Visibility**
-- `test_admin_and_technician_can_view_comments` - Verify comment visibility rules for different user roles
+**Class: `BulkOperationsTestCase` (13 tests) - Bulk Status Updates**
+- `test_bulk_status_update_admin_success` - Successful bulk updates
+- `test_bulk_status_update_technician_success` - Technician bulk updates
+- `test_bulk_status_update_requires_authentication` - Auth required
+- `test_bulk_status_update_requires_permission` - Permission validation
+- `test_bulk_status_update_missing_ticket_ids` - Missing field validation
+- `test_bulk_status_update_missing_new_status` - Missing status
+- `test_bulk_status_update_invalid_ticket_ids_type` - Type validation
+- `test_bulk_status_update_empty_list` - Empty list handling
+- `test_bulk_status_update_nonexistent_tickets` - Invalid IDs
+- `test_bulk_status_update_partial_failure` - Partial success handling
+- `test_bulk_status_update_large_batch` - Large batch processing
 
-#### `test_models.py` - Model Tests
-Tests for Django models to ensure proper data validation, methods, and properties.
+#### `test_models.py` (14 tests) - Model Tests
+Tests for Django models to ensure proper data validation, methods, and properties. Single `ModelTests` class.
 
-- `test_user_creation` - Test CustomUser model creation
-- `test_section_creation` - Test Section model creation
-- `test_technician_creation` - Test technician user creation
-- `test_ticket_creation` - Test Ticket model creation
-- `test_ticket_is_overdue` - Test ticket overdue status detection
-- `test_ticket_set_to_pending_overdue_ticket` - Test status transition for overdue tickets
-- `test_ticket_status_after_assignment` - Test status changes during assignment
-- `test_ticket_creation_and_auto_increment_ticket_no` - Test automatic ticket number generation
-- `test_ticket_count` - Test counting of tickets
-- `test_ticket_comments_count` - Test counting comments on a ticket
+- `test_user_creation` - CustomUser model creation
+- `test_user_role_validation` - Role field validation
+- `test_technician_creation` - Technician user creation
+- `test_section_creation` - Section model creation
+- `test_section_technician_relationship` - M2M technician relationships
+- `test_ticket_creation` - Ticket model creation
+- `test_ticket_auto_numbering` - Auto-generated ticket numbers
+- `test_ticket_creation_and_auto_increment_ticket_no` - Incremental numbering
+- `test_ticket_status_choices` - Valid status options
+- `test_ticket_status_after_assignment` - Status auto-set on assignment
+- `test_ticket_log_creation` - Audit trail creation
+- `test_change_status_sets_resolved_at_and_logs` - Status change tracking
+- `test_change_assignment_creates_log_and_updates_assigned_to` - Assignment tracking
+- `test_feedback_one_per_ticket_constraint` - Unique feedback constraint
 
-#### `test_serializers.py` - Serializer Tests
-Tests for Django REST Framework serializers to ensure proper data validation and transformation.
+#### `test_serializers.py` (8 tests) - Serializer Tests
+Tests for Django REST Framework serializers. Single `SerializerTests` class extending `BaseTicketTestCase`.
 
-- `test_ticket_serializer` - Test TicketSerializer data representation
-- `test_comment_serializer` - Test CommentSerializer data representation
-- `test_custom_user_serializer` - Test UserSerializer data representation
-- `test_user_create_serializer` - Test UserSerializer create method
-- `test_ticket_serializer_create` - Test ticket creation through serializer
-- `test_comment_serializer_create` - Test comment creation through serializer
-- `test_feedback_serializer_create` - Test feedback creation through serializer
+- `test_ticket_serializer` - TicketSerializer data format
+- `test_ticket_serializer_create` - Ticket creation via serializer
+- `test_custom_user_serializer` - UserSerializer representation
+- `test_user_create_serializer` - User creation via serializer
+- `test_comment_serializer` - CommentSerializer format
+- `test_comment_serializer_create` - Comment creation
+- `test_feedback_serializer_create` - Feedback creation
+- `test_section_serializer_includes_campus_context` - Campus hierarchy exposure (R1 Enhancement)
 
-#### `test_ticket_operations.py` - Ticket Operations Tests
-Tests for ticket creation, updating, and technician assignment workflows.
+#### `test_ticket_operations.py` (9 tests) - Ticket Operations Tests
+Tests for ticket creation, updating, and technician assignment workflows. Single `TicketOperationsTestCase` class.
 
-- Tests ticket POST/PATCH operations
-- Tests technician filtering by section
-- Validates assignment rules and constraints
+- `test_create_ticket_direct_orm` - Direct ORM ticket creation
+- `test_update_ticket_status` - Status field updates
+- `test_update_multiple_fields` - Multiple field updates
+- `test_assign_technician_to_ticket` - Technician assignment
+- `test_get_all_technicians` - List all technicians
+- `test_get_technicians_by_section` - Filter technicians by section
+- `test_can_assign_multi_section_technician` - Multi-section technician assignment
+- `test_cannot_assign_wrong_section_technician` - Section constraint validation
+- `test_ticket_includes_available_technicians` - Serializer field inclusion
 
-#### `test_workflow.py` - End-to-End Workflow Tests
-End-to-end workflow tests using pytest fixtures.
+#### `test_workflow.py` (11 tests) - End-to-End Workflow Tests
+Complete workflow tests without predefined fixtures. Tests real-world scenarios.
 
-- `test_ticket_creation` - Test basic ticket creation workflow
-- `test_admin_can_assign_ticket` - Test admin assigning tickets to technicians
-- `test_admin_cant_assign_ticket_to_technician_not_in_section` - Test section constraints
-- `test_technician_can_update_ticket_status` - Test technician status update workflow
-- `test_user_cant_update_ticket_status` - Test user permissions for status updates
-- `test_technician_or_admin_add_comment_to_ticket` - Test commenting workflow
-- `test_user_can_submit_feedback` - Test feedback submission flow
-- `test_user_cant_submit_feedback_is_not_resolved` - Test feedback constraints
+- `test_ticket_creation` - Basic ticket creation
+- `test_admin_can_assign_ticket` - Admin assignment flow
+- `test_admin_cant_assign_ticket_to_technician_not_in_section` - Section scope validation
+- `test_technician_can_update_ticket_status` - Technician status updates
+- `test_user_cant_update_ticket_status` - User permission enforcement
+- `test_technician_or_admin_add_comment_to_ticket` - Comment permissions
+- `test_user_can_submit_feedback` - Feedback submission
+- `test_user_cant_submit_feedback_is_not_resolved` - Feedback constraints
+- `test_complete_ticket_lifecycle` - Full workflow from creation to closure
+- `test_admin_workflow_vs_technician_workflow` - Role-based workflow differences
+- `test_section_based_routing` - Ticket section routing correctness
 
-#### `test_analytics.py` - Analytics Tests
-Tests for analytics endpoints and data aggregation.
+#### `test_analytics.py` (18 tests) - Analytics Tests
+Analytics endpoint and data aggregation tests. Two test classes: `TestAnalyticsConsistency` and `TestAnalyticsEdgeCases`.
 
-- Tests ticket counts and distributions
-- Tests technician performance metrics
-- Tests system overview analytics
+**Class: `TestAnalyticsConsistency` - Core Analytics**
+- `test_single_ticket_analytics` - Single ticket metrics
+- `test_ticket_analytics_api_endpoint` - Ticket analytics endpoint
+- `test_ticket_analytics_counts_by_status` - Status distribution
+- `test_ticket_analytics_counts_by_timeframe` - Time-based aggregation
+- `test_technician_analytics_api_endpoint` - Technician performance endpoint
+- `test_technician_analytics_performance` - Technician metrics
+- `test_admin_analytics_api_endpoint` - Admin dashboard endpoint
+- `test_admin_analytics_system_overview` - System-wide analytics
+- `test_admin_analytics_avg_response_time_hours` - Response time calculations
+- `test_admin_analytics_get_overdue_tickets` - Overdue identification
+- `test_open_tickets_count_consistency` - Open count validation
+- `test_resolved_tickets_count_consistency` - Resolved count validation
+- `test_tickets_by_age_consistency` - Age-based grouping
+- `test_resolution_time_consistency` - Resolution time tracking
+- `test_resolution_rate_consistency` - Resolution rate calculation
+
+**Class: `TestAnalyticsEdgeCases` - Edge Cases**
+- `test_empty_database_analytics` - Empty data handling
+- `test_boundary_conditions` - Boundary value testing
+- `test_invalid_technician_analytics` - Invalid input handling
+
+#### `test_organizational.py` (27 tests) - Organizational Hierarchy & Access Control
+Comprehensive tests for organizational features. Six test classes.
+
+**Class: `OrganizationalHierarchyTestCase` - Structure Tests**
+- `test_organizational_structure_created` - Hierarchy creation verification
+
+**Class: `EscalationWorkflowTestCase` - Escalation Logic**
+- `test_escalate_ticket` - Manual escalation
+- `test_escalate_ticket_manual_endpoint` - Escalation endpoint
+- `test_escalation_to_section_head` - Level 1 escalation
+- `test_escalation_to_hod` - Level 2 escalation
+- `test_cannot_escalate_beyond_hod` - Max escalation level
+- `test_auto_escalation_processing` - Automatic escalation execution
+- `test_escalation_trends` - Escalation analytics
+
+**Class: `APIIntegrationTestCase` - API & Scope Tests**
+- `test_create_ticket_with_proper_scope` - Scope-compliant creation
+- `test_create_ticket_exceeds_scope` - Scope violation detection
+- `test_assigned_users_endpoint` - Available technicians filtering
+- `test_assign_ticket_with_proper_validation` - Assignment validation
+- `test_assign_ticket_invalid_technician` - Invalid technician rejection
+- `test_get_accessible_tickets_respects_scope` - Ticket visibility scope
+- `test_organizational_ticket_list_endpoint` - Org-scoped list
+- `test_director_access_all_tickets` - Director permissions
+
+**Class: `AnalyticsAggregationTestCase` - Role-Specific Dashboards**
+- `test_director_dashboard` - Director-level analytics
+- `test_director_dashboard_aggregates_metrics` - Metric aggregation
+- `test_hod_dashboard` - HOD dashboard layout
+- `test_hod_dashboard_campus_scoped` - Campus-scoped data
+- `test_section_head_dashboard` - Section head visibility
+- `test_hod_campus_scoped_access` - HOD scope enforcement
+- `test_technician_section_scoped_access` - Technician scope
+- `test_organizational_analytics_endpoint` - Analytics endpoint
+- `test_dashboard_sla_compliance_calculation` - SLA metrics
+- `test_aggregation_sla_compliance_calculation` - SLA aggregation
+
+#### `test_spec_compliance.py` (11 tests) - Workflow Specification Compliance
+Tests for recent specification features: priority field, pending fields, and user closure. Three test classes.
+
+**Class: `PriorityFieldTestCase` - Priority & Auto-Escalation**
+- `test_ticket_created_with_low_priority` - Default LOW priority
+- `test_priority_escalates_to_medium_on_level_1` - L1 escalation→MEDIUM
+- `test_priority_escalates_to_high_on_level_2` - L2 escalation→HIGH
+- `test_priority_auto_marks_critical_after_72_hours` - Auto-CRITICAL after SLA
+
+**Class: `PendingFieldsTestCase` - Pending Status with Reason & Comment**
+- `test_pending_transition_requires_both_reason_and_comment` - Validation enforcement
+- `test_pending_transition_with_both_fields` - Valid pending transition
+- `test_pending_reason_is_enum_validated` - Reason field constraints
+
+**Class: `UserTicketClosureTestCase` - User Ticket Closure**
+- `test_user_can_close_own_resolved_ticket` - User closure permission
+- `test_user_cannot_close_others_resolved_ticket` - Scope enforcement
+- `test_user_cannot_close_unresolved_ticket` - Status validation
+- `test_admin_can_close_any_resolved_ticket` - Admin closure permission
+
+#### `test_auth_comprehensive.py` (16 tests) - Authentication & Authorization
+Comprehensive auth tests. Two test classes: `AuthenticationTestCase` and `AuthorizationIntegrationTestCase`.
+
+**Class: `AuthenticationTestCase` - Auth Methods**
+- `test_password_login_staff_roles` - Staff login flow
+- `test_password_login_blocked_for_users` - User auth method
+- `test_magic_link_login` - Magic link authentication
+- `test_magic_link_request_users_only` - Magic link restrictions
+- `test_magic_link_blocked_for_staff` - Staff role restrictions
+- `test_logout_functionality` - Token invalidation
+- `test_auth_method_check` - Auth method validation
+- `test_authentication_strategy_consistency` - Consistent patterns
+- `test_registration_assigns_correct_auth_method` - Auto-assignment
+- `test_session_management` - Session handling
+- `test_profile_access` - Profile endpoint access
+
+**Class: `AuthorizationIntegrationTestCase` - Role-Based Access**
+- `test_authentication_required_for_all_endpoints` - Auth enforcement
+- `test_role_based_endpoint_access` - Role enforcement
+- `test_role_based_permissions_tickets` - Ticket permissions
+- `test_section_facility_permissions` - Resource permissions
+- `test_technician_access_permissions` - Technician scope
+
+---
+
+## Test Coverage Summary
+
+| File | Classes | Tests | Coverage |
+|------|---------|-------|----------|
+| `test_apis.py` | 2 | 41 | API endpoints, permissions, bulk operations |
+| `test_models.py` | 1 | 14 | Model validation, auto-numbering, constraints |
+| `test_serializers.py` | 1 | 8 | Data transformation, campus hierarchy |
+| `test_ticket_operations.py` | 1 | 9 | CRUD operations, assignment |
+| `test_workflow.py` | 1 | 11 | End-to-end workflows, role patterns |
+| `test_analytics.py` | 2 | 18 | Analytics endpoints, edge cases |
+| `test_organizational.py` | 6 | 27 | Org hierarchy, escalation, dashboards |
+| `test_spec_compliance.py` | 3 | 11 | Priority field, pending fields, closure |
+| `test_auth_comprehensive.py` | 2 | 16 | Authentication, authorization |
+| **TOTAL** | **20** | **157** | **Comprehensive** |
 
 ---
 

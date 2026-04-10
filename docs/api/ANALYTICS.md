@@ -21,11 +21,12 @@ This module provides comprehensive organization-scoped analytics and reporting f
 - Performance comparison by section
 - Escalation contribution tracking
 
-### Role-Based Dashboards (Org-Scoped)
-- **Director Dashboard**: Organization-wide overview with all campuses and departments
-- **HOD Dashboard**: Campus-scoped metrics with all departments within campus
-- **Section Head Dashboard**: Department-scoped metrics with all sections within department
-- **Admin Dashboard**: System-wide metrics across all organizations
+### Role-Based Dashboard Endpoints
+
+- **`/api/analytics/director/`**: Organization-wide dashboard for directors
+- **`/api/analytics/hod/`**: Campus-scoped dashboard for Heads of Department
+- **`/api/analytics/section-head/`**: Department-scoped dashboard for Section Heads
+- **`/api/analytics/admin-dashboard/`**: System-wide dashboard for admins
 
 ## API Endpoints
 
@@ -174,8 +175,11 @@ GET /api/analytics/technicians/?campus_id=1&days=30
 
 ### Role-Based Dashboard Endpoints
 
-#### `/api/analytics/director-dashboard/`
+#### `/api/analytics/director/`
 Organization-wide dashboard for directors (org-scoped).
+
+**Query Parameters:**
+- `days`: Number of days to analyze (default: 30)
 
 **Access Control:** Directors and admins only
 
@@ -232,13 +236,13 @@ Organization-wide dashboard for directors (org-scoped).
 }
 ```
 
-#### `/api/analytics/hod-dashboard/`
+#### `/api/analytics/hod/`
 Campus-scoped dashboard for Heads of Department (campus-scoped).
 
-**Access Control:** HODs (for their campus) and admins
-
 **Query Parameters:**
-- `campus_id`: Required for admins, auto-scoped for HODs
+- `days`: Number of days to analyze (default: 30)
+
+**Access Control:** HODs (for their campus) and admins
 
 **Example Response:**
 ```json
@@ -276,13 +280,13 @@ Campus-scoped dashboard for Heads of Department (campus-scoped).
 }
 ```
 
-#### `/api/analytics/section-head-dashboard/`
+#### `/api/analytics/section-head/`
 Department-scoped dashboard for Section Heads (department-scoped).
 
-**Access Control:** Section Heads (for their department) and admins
-
 **Query Parameters:**
-- `department_id`: Required for admins, auto-scoped for Section Heads
+- `days`: Number of days to analyze (default: 30)
+
+**Access Control:** Section Heads (for their department) and admins
 
 **Example Response:**
 ```json
@@ -411,7 +415,7 @@ These analytics endpoints are designed to provide data for dashboard visualizati
 **Example Frontend Usage:**
 ```javascript
 // Get director dashboard for their organization
-fetch('/api/analytics/director-dashboard/', {
+fetch('/api/analytics/director/?days=30', {
   headers: {'Authorization': `Token ${token}`}
 })
 .then(r => r.json())
@@ -460,5 +464,17 @@ curl -H "Authorization: Token YOUR_TOKEN" \
 ### Get director dashboard (org-scoped)
 ```bash
 curl -H "Authorization: Token YOUR_TOKEN" \
-  "http://localhost:8000/api/analytics/director-dashboard/"
+  "http://localhost:8000/api/analytics/director/?days=30"
+```
+
+### Get HOD dashboard (campus-scoped)
+```bash
+curl -H "Authorization: Token YOUR_TOKEN" \
+  "http://localhost:8000/api/analytics/hod/?days=30"
+```
+
+### Get section head dashboard (department-scoped)
+```bash
+curl -H "Authorization: Token YOUR_TOKEN" \
+  "http://localhost:8000/api/analytics/section-head/?days=30"
 ```

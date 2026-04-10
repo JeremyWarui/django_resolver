@@ -1,72 +1,65 @@
 # Django Resolver Documentation Index
 
-Welcome to the comprehensive documentation for Django Resolver - a Django REST API for maintenance ticket management.
+Welcome to the comprehensive documentation for Django Resolver - a Django REST API for maintenance ticket management with organizational hierarchy support.
 
-## � Find Docs by Your Role
+## 🎯 Find Docs by Your Role
 
 **I'm a Frontend Developer** → Build your integration:
-- [API Integration Guide](API_INTEGRATION_GUIDE.md) - Complete frontend guide (NEW)
-- [API Guide](api/GUIDE.md) - All API endpoints
+- [API Integration Guide](API_INTEGRATION_GUIDE.md) - Complete frontend guide with all endpoints
 - [Authentication](AUTHENTICATION.md) - Implement login
 - [Analytics API](api/ANALYTICS.md) - Add dashboards
 
 **I'm a Backend Developer** → Build your feature:
-- [Architecture Guide](ARCHITECTURE_GUIDE.md) - How the system works (NEW)
-- [Codebase Architecture](CODEBASE_ARCHITECTURE.md) - Complete reference
-- [Workflow Specification](specifications/WORKFLOW_SPEC.md) - Complete spec
-- [Testing Guide](testing/TESTING.md) - Write and run tests
+- [Architecture Guide](ARCHITECTURE_GUIDE.md) - How the system works
+- [Codebase Architecture](CODEBASE_ARCHITECTURE.md) - Complete technical reference
+- [Workflow Specification](specifications/WORKFLOW_SPEC.md) - Complete specification
+- [Testing Guide](testing/TESTING.md) - Write and run tests (166 tests)
 
 **I'm Setting Up Locally** → Get running:
-- [First Time Setup](FIRST_TIME_SETUP.md) - Complete setup guide (NEW)
+- [First Time Setup](FIRST_TIME_SETUP.md) - Complete setup guide
 - [Default Credentials](DEFAULT_CREDENTIALS.md) - Test user accounts
 - [Main README](../README.md) - Quick start
 
 **I'm DevOps/Deploying** → Deploy to production:
 - [build.sh](../build.sh) - Build script
 - [render.yaml](../render.yaml) - Render deployment config
-- [Architecture Guide](ARCHITECTURE_GUIDE.md) - System design
 
 ---
 
-## �📚 Quick Navigation
+## 📚 Quick Navigation
 
 ### 🚀 Getting Started
 
-- **[Main README](../README.md)** - Project overview, quick start guide, and installation
-- **[Codebase Architecture](CODEBASE_ARCHITECTURE.md)** - Complete codebase structure, file roles, data flows, and directory organization
+- **[Main README](../README.md)** - Project overview, quick start guide, stack info
+- **[First Time Setup](FIRST_TIME_SETUP.md)** - Complete setup for new developers
+- **[Codebase Architecture](CODEBASE_ARCHITECTURE.md)** - Complete codebase structure and file roles
 
 ### 🔌 API Documentation
 
-- **[API Guide](api/GUIDE.md)** - Complete API reference for frontend developers
-- **[Analytics API](api/ANALYTICS.md)** - Analytics endpoints and usage
+- **[API Integration Guide](API_INTEGRATION_GUIDE.md)** - Complete API reference with full endpoints, authentication, examples
+- **[Analytics API](api/ANALYTICS.md)** - Analytics endpoints, role-based dashboards, query parameters
 
 ### 📋 Specifications & Compliance
 
-- **[Workflow Specification](specifications/WORKFLOW_SPEC.md)** - Complete ticket workflow specification with organizational scope and ticket placement architecture
-- **[Compliance Audit](compliance/AUDIT_STATUS.md)** - Comprehensive compliance audit report (96% compliance status)
+- **[Workflow Specification](specifications/WORKFLOW_SPEC.md)** - Complete ticket workflow with organizational scope
+- **[Compliance Audit](compliance/AUDIT_STATUS.md)** - Comprehensive compliance audit (96% compliance)
 
 ### 🏗️ Architecture & Design
 
-- **[Codebase Architecture](CODEBASE_ARCHITECTURE.md)** - Complete codebase structure, file roles, and data flows
-- **[Architecture Diagrams](ARCHITECTURE_DIAGRAMS.md)** - Visual flow diagrams and module interactions
-- **[API Layers](architecture/LAYERS.md)** - Layered architecture and design patterns
+- **[Architecture Guide](ARCHITECTURE_GUIDE.md)** - System overview and design patterns
+- **[Codebase Architecture](CODEBASE_ARCHITECTURE.md)** - Complete architecture reference
+- **[API Layers](architecture/LAYERS.md)** - Layered architecture and code organization
 
-### 🔐 Authentication & Setup
+### 🔐 Authentication & Configuration
 
 - **[Authentication](AUTHENTICATION.md)** - Authentication system (password-based + future magic links)
 - **[Default Credentials](DEFAULT_CREDENTIALS.md)** - Test account information
-- **[Organizational Setup](organizational/SETUP.md)** - Setting up organizational hierarchy features
-
-### 🚢 Deployment
-
-- **[Build Configuration](../build.sh)** - Build script for deployment
-- **[Render Config](../render.yaml)** - Render deployment configuration
 
 ### 🧪 Testing
 
-- **[Testing Guide](testing/TESTING.md)** - Complete testing documentation including test organization, running tests, pytest fixtures (166 tests)
-- **[Sample Queries](testing/SAMPLE_QUERIES.md)** - 40+ pre-built Django ORM query examples for exploring fixture data
-- **[Organizational Testing](organizational/TESTING.md)** - Testing organizational features and hierarchies
+- **[Testing Guide](testing/TESTING.md)** - Complete testing documentation (166 tests, pytest patterns)
+- **[Sample Queries](testing/SAMPLE_QUERIES.md)** - 40+ Django ORM query examples
+- **[Organizational Testing](organizational/TESTING.md)** - Testing organizational features
 
 ### 📋 Reference
 
@@ -74,124 +67,107 @@ Welcome to the comprehensive documentation for Django Resolver - a Django REST A
 - **[Pytest Config](../pytest.ini)** - Test configuration
 - **[License](../LICENSE)** - MIT License
 
-## 📂 Documentation Structure
+## 📂 Current Documentation Structure
 
 ```
 docs/
 ├── 📘 Master Guides (Start Here)
 │   ├── FIRST_TIME_SETUP.md          # Setup guide for new developers
 │   ├── ARCHITECTURE_GUIDE.md        # System architecture overview
-│   └── API_INTEGRATION_GUIDE.md     # API integration manual
+│   └── API_INTEGRATION_GUIDE.md     # Complete API reference & integration
 │
 ├── INDEX.md                          # This file - documentation navigation
-├── README (root)                     # Project overview
-├── CODEBASE_ARCHITECTURE.md          # Complete architecture reference
-├── AUTHENTICATION.md                 # Authentication system
-├── ARCHITECTURE_DIAGRAMS.md          # Visual diagrams
-├── DEFAULT_CREDENTIALS.md            # Test credentials
-├── ORGANIZATIONAL_IMPLEMENTATION_PLAN.md  # Implementation tracking
-├── specifications/                   # Workflow specifications & requirements
-│   └── WORKFLOW_SPEC.md             # Complete workflow specification
+├── CODEBASE_ARCHITECTURE.md          # Complete technical reference
+├── AUTHENTICATION.md                 # Authentication system details
+├── DEFAULT_CREDENTIALS.md            # Test user accounts
+│
+├── specifications/                   # Workflow specs & requirements
+│   └── WORKFLOW_SPEC.md             # Complete ticket workflow spec
+│
 ├── compliance/                       # Compliance audits & reports
-│   └── AUDIT_STATUS.md              # Consolidated compliance audit (96% status)
+│   └── AUDIT_STATUS.md              # Consolidated compliance audit (96% pass)
+│
 ├── api/                              # API documentation
-│   ├── GUIDE.md                     # Complete API reference
-│   └── ANALYTICS.md                 # Analytics endpoints
-├── architecture/                     # Architecture and design docs
-│   └── LAYERS.md                    # API layered architecture
+│   └── ANALYTICS.md                 # Analytics endpoints & dashboards
+│
+├── architecture/                     # Architecture details
+│   └── LAYERS.md                    # Layered architecture patterns
+│
 ├── organizational/                   # Organizational features
-│   ├── SETUP.md                     # Setup guide
-│   └── TESTING.md                   # Testing guide
+│   └── TESTING.md                   # Organizational testing guide
+│
 └── testing/                          # Testing documentation
-    ├── TESTING.md                    # Complete testing guide
-    └── SAMPLE_QUERIES.md             # Query examples
+    ├── TESTING.md                    # Complete testing guide (166 tests)
+    └── SAMPLE_QUERIES.md             # Django ORM query examples
 ```
 
-## 🔍 Finding Documentation
+## 🔍 Finding Documentation by Task
 
-### 📘 Master Guides (Recommended Entry Points)
-
-**Choose based on your role:**
-
-1. **[First Time Setup](FIRST_TIME_SETUP.md)** - New developers setting up locally
-   - Complete 12-section setup guide
-   - Covers: clone, venv, database, dependencies, migrations, verification
-   - Includes troubleshooting section
-   
-2. **[Architecture Guide](ARCHITECTURE_GUIDE.md)** - Backend developers learning the system
-   - System overview and technology stack
-   - 4-layer architecture explanation
-   - Ticket lifecycle and state machine
-   - Organizational hierarchy
-   - Role-based access control
-   
-3. **[API Integration Guide](API_INTEGRATION_GUIDE.md)** - Frontend developers building integrations
-   - Complete authentication guide
-   - All endpoint documentation with examples
-   - Escalation, analytics, error handling
-   - Code examples in JavaScript and Python
-
-### By Task
-
-**Setting Up Development Environment:**
+### Setting Up Development Environment
 1. [Main README](../README.md) - Installation steps
-2. [Codebase Architecture](CODEBASE_ARCHITECTURE.md) - Project structure
+2. [First Time Setup](FIRST_TIME_SETUP.md) - Detailed setup guide
+3. [Codebase Architecture](CODEBASE_ARCHITECTURE.md) - Project structure
 
-**Building Frontend Integration:**
-1. [API Guide](api/GUIDE.md) - All endpoints
-2. [Analytics API](api/ANALYTICS.md) - Analytics queries
+### Building Frontend Integration
+1. [API Integration Guide](API_INTEGRATION_GUIDE.md) - All endpoints with examples
+2. [Analytics API](api/ANALYTICS.md) - Analytics queries and dashboards
+3. [Authentication](AUTHENTICATION.md) - Login implementation
 
-**Understanding Architecture:**
-1. [API Layers](architecture/LAYERS.md) - Code organization
-2. [Codebase Architecture](CODEBASE_ARCHITECTURE.md) - Complete directory overview
-3. [Architecture Diagrams](ARCHITECTURE_DIAGRAMS.md) - Visual references
-4. [Workflow Specification](specifications/WORKFLOW_SPEC.md) - Complete specification
+### Understanding Architecture
+1. [Architecture Guide](ARCHITECTURE_GUIDE.md) - System design and patterns
+2. [Codebase Architecture](CODEBASE_ARCHITECTURE.md) - Complete technical reference
+3. [API Layers](architecture/LAYERS.md) - Layered architecture patterns
+4. [Workflow Specification](specifications/WORKFLOW_SPEC.md) - Complete workflow spec
 
-**Reviewing Compliance & Spec:**
+### Reviewing Compliance & Specifications
 1. [Workflow Specification](specifications/WORKFLOW_SPEC.md) - Latest specification
 2. [Compliance Audit](compliance/AUDIT_STATUS.md) - Audit findings (96% compliance)
 
-**Setting Up Organizational Features:**
-1. [Organizational Setup](organizational/SETUP.md) - Implementation guide
-2. [Organizational Implementation Plan](ORGANIZATIONAL_IMPLEMENTATION_PLAN.md) - Phase tracking
+### Setting Up Organizational Features
+1. [First Time Setup](FIRST_TIME_SETUP.md) - Includes organizational hierarchy setup
+2. [Organizational Testing](organizational/TESTING.md) - Test organizational features
+3. [Workflow Specification](specifications/WORKFLOW_SPEC.md) - Specification with organizational scope
 
-**Deploying to Production:**
-1. [Render Config](../render.yaml) - Cloud deployment configuration
+### Deploying to Production
+1. [render.yaml](../render.yaml) - Cloud deployment configuration
+2. [build.sh](../build.sh) - Build script
 
-**Writing Tests:**
-1. [Testing Guide](testing/TESTING.md) - Complete test documentation including BaseTicketTestCase usage
+### Writing Tests
+1. [Testing Guide](testing/TESTING.md) - Complete test documentation with pytest patterns
 2. [Sample Queries](testing/SAMPLE_QUERIES.md) - Query examples for exploring data
 3. [Organizational Testing](organizational/TESTING.md) - Testing organizational features
 
-### By Component
+## 🪡 By Component
 
 **Tickets Module:**
-- [API Guide](api/GUIDE.md) - Complete ticket management API
+- [API Integration Guide](API_INTEGRATION_GUIDE.md) - Complete ticket management API
 - [Testing Guide](testing/TESTING.md) - Test organization and execution
+- [Workflow Specification](specifications/WORKFLOW_SPEC.md) - Ticket workflow spec
 
 **Analytics:**
-- [Analytics API](api/ANALYTICS.md) - Analytics endpoints and usage
+- [Analytics API](api/ANALYTICS.md) - Analytics endpoints and role-based dashboards
 
 **Authentication:**
 - [Authentication Guide](AUTHENTICATION.md) - System details and configuration
+- [Default Credentials](DEFAULT_CREDENTIALS.md) - Test accounts
 
 **Organizational Hierarchy:**
-- [Organizational Setup](organizational/SETUP.md) - Feature setup
+- [First Time Setup](FIRST_TIME_SETUP.md) - Feature setup and configuration
 - [Organizational Testing](organizational/TESTING.md) - Test examples
-- [Implementation Plan](ORGANIZATIONAL_IMPLEMENTATION_PLAN.md) - Phase tracking
-- [Workflow Specification](specifications/WORKFLOW_SPEC.md) - Complete specification
+- [Workflow Specification](specifications/WORKFLOW_SPEC.md) - Complete specification with organizational scope
 
 **Compliance & Audit:**
 - [Compliance Audit](compliance/AUDIT_STATUS.md) - Complete compliance findings (96% status)
 - [Workflow Specification](specifications/WORKFLOW_SPEC.md) - Specification reference
 
-## 🆘 Common Issues
+## 💡 Common Issues
 
-**API Integration:** See [API Guide](api/GUIDE.md)  
+**API Integration:** See [API Integration Guide](API_INTEGRATION_GUIDE.md)  
 **Testing:** See [Testing Guide](testing/TESTING.md)  
 **Database Queries:** See [Sample Queries](testing/SAMPLE_QUERIES.md)  
 **Authentication:** See [Authentication](AUTHENTICATION.md)  
-**Organizational Features:** See [Organizational Setup](organizational/SETUP.md)
+**Organizational Features:** See [First Time Setup](FIRST_TIME_SETUP.md)  
+**Compliance:** See [Compliance Audit](compliance/AUDIT_STATUS.md)
 
 ## 📝 Contributing
 
@@ -200,6 +176,7 @@ When adding new documentation:
 2. Update this INDEX.md
 3. Use clear, descriptive filenames
 4. Follow existing formatting patterns
+5. Keep master guides up-to-date as they're entry points for developers
 
 ## 📧 Support
 

@@ -1,6 +1,6 @@
 # Compliance Audit Status Report
-**Date**: March 18, 2026  
-**Version**: 2.0 (Consolidated)  
+**Date**: April 10, 2026  
+**Version**: 2.1 (Escalation Timing Update)  
 **Status**: ✅ PRODUCTION-READY (96% compliance)
 
 ---
@@ -82,7 +82,11 @@ This document consolidates compliance audit findings for the Django Resolver tic
 - Test coverage: test_organizational.py (75+ tests)
 
 #### Escalation Management ✅
-- Auto-escalation at T+48h (section_head) and T+72h (HOD)
+- **NEW (v2.1)**: `assigned_at` field tracks assignment timestamp
+- **NEW (v2.1)**: Escalation timing now calculated from assignment, not creation
+- Level 0→1 (Section Head): 48 hours after assignment (`assigned_at`)
+- Level 1→2 (HOD): 24 hours after escalation (`escalated_at`)
+- **NEW (v2.1)**: Unassigned tickets do NOT trigger auto-escalation
 - Priority auto-increments on escalation
 - PENDING status does NOT pause SLA timers (confirmed in spec)
 
@@ -102,13 +106,16 @@ This document consolidates compliance audit findings for the Django Resolver tic
 
 | Test Category | File | Tests | Status |
 |---|---|---|---|
-| Organizational Hierarchy | test_organizational.py | 75+ | ✅ Passing |
-| Escalation Workflows | test_organizational.py::EscalationWorkflowTestCase | 12 | ✅ Passing |
-| API Integration | test_apis.py | 40+ | ✅ Passing |
-| Serializers | test_serializers.py | 9 | ✅ Passing |
-| Spec Compliance | test_spec_compliance.py | 10+ | ⚠️ In development |
-| Models | test_models.py | 30+ | ✅ Passing |
-| Workflow | test_workflow.py | 25+ | ✅ Passing |
+| Analytics | test_analytics.py | 23 | ✅ Passing |
+| API Integration | test_apis.py | 37 | ✅ Passing |
+| Authentication | test_auth_comprehensive.py | 14 | ✅ Passing |
+| Models | test_models.py | 18 | ✅ Passing |
+| Organizational Hierarchy | test_organizational.py | 27 | ✅ Passing |
+| Serializers | test_serializers.py | 8 | ✅ Passing |
+| Spec Compliance | test_spec_compliance.py | 19 | ✅ Passing |
+| Ticket Operations | test_ticket_operations.py | 8 | ✅ Passing |
+| Workflow | test_workflow.py | 12 | ✅ Passing |
+| **TOTAL** | | **166** | **✅ Passing** |
 
 ---
 
@@ -125,6 +132,9 @@ This document consolidates compliance audit findings for the Django Resolver tic
 | SectionSerializer campus context (R1) | ✅ DONE | serializers.py |
 | PENDING does NOT pause escalation | ✅ CONFIRMED | services.py |
 | Auto-mark CRITICAL after 72h | ✅ DONE | models.py |
+| **Escalation timing via assigned_at (v2.1)** | **✅ DONE** | **tickets/models.py, services.py** |
+| **48h→Section Head, 24h→HOD (v2.1)** | **✅ DONE** | **tickets/api/services/services.py** |
+| **Unassigned tickets no auto-escalation (v2.1)** | **✅ DONE** | **services.py validation** |
 
 ---
 
@@ -155,6 +165,7 @@ This document consolidates compliance audit findings for the Django Resolver tic
 
 ---
 
-**Report Compiled**: March 18, 2026  
-**Last Updated**: Post-SectionSerializer Enhancement (R1)  
+**Report Compiled**: April 10, 2026  
+**Last Updated**: Post-Escalation Timing Enhancement (v2.1)  
+**Coverage**: 78% | **Tests**: 166/166 passing | **Execution**: 43+ minutes  
 **Next Review**: Post-deployment validation

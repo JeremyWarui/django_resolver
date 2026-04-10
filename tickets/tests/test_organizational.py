@@ -273,6 +273,114 @@ def test_cannot_escalate_beyond_hod(organization, campus, department, section, f
     assert result.escalation_level == 2
 
 
+def test_priority_level_0_is_low(organization, campus, department, section, facility, user_factory):
+    """Test that escalation level 0 (open) tickets have LOW priority"""
+    user = user_factory()
+    user.primary_campus = campus
+    user.save()
+
+    ticket = Ticket.objects.create(
+        title="Low Priority Test",
+        description="Test that open tickets are low priority",
+        section=section,
+        facility=facility,
+        raised_by=user,
+        status="open",
+        escalation_level=0
+    )
+
+    ticket.refresh_from_db()
+    assert ticket.escalation_level == 0
+    assert ticket.priority == "low"
+
+
+def test_priority_level_1_is_medium(organization, campus, department, section, facility, user_factory, technician_factory, section_head_factory):
+    """Test that escalation level 1 (first escalation) tickets have MEDIUM priority"""
+    user = user_factory()
+    user.primary_campus = campus
+    user.save()
+
+    technician = technician_factory()
+    technician.primary_campus = campus
+    technician.sections.add(section)
+    technician.save()
+
+    section_head = section_head_factory()
+    section_head.primary_campus = campus
+    section_head.primary_department = department
+    section_head.sections.add(section)
+    section_head.save()
+
+    ticket = Ticket.objects.create(
+        title="Medium Priority Test",
+        description="Test that escalated to section head tickets are medium priority",
+        section=section,
+        facility=facility,
+        raised_by=user,
+        assigned_to=technician,
+        status="open",
+        escalation_level=0,
+        priority="low"
+    )
+
+    # Escalate to section head
+    TicketService.escalate_ticket(
+        ticket=ticket,
+        escalated_by=technician,
+        reason="Escalating to section head"
+    )
+
+    ticket.refresh_from_db()
+    assert ticket.escalation_level == 1
+    assert ticket.priority == "medium"
+
+
+def test_priority_level_2_is_high(organization, campus, department, section, facility, user_factory, technician_factory, hod_factory):
+    """Test that escalation level 2 (final escalation) tickets have HIGH priority"""
+    user = user_factory()
+    user.primary_campus = campus
+    user.save()
+
+    technician = technician_factory()
+    technician.primary_campus = campus
+    technician.sections.add(section)
+    technician.save()
+
+    hod = hod_factory()
+    hod.primary_campus = campus
+    hod.primary_department = department
+    hod.save()
+
+    ticket = Ticket.objects.create(
+        title="High Priority Test",
+        description="Test that escalated to HOD tickets are high priority",
+        section=section,
+        facility=facility,
+        raised_by=user,
+        assigned_to=technician,
+        status="open",
+        escalation_level=0,
+        priority="low"
+    )
+
+    # Escalate to section head first
+    ticket.escalate(
+        escalated_by=technician,
+        reason="Escalating to section head"
+    )
+
+    # Then escalate to HOD
+    TicketService.escalate_ticket(
+        ticket=ticket,
+        escalated_by=technician,
+        reason="Escalating to HOD"
+    )
+
+    ticket.refresh_from_db()
+    assert ticket.escalation_level == 2
+    assert ticket.priority == "high"
+
+
 # ============================================================================
 # API INTEGRATION TESTS
 # ============================================================================

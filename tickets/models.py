@@ -284,8 +284,8 @@ class Ticket(models.Model):
     ]
 
     # Core ticket information
-    # Format: CAMPUS-DEPT-XXXXX
-    ticket_no = models.CharField(max_length=15, unique=True, editable=False)
+    # Format: CAMPUS-DEPT-XXXXX (e.g., MAIN-MAINT-00001)
+    ticket_no = models.CharField(max_length=25, unique=True, editable=False)
     title = models.CharField(max_length=100)
     description = models.TextField(max_length=500)  # Extended description
 
@@ -391,6 +391,15 @@ class Ticket(models.Model):
 
     def save(self, *args, performed_by=None, **kwargs):
         """Enhanced save with organizational ticket numbering and auto-escalation scheduling"""
+        # 0. Ensure priority matches escalation level
+        # Escalation Level 0 (open) → Low, Level 1 → Medium, Level 2 → High
+        if self.escalation_level == 0:
+            self.priority = 'low'
+        elif self.escalation_level == 1 and self.priority != 'medium':
+            self.priority = 'medium'
+        elif self.escalation_level == 2 and self.priority != 'high':
+            self.priority = 'high'
+
         # 1. Handle ticket number generation for new tickets
         if not self.ticket_no:
             # Generate ticket number: CAMPUS-DEPT-XXXXX

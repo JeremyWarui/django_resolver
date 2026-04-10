@@ -6,11 +6,17 @@
 @baseUrl = http://localhost:8000
 @contentType = application/json
 
-### Variables for tokens (will be set after login)
-# @userToken = your_token_here
-# @technicianToken = your_token_here
-# @managerToken = your_token_here
-# @adminToken = your_token_here
+### Variables for tokens (update after login)
+@adminToken = 091f78201d634c688abdb59bdded0008ce82abe2
+@userToken = 
+@technicianToken = 
+@managerToken = 
+
+### Test Credentials (from fixtures)
+# Admin: admin_user / adminuser123
+# Technician: tech_alex / alexsmith123
+# User: jane_user / janedoe123
+# Manager: manager_ben / benclark123
 
 ################################################################################
 # AUTHENTICATION & USER MANAGEMENT
@@ -54,18 +60,31 @@ Content-Type: {{contentType}}
   "password": "admin_password"
 }
 
-### 5. Get Current User Profile
+################################################################################
+# USER MANAGEMENT
+################################################################################
+
+### 5. Login as Admin Example
+POST {{baseUrl}}/api/auth/login/
+Content-Type: {{contentType}}
+
+{
+  "username": "admin_user",
+  "password": "adminuser123"
+}
+
+### 6. Get Current User Profile
 GET {{baseUrl}}/api/users/me/
-Authorization: Bearer {{userToken}}
+Authorization: Token {{adminToken}}
 
-### 6. List All Users (admin/manager only)
+### 7. List All Users (admin/manager only)
 GET {{baseUrl}}/api/users/
-Authorization: Bearer {{adminToken}}
+Authorization: Token {{adminToken}}
 
-### 7. Create New User (admin only)
+### 8. Create New User (admin only)
 POST {{baseUrl}}/api/users/
 Content-Type: {{contentType}}
-Authorization: Bearer {{adminToken}}
+Authorization: Token {{adminToken}}
 
 {
   "first_name": "Jane",
@@ -80,26 +99,53 @@ Authorization: Bearer {{adminToken}}
 # SECTIONS & FACILITIES
 ################################################################################
 
-### 8. List All Sections
+### 9. List All Sections
 GET {{baseUrl}}/api/sections/
-Authorization: Bearer {{userToken}}
+Authorization: Token {{adminToken}}
 
-### 9. List All Facilities
+### 10. List All Facilities
 GET {{baseUrl}}/api/facilities/
-Authorization: Bearer {{userToken}}
+Authorization: Token {{adminToken}}
 
-### 10. Get Technicians by Section (for assignment)
+### 11. Get Technicians by Section (for assignment)
 GET {{baseUrl}}/api/technicians/?section_id=1
-Authorization: Bearer {{managerToken}}
+Authorization: Token {{adminToken}}
+
+################################################################################
+# ESCALATION PRIORITY TESTS (Feature: Priority based on escalation level)
+################################################################################
+
+### PRIORITY TEST 1: Tickets at Escalation Level 0 (expect priority = "low")
+GET {{baseUrl}}/api/tickets/?escalation_level=0&limit=2
+Authorization: Token {{adminToken}}
+
+###
+### PRIORITY TEST 2: Tickets at Escalation Level 1 (expect priority = "medium")
+GET {{baseUrl}}/api/tickets/?escalation_level=1&limit=2
+Authorization: Token {{adminToken}}
+
+###
+### PRIORITY TEST 3: Tickets at Escalation Level 2 (expect priority = "high")
+GET {{baseUrl}}/api/tickets/?escalation_level=2&limit=2
+Authorization: Token {{adminToken}}
+
+###
+### PRIORITY TEST 4: Get single ticket details (verify priority matches escalation_level)
+### Check response: priority field should be:
+###   - "low" if escalation_level = 0
+###   - "medium" if escalation_level = 1
+###   - "high" if escalation_level = 2
+GET {{baseUrl}}/api/tickets/1/
+Authorization: Token {{adminToken}}
 
 ################################################################################
 # TICKET CREATION & MANAGEMENT
 ################################################################################
 
-### 11. Create New Ticket (User)
+### 12. Create New Ticket (User)
 POST {{baseUrl}}/api/tickets/
 Content-Type: {{contentType}}
-Authorization: Bearer {{userToken}}
+Authorization: Token {{userToken}}
 
 {
   "title": "Broken AC in Conference Room",
@@ -108,55 +154,55 @@ Authorization: Bearer {{userToken}}
   "facility_id": 1
 }
 
-### 12. List All Tickets
+### 13. List All Tickets
 GET {{baseUrl}}/api/tickets/
-Authorization: Bearer {{userToken}}
+Authorization: Token {{adminToken}}
 
-### 13. Filter Tickets - Unassigned Only
+### 14. Filter Tickets - Unassigned Only
 GET {{baseUrl}}/api/tickets/?assigned_to__isnull=true
-Authorization: Bearer {{managerToken}}
+Authorization: Token {{adminToken}}
 
-### 14. Filter Tickets - By Status
+### 15. Filter Tickets - By Status
 GET {{baseUrl}}/api/tickets/?status=open
-Authorization: Bearer {{technicianToken}}
+Authorization: Token {{adminToken}}
 
-### 15. Filter Tickets - Overdue Tickets
+### 16. Filter Tickets - Overdue Tickets
 GET {{baseUrl}}/api/tickets/?is_overdue=true
-Authorization: Bearer {{managerToken}}
+Authorization: Token {{adminToken}}
 
-### 16. Filter Tickets - By Section and Status
+### 17. Filter Tickets - By Section and Status
 GET {{baseUrl}}/api/tickets/?section=1&status=assigned
-Authorization: Bearer {{technicianToken}}
+Authorization: Token {{adminToken}}
 
-### 17. Get Single Ticket Details
+### 18. Get Single Ticket Details
 # Replace {id} with actual ticket ID
 GET {{baseUrl}}/api/tickets/1/
-Authorization: Bearer {{userToken}}
+Authorization: Token {{adminToken}}
 
-### 18. Search Tickets by Title
+### 19. Search Tickets by Title
 GET {{baseUrl}}/api/tickets/?search=AC
-Authorization: Bearer {{userToken}}
+Authorization: Token {{adminToken}}
 
 ################################################################################
 # TICKET ASSIGNMENT (Manager/Admin)
 ################################################################################
 
-### 19. Assign Ticket to Technician
+### 20. Assign Ticket to Technician
 # Replace {id} with actual ticket ID
 # Technician must belong to ticket's section
 PATCH {{baseUrl}}/api/tickets/1/
 Content-Type: {{contentType}}
-Authorization: Bearer {{managerToken}}
+Authorization: Token {{adminToken}}
 
 {
   "assigned_to": 2,
   "status": "assigned"
 }
 
-### 20. Reassign Ticket to Another Technician
+### 21. Reassign Ticket to Another Technician
 PATCH {{baseUrl}}/api/tickets/1/
 Content-Type: {{contentType}}
-Authorization: Bearer {{managerToken}}
+Authorization: Token {{adminToken}}
 
 {
   "assigned_to": 3
@@ -166,48 +212,48 @@ Authorization: Bearer {{managerToken}}
 # TICKET STATUS UPDATES (Technician)
 ################################################################################
 
-### 21. Update Status: Assigned → In Progress
+### 22. Update Status: Assigned → In Progress
 PATCH {{baseUrl}}/api/tickets/1/
 Content-Type: {{contentType}}
-Authorization: Bearer {{technicianToken}}
+Authorization: Token {{adminToken}}
 
 {
   "status": "in_progress"
 }
 
-### 22. Update Status: In Progress → Pending (with reason)
+### 23. Update Status: In Progress → Pending (with reason)
 PATCH {{baseUrl}}/api/tickets/1/
 Content-Type: {{contentType}}
-Authorization: Bearer {{technicianToken}}
+Authorization: Token {{adminToken}}
 
 {
   "status": "pending",
   "pending_reason": "Waiting for replacement parts to arrive"
 }
 
-### 23. Update Status: Pending → In Progress (resume work)
+### 24. Update Status: Pending → In Progress (resume work)
 PATCH {{baseUrl}}/api/tickets/1/
 Content-Type: {{contentType}}
-Authorization: Bearer {{technicianToken}}
+Authorization: Token {{adminToken}}
 
 {
   "status": "in_progress"
 }
 
-### 24. Update Status: In Progress → Resolved
+### 25. Update Status: In Progress → Resolved
 PATCH {{baseUrl}}/api/tickets/1/
 Content-Type: {{contentType}}
-Authorization: Bearer {{technicianToken}}
+Authorization: Token {{adminToken}}
 
 {
   "status": "resolved",
   "resolution_notes": "Replaced faulty compressor unit. AC is now working properly."
 }
 
-### 25. Update Status: Resolved → Closed (Admin/Manager only)
+### 26. Update Status: Resolved → Closed (Admin/Manager only)
 PATCH {{baseUrl}}/api/tickets/1/
 Content-Type: {{contentType}}
-Authorization: Bearer {{managerToken}}
+Authorization: Token {{adminToken}}
 
 {
   "status": "closed"
@@ -217,63 +263,63 @@ Authorization: Bearer {{managerToken}}
 # COMMENTS
 ################################################################################
 
-### 26. Add Comment to Ticket (User)
+### 27. Add Comment to Ticket (User)
 POST {{baseUrl}}/api/comments/
 Content-Type: {{contentType}}
-Authorization: Bearer {{userToken}}
+Authorization: Token {{userToken}}
 
 {
   "ticket": 1,
   "text": "The room is getting very hot. This is urgent!"
 }
 
-### 27. Add Comment (Technician)
+### 28. Add Comment (Technician)
 POST {{baseUrl}}/api/comments/
 Content-Type: {{contentType}}
-Authorization: Bearer {{technicianToken}}
+Authorization: Token {{adminToken}}
 
 {
   "ticket": 1,
   "text": "I've inspected the unit. The compressor appears to be faulty. Ordering replacement parts."
 }
 
-### 28. Add Comment (Manager)
+### 29. Add Comment (Manager)
 POST {{baseUrl}}/api/comments/
 Content-Type: {{contentType}}
-Authorization: Bearer {{managerToken}}
+Authorization: Token {{adminToken}}
 
 {
   "ticket": 1,
   "text": "Priority ticket. Please expedite the repair."
 }
 
-### 29. Get All Comments for a Ticket
+### 30. Get All Comments for a Ticket
 GET {{baseUrl}}/api/comments/?ticket=1
-Authorization: Bearer {{userToken}}
+Authorization: Token {{adminToken}}
 
-### 30. Update Comment
+### 31. Update Comment
 # Replace {id} with actual comment ID
 PATCH {{baseUrl}}/api/comments/1/
 Content-Type: {{contentType}}
-Authorization: Bearer {{userToken}}
+Authorization: Token {{userToken}}
 
 {
   "text": "Updated: The room temperature is now 32°C. This is urgent!"
 }
 
-### 31. Delete Comment
+### 32. Delete Comment
 # Replace {id} with actual comment ID
 DELETE {{baseUrl}}/api/comments/1/
-Authorization: Bearer {{userToken}}
+Authorization: Token {{userToken}}
 
 ################################################################################
 # FEEDBACK (Only on Resolved/Closed Tickets)
 ################################################################################
 
-### 32. Submit Feedback on Resolved Ticket (User)
+### 33. Submit Feedback on Resolved Ticket (User)
 POST {{baseUrl}}/api/feedback/
 Content-Type: {{contentType}}
-Authorization: Bearer {{userToken}}
+Authorization: Token {{userToken}}
 
 {
   "ticket": 1,
@@ -281,10 +327,10 @@ Authorization: Bearer {{userToken}}
   "comment": "Excellent service! The technician was professional and fixed the issue quickly."
 }
 
-### 33. Submit Feedback with Lower Rating
+### 34. Submit Feedback with Lower Rating
 POST {{baseUrl}}/api/feedback/
 Content-Type: {{contentType}}
-Authorization: Bearer {{userToken}}
+Authorization: Token {{userToken}}
 
 {
   "ticket": 2,
@@ -292,19 +338,19 @@ Authorization: Bearer {{userToken}}
   "comment": "Issue resolved but took longer than expected."
 }
 
-### 34. Get All Feedback
+### 35. Get All Feedback
 GET {{baseUrl}}/api/feedback/
-Authorization: Bearer {{managerToken}}
+Authorization: Token {{adminToken}}
 
-### 35. Get Feedback for Specific Ticket
+### 36. Get Feedback for Specific Ticket
 GET {{baseUrl}}/api/feedback/?ticket=1
-Authorization: Bearer {{userToken}}
+Authorization: Token {{userToken}}
 
-### 36. Update Feedback
+### 37. Update Feedback
 # Replace {id} with actual feedback ID
 PATCH {{baseUrl}}/api/feedback/1/
 Content-Type: {{contentType}}
-Authorization: Bearer {{userToken}}
+Authorization: Token {{userToken}}
 
 {
   "rating": 4,
@@ -315,53 +361,53 @@ Authorization: Bearer {{userToken}}
 # ANALYTICS
 ################################################################################
 
-### 37. Admin Dashboard (Overview)
+### 38. Admin Dashboard (Overview)
 GET {{baseUrl}}/api/analytics/admin-dashboard/
-Authorization: Bearer {{adminToken}}
+Authorization: Token {{adminToken}}
 
-### 38. Ticket Analytics - Weekly Summary
+### 39. Ticket Analytics - Weekly Summary
 GET {{baseUrl}}/api/analytics/tickets/?timeframe=week
-Authorization: Bearer {{managerToken}}
+Authorization: Token {{adminToken}}
 
-### 39. Ticket Analytics - Monthly by Section
+### 40. Ticket Analytics - Monthly by Section
 GET {{baseUrl}}/api/analytics/tickets/?timeframe=month&section_id=1
-Authorization: Bearer {{managerToken}}
+Authorization: Token {{adminToken}}
 
-### 40. Ticket Analytics - Last 30 Days Grouped by Day
+### 41. Ticket Analytics - Last 30 Days Grouped by Day
 GET {{baseUrl}}/api/analytics/tickets/?days=30&group_by=day
-Authorization: Bearer {{managerToken}}
+Authorization: Token {{adminToken}}
 
-### 41. Ticket Analytics - By Facility
+### 42. Ticket Analytics - By Facility
 GET {{baseUrl}}/api/analytics/tickets/?facility_id=1&timeframe=month
-Authorization: Bearer {{managerToken}}
+Authorization: Token {{adminToken}}
 
-### 42. Technician Performance Analytics
+### 43. Technician Performance Analytics
 GET {{baseUrl}}/api/analytics/technicians/?technician_id=2
-Authorization: Bearer {{managerToken}}
+Authorization: Token {{adminToken}}
 
-### 43. Section Performance Analytics
+### 44. Section Performance Analytics
 GET {{baseUrl}}/api/analytics/tickets/?section_id=1&timeframe=month
-Authorization: Bearer {{managerToken}}
+Authorization: Token {{adminToken}}
 
 ################################################################################
 # REPORTS
 ################################################################################
 
-### 44. List Available Report Types
+### 45. List Available Report Types
 GET {{baseUrl}}/api/reports/types/
-Authorization: Bearer {{managerToken}}
+Authorization: Token {{adminToken}}
 
-### 45. Generate PDF Report - All Open Tickets
+### 46. Generate PDF Report - All Open Tickets
 GET {{baseUrl}}/api/reports/generate/?report_type=tickets&format=pdf&status=open
-Authorization: Bearer {{managerToken}}
+Authorization: Token {{adminToken}}
 
-### 46. Generate CSV Report - Resolved Tickets
+### 47. Generate CSV Report - Resolved Tickets
 GET {{baseUrl}}/api/reports/generate/?report_type=tickets&format=csv&status=resolved
-Authorization: Bearer {{managerToken}}
+Authorization: Token {{adminToken}}
 
-### 47. Generate Technician Performance Report
+### 48. Generate Technician Performance Report
 GET {{baseUrl}}/api/reports/generate/?report_type=technicians&format=pdf&technician_id=2
-Authorization: Bearer {{adminToken}}
+Authorization: Token {{adminToken}}
 
 ################################################################################
 # COMPLETE WORKFLOW EXAMPLE
@@ -372,7 +418,7 @@ Authorization: Bearer {{adminToken}}
 # Step 1: User creates a ticket
 POST {{baseUrl}}/api/tickets/
 Content-Type: {{contentType}}
-Authorization: Bearer {{userToken}}
+Authorization: Token {{userToken}}
 
 {
   "title": "Leaking Pipe in Bathroom",
@@ -384,13 +430,13 @@ Authorization: Bearer {{userToken}}
 ###
 # Step 2: Manager views unassigned tickets
 GET {{baseUrl}}/api/tickets/?assigned_to__isnull=true&status=open
-Authorization: Bearer {{managerToken}}
+Authorization: Token {{adminToken}}
 
 ###
 # Step 3: Manager assigns to technician (use ticket ID from step 1)
 PATCH {{baseUrl}}/api/tickets/{ticket_id}/
 Content-Type: {{contentType}}
-Authorization: Bearer {{managerToken}}
+Authorization: Token {{adminToken}}
 
 {
   "assigned_to": 2
@@ -400,7 +446,7 @@ Authorization: Bearer {{managerToken}}
 # Step 4: Technician starts work
 PATCH {{baseUrl}}/api/tickets/{ticket_id}/
 Content-Type: {{contentType}}
-Authorization: Bearer {{technicianToken}}
+Authorization: Token {{adminToken}}
 
 {
   "status": "in_progress"
@@ -410,7 +456,7 @@ Authorization: Bearer {{technicianToken}}
 # Step 5: Technician adds comment
 POST {{baseUrl}}/api/comments/
 Content-Type: {{contentType}}
-Authorization: Bearer {{technicianToken}}
+Authorization: Token {{adminToken}}
 
 {
   "ticket": "{ticket_id}",
@@ -421,7 +467,7 @@ Authorization: Bearer {{technicianToken}}
 # Step 6: Technician resolves ticket
 PATCH {{baseUrl}}/api/tickets/{ticket_id}/
 Content-Type: {{contentType}}
-Authorization: Bearer {{technicianToken}}
+Authorization: Token {{adminToken}}
 
 {
   "status": "resolved",
@@ -432,7 +478,7 @@ Authorization: Bearer {{technicianToken}}
 # Step 7: User provides feedback
 POST {{baseUrl}}/api/feedback/
 Content-Type: {{contentType}}
-Authorization: Bearer {{userToken}}
+Authorization: Token {{userToken}}
 
 {
   "ticket": "{ticket_id}",
@@ -444,7 +490,7 @@ Authorization: Bearer {{userToken}}
 # Step 8: Manager closes ticket
 PATCH {{baseUrl}}/api/tickets/{ticket_id}/
 Content-Type: {{contentType}}
-Authorization: Bearer {{managerToken}}
+Authorization: Token {{adminToken}}
 
 {
   "status": "closed"
@@ -459,7 +505,7 @@ Authorization: Bearer {{managerToken}}
 # Step 1: Technician marks as pending
 PATCH {{baseUrl}}/api/tickets/{ticket_id}/
 Content-Type: {{contentType}}
-Authorization: Bearer {{technicianToken}}
+Authorization: Token {{adminToken}}
 
 {
   "status": "pending",
@@ -470,7 +516,7 @@ Authorization: Bearer {{technicianToken}}
 # Step 2: User adds comment asking for update
 POST {{baseUrl}}/api/comments/
 Content-Type: {{contentType}}
-Authorization: Bearer {{userToken}}
+Authorization: Token {{userToken}}
 
 {
   "ticket": "{ticket_id}",
@@ -481,7 +527,7 @@ Authorization: Bearer {{userToken}}
 # Step 3: Technician responds
 POST {{baseUrl}}/api/comments/
 Content-Type: {{contentType}}
-Authorization: Bearer {{technicianToken}}
+Authorization: Token {{adminToken}}
 
 {
   "ticket": "{ticket_id}",
@@ -492,7 +538,7 @@ Authorization: Bearer {{technicianToken}}
 # Step 4: Technician resumes work
 PATCH {{baseUrl}}/api/tickets/{ticket_id}/
 Content-Type: {{contentType}}
-Authorization: Bearer {{technicianToken}}
+Authorization: Token {{adminToken}}
 
 {
   "status": "in_progress"
@@ -505,7 +551,7 @@ Authorization: Bearer {{technicianToken}}
 ### ERROR 1: Try to assign ticket to technician from wrong section
 PATCH {{baseUrl}}/api/tickets/{ticket_id}/
 Content-Type: {{contentType}}
-Authorization: Bearer {{managerToken}}
+Authorization: Token {{adminToken}}
 
 {
   "assigned_to": 99
@@ -514,7 +560,7 @@ Authorization: Bearer {{managerToken}}
 ### ERROR 2: Try to submit feedback on unresolved ticket
 POST {{baseUrl}}/api/feedback/
 Content-Type: {{contentType}}
-Authorization: Bearer {{userToken}}
+Authorization: Token {{userToken}}
 
 {
   "ticket": "{open_ticket_id}",
@@ -525,7 +571,7 @@ Authorization: Bearer {{userToken}}
 ### ERROR 3: Try invalid status transition (open → resolved)
 PATCH {{baseUrl}}/api/tickets/{ticket_id}/
 Content-Type: {{contentType}}
-Authorization: Bearer {{technicianToken}}
+Authorization: Token {{adminToken}}
 
 {
   "status": "resolved"
@@ -534,7 +580,7 @@ Authorization: Bearer {{technicianToken}}
 ### ERROR 4: User tries to assign ticket (permission denied)
 PATCH {{baseUrl}}/api/tickets/{ticket_id}/
 Content-Type: {{contentType}}
-Authorization: Bearer {{userToken}}
+Authorization: Token {{userToken}}
 
 {
   "assigned_to": 2
@@ -543,30 +589,47 @@ Authorization: Bearer {{userToken}}
 ### ERROR 5: Try to modify closed ticket
 PATCH {{baseUrl}}/api/tickets/{closed_ticket_id}/
 Content-Type: {{contentType}}
-Authorization: Bearer {{technicianToken}}
+Authorization: Token {{adminToken}}
 
 {
   "status": "open"
 }
 
 ################################################################################
-# NOTES
+# NOTES & SETUP
 ################################################################################
 
 # Before running these tests:
 # 1. Start the Django development server: python manage.py runserver
-# 2. Load fixture data: python manage.py loaddata tickets/fixtures/tickets_initial_data.json
-# 3. Update the authentication tokens after logging in
-# 4. Replace {ticket_id}, {user_id}, etc. with actual IDs from responses
-# 5. Install REST Client extension in VS Code
+# 2. Load fixture data: python manage.py loaddata tickets/fixtures/tickets_initial_data_org.json
+# 3. Get an admin token: Use "Login as Admin Example" test first, copy token to @adminToken variable
+# 4. Update @userToken, @technicianToken, @managerToken by logging in with their credentials
+# 5. Replace {ticket_id}, {user_id}, etc. with actual IDs from responses
+# 6. Install REST Client extension in VS Code
 
-# Authentication Options:
-# - If using DRF Token Auth: Authorization: Token your_token_here
-# - If using JWT: Authorization: Bearer your_jwt_token_here
-# - If using Session Auth: Include CSRF token and session cookie
-
-# Tips:
-# - Use variables (@ syntax) to store tokens and reuse them
+# Using REST Client Extension:
 # - Click "Send Request" link above each request to execute
 # - View responses in the right panel
+# - Results show status code, headers, and formatted JSON body
 # - Use Ctrl+Alt+E (Windows/Linux) or Cmd+Alt+E (Mac) to send requests
+# - Store tokens in @variable format at top to reuse across multiple requests
+
+# Authentication:
+# - DRF Token Auth format: Authorization: Token your_token_here
+# - All endpoints require a valid token in the Authorization header
+# - Get token from /api/auth/login/ endpoint by posting username + password
+
+# ESCALATION PRIORITY FEATURE:
+# The new feature automatically sets ticket priority based on escalation level:
+#   - Escalation Level 0 (no escalation) → priority = "low"
+#   - Escalation Level 1 (escalated to section head) → priority = "medium"
+#   - Escalation Level 2 (escalated to HOD) → priority = "high"
+# 
+# Test this feature using the "PRIORITY TEST 1-4" requests in the 
+# "ESCALATION PRIORITY TESTS" section above.
+
+# Troubleshooting:
+# - 401 Unauthorized: Check token validity, re-login
+# - 403 Forbidden: Check user permissions for the role
+# - 404 Not Found: Verify ticket/comment ID exists in database
+# - 400 Bad Request: Check request body format and required fields

@@ -235,7 +235,7 @@ Run tests: `python manage.py test tickets`
 | `CODEBASE_ARCHITECTURE.md` | This file - architecture and data flows |
 | `AUTHENTICATION.md` | Auth system details and endpoints |
 | `DEFAULT_CREDENTIALS.md` | Test user accounts (in .gitignore for security) |
-| `api/GUIDE.md` | Complete API reference for frontend |
+| `api/ANALYTICS.md` | Analytics endpoints and role-based dashboards |
 | `api/ANALYTICS.md` | Analytics endpoints and query params |
 | `architecture/LAYERS.md` | API layered architecture |
 | `testing/TESTING.md` | Test organization and running tests |
@@ -1114,7 +1114,7 @@ def test_analytics_escalation_rate(self):
 ## Next Steps
 
 - See [AUTHENTICATION.md](AUTHENTICATION.md) for auth system details
-- See [api/GUIDE.md](api/GUIDE.md) for complete endpoint reference
+- See [API Integration Guide](API_INTEGRATION_GUIDE.md) for complete endpoint reference
 - See [api/ANALYTICS.md](api/ANALYTICS.md) for analytics query parameters
 - See [testing/TESTING.md](testing/TESTING.md) for writing tests
 - See [testing/SAMPLE_QUERIES.md](testing/SAMPLE_QUERIES.md) for Django ORM examples

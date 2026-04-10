@@ -21,7 +21,7 @@ Complete testing documentation for the Django Ticket Resolver System, including 
 
 **Total Test Coverage**: 166 pytest test functions across 9 test files
 
-> **Note**: Tests use pytest with fixtures for clean, composable testing. All tests are function-based (not class-based). See [Pytest Migration Guide](../PYTEST_MIGRATION_GUIDE.md) for pytest patterns.
+> **Note**: Tests use pytest with fixtures for clean, composable testing. All tests are function-based (not class-based). See Best Practices section below for pytest patterns.
 
 #### `test_apis.py` (37 tests) - API Endpoint Tests
 Comprehensive REST API endpoint tests using pytest fixtures.

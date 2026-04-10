@@ -1,8 +1,8 @@
 # API Integration Guide - Django Resolver
 
-[← Back to Index](INDEX.md) | [← Back to README](../README.md) | [Detailed Reference →](api/GUIDE.md)
+[← Back to Index](INDEX.md) | [← Back to README](../README.md)
 
-**Complete guide for frontend developers integrating with the Django Resolver API.** This guide covers authentication, all endpoints, and analytics. For individual endpoint details, see [API Reference](api/GUIDE.md).
+**Complete guide for frontend developers integrating with the Django Resolver API.** This guide covers authentication, all endpoints, and analytics. For role-based dashboard details, see [Analytics API](api/ANALYTICS.md).
 
 **Audience**: Frontend developers, API consumers, integration engineers  
 **Time to read**: 20-30 minutes
@@ -1158,7 +1158,7 @@ See [Default Credentials](DEFAULT_CREDENTIALS.md) for 20+ test accounts with dif
 ### Learn More
 - **Workflow rules**: [Workflow Specification](specifications/WORKFLOW_SPEC.md)
 - **System architecture**: [Architecture Guide](ARCHITECTURE_GUIDE.md)
-- **Complete endpoint reference**: [API Reference](api/GUIDE.md)
+- **All endpoints documented in this guide**
 - **Analytics details**: [Analytics Guide](api/ANALYTICS.md)
 
 ### Start Integrating

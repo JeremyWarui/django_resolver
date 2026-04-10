@@ -148,7 +148,7 @@ This document consolidates compliance audit findings for the Django Resolver tic
 |----------|--------|----------|
 | Workflow Specification | ✅ Current | docs/specifications/WORKFLOW_SPEC.md |
 | Architecture Guide | ✅ Current | docs/CODEBASE_ARCHITECTURE.md |
-| API Guide | ✅ Current | docs/api/GUIDE.md |
+| API Guide | ✅ Current | docs/api/ANALYTICS.md |
 | Test Coverage Map | ✅ Current | docs/testing/TESTING.md |
 | Authentication Docs | ✅ Current | docs/AUTHENTICATION.md |
 | Default Credentials | ✅ Current | docs/DEFAULT_CREDENTIALS.md |

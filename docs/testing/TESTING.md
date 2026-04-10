@@ -425,65 +425,124 @@ start htmlcov/index.html  # Windows
 ### 1. Use Descriptive Test Names
 ```python
 # Good
-def test_admin_can_close_resolved_ticket(self):
+def test_admin_can_close_resolved_ticket(admin_user, ticket):
     pass
 
 # Bad
-def test_close(self):
+def test_close():
     pass
 ```
 
 ### 2. Test One Thing Per Test
 ```python
 # Good
-def test_user_can_create_ticket(self):
-    # Only test ticket creation
+def test_user_can_create_ticket(user, section, facility):
+    """Only test ticket creation"""
     pass
 
-def test_ticket_has_correct_status_after_creation(self):
-    # Only test initial status
-    pass
+def test_ticket_has_correct_status_after_creation(ticket):
+    """Only test initial status"""
+    assert ticket.status == 'open'
 
 # Bad
-def test_ticket_creation_and_status_and_assignment(self):
-    # Too many things tested
+def test_ticket_creation_and_status_and_assignment(user, section, facility, technician):
+    """Too many things tested"""
     pass
 ```
 
-### 3. Use Base Class for Common Fixtures
+### 3. Use Fixtures for Setup
 ```python
 # Good
-class TicketTests(BaseTicketTestCase):
-    def test_ticket_creation(self):
-        # Use self.user, self.section, etc.
-        pass
+@pytest.mark.django_db
+def test_ticket_creation(user, section, facility):
+    """Use fixtures for clean setup"""
+    ticket = Ticket.objects.create(
+        title="Test",
+        section=section,
+        facility=facility,
+        raised_by=user
+    )
+    assert ticket.id is not None
 
-# Bad
-class TicketTests(TestCase):
-    def setUp(self):
-        # Duplicate fixture creation
-        self.user = CustomUser.objects.create_user(...)
-        # ... 30 more lines ...
+# Bad - Manual setup without fixtures
+@pytest.mark.django_db
+def test_ticket_creation():
+    """Painful manual setup"""
+    user = CustomUser.objects.create_user(username="testuser", password="pass")
+    section = Section.objects.create(name="IT")
+    facility = Facility.objects.create(name="Building A")
+    # ... many more setup lines ...
 ```
 
-### 4. Clean Up After Tests
+### 4. Clean Up After Tests (or use fixtures)
 ```python
-def test_external_api_call(self):
-    # Mock external services
+# Good - Use fixtures to auto-cleanup
+@pytest.mark.django_db
+def test_external_api_call():
+    # Fixtures handle database cleanup automatically
+    pass
+
+# Good - Mock external services
+@pytest.mark.django_db
+def test_external_api_call():
     with patch('requests.post') as mock_post:
         mock_post.return_value.status_code = 200
         # Test your code
 ```
 
-### 5. Use Assertions Effectively
+### 5. Use Pythonic Assertions
 ```python
-# Good
-self.assertEqual(response.status_code, 200)
-self.assertIn('ticket_no', response.data)
-self.assertTrue(ticket.is_overdue)
+# Good - Modern pytest style
+@pytest.mark.django_db
+def test_ticket_response(authenticated_client, ticket):
+    response = authenticated_client.get(f'/api/tickets/{ticket.id}/')
+    assert response.status_code == 200
+    assert response.json()['id'] == ticket.id
 
-# Bad
-assert response.status_code == 200  # Less informative error messages
+# Acceptable - But less informative errors
+@pytest.mark.django_db
+def test_ticket_response(authenticated_client, ticket):
+    response = authenticated_client.get(f'/api/tickets/{ticket.id}/')
+    # assertEqual gives more context on failure but is verbose
+    assert response.status_code == 200
+```
+
+### 6. Use Pytest Marks and Parametrization
+```python
+# Good - Test multiple scenarios
+@pytest.mark.django_db
+@pytest.mark.parametrize('status', ['open', 'assigned', 'in_progress'])
+def test_ticket_status_transitions(ticket, status):
+    """Test multiple status values in one test"""
+    ticket.status = status
+    ticket.save()
+    assert ticket.status == status
+
+# Good - Skip tests conditionally
+@pytest.mark.skip(reason="TODO: Implement magic link auth")
+def test_magic_link_login(user):
+    pass
+
+# Good - Mark slow tests
+@pytest.mark.slow
+def test_heavy_analytics_calculation(admin_user):
+    pass
+```
+
+### 7. Organize Tests Logically
+```python
+# Group related tests by feature
+# test_apis.py - API endpoints
+def test_list_tickets(authenticated_client): pass
+def test_get_ticket_detail(authenticated_client): pass
+def test_create_ticket(authenticated_client): pass
+
+# test_models.py - Model validation
+def test_ticket_auto_numbering(ticket_factory): pass
+def test_ticket_status_choices(ticket): pass
+
+# test_workflow.py - End-to-end flows
+def test_complete_ticket_lifecycle(admin_user, ticket): pass
 ```
 
 ---
@@ -492,13 +551,14 @@ assert response.status_code == 200  # Less informative error messages
 
 ### Run Single Test with Verbose Output
 ```bash
-pytest tickets/tests/test_apis.py::APITests::test_get_tickets -vv
+pytest tickets/tests/test_apis.py::test_get_tickets -vv
 ```
 
 ### Print Debugging
 ```python
-def test_something(self):
-    ticket = self.create_ticket()
+@pytest.mark.django_db
+def test_something(ticket_factory):
+    ticket = ticket_factory()
     print(f"Ticket ID: {ticket.id}")  # Will show in pytest output with -s
     print(f"Ticket status: {ticket.status}")
     
@@ -511,14 +571,15 @@ def test_something(self):
 pytest tickets/tests/ --pdb
 
 # Drop into debugger at start of test
-pytest tickets/tests/test_apis.py::APITests::test_get_tickets --pdb -s
+pytest tickets/tests/test_apis.py::test_get_tickets --pdb -s
 ```
 
 ### Check Database State
 ```python
-def test_something(self):
+@pytest.mark.django_db
+def test_something(ticket_factory):
     # Create test data
-    ticket = self.create_ticket()
+    ticket = ticket_factory()
     
     # Check what's in the database
     from tickets.models import Ticket
@@ -526,6 +587,22 @@ def test_something(self):
     print(f"Total tickets: {all_tickets.count()}")
     for t in all_tickets:
         print(f"  {t.ticket_no}: {t.status}")
+```
+
+### Use pytest Fixtures for Complex Debugging
+```python
+@pytest.fixture
+def debug_ticket(ticket_factory):
+    """Fixture that creates a ticket and prints debug info"""
+    ticket = ticket_factory(title="Debug Ticket")
+    print(f"Created ticket: {ticket.id} - {ticket.ticket_no}")
+    yield ticket
+    print(f"Cleaned up ticket: {ticket.id}")
+
+@pytest.mark.django_db
+def test_with_debug(debug_ticket):
+    # Use the fixture
+    assert debug_ticket.ticket_no is not None
 ```
 
 ---

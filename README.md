@@ -5,7 +5,7 @@
 
 A Django REST API for managing maintenance tickets, facilities, and user feedback. Designed for organizations with up to 100 users.
 
-**Stack**: Django 5.2.7 | DRF 3.16.1 | PostgreSQL | pytest (89 tests, 86% coverage)
+**Stack**: Django 6.0.3 | DRF 3.16.1 | PostgreSQL | pytest (166 tests, 78% coverage)
 
 ## 🚀 Quick Start
 
@@ -120,10 +120,10 @@ curl "http://127.0.0.1:8000/api/analytics/tickets/?timeframe=week"
 ```bash
 pytest tickets/tests/                               # Run all tests
 pytest tickets/tests/ --cov=tickets                 # With coverage
-pytest tickets/tests/test_apis.py::APITests -v     # Specific tests
+pytest tickets/tests/test_apis.py::test_get_tickets -v     # Specific test function
 ```
 
-**Test Suite**: 6 files, 89 tests, 86% coverage  
+**Test Suite**: 9 files, 166 tests, 78% coverage  
 **Base Class**: `BaseTicketTestCase` for shared fixtures
 
 ## 🏗️ Architecture

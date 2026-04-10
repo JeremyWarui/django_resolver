@@ -64,8 +64,8 @@ Welcome to the comprehensive documentation for Django Resolver - a Django REST A
 
 ### 🧪 Testing
 
-- **[Testing Guide](testing/TESTING.md)** - Complete testing documentation including test organization, running tests, and using BaseTicketTestCase
-- **[Sample Queries](testing/SAMPLE_QUERIES.md)** - 20+ pre-built Django ORM query examples for exploring fixture data
+- **[Testing Guide](testing/TESTING.md)** - Complete testing documentation including test organization, running tests, pytest fixtures (166 tests)
+- **[Sample Queries](testing/SAMPLE_QUERIES.md)** - 40+ pre-built Django ORM query examples for exploring fixture data
 - **[Organizational Testing](organizational/TESTING.md)** - Testing organizational features and hierarchies
 
 ### 📋 Reference

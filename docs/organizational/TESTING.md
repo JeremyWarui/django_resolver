@@ -1,7 +1,7 @@
 # Testing the Organizational Implementation
 
 > 📌 **For comprehensive testing guide, see [Testing Guide](../testing/TESTING.md)**  
-> This document covers **organizational testing workflows only**. For complete test coverage (157 tests), see the main Testing Guide.
+> This document covers **organizational testing workflows only**. For complete test coverage (166 tests), see the main Testing Guide.
 
 ## Quick Start: Load Data & Run Tests
 
@@ -17,13 +17,13 @@ python manage.py loaddata tickets/fixtures/tickets_initial_data.json
 ### 2. Run All Tests
 ```bash
 # Run complete organizational test suite
-python manage.py test tickets.tests.test_organizational -v 2
+pytest tickets/tests/test_organizational.py -v
 
 # Run organizational service tests
-python manage.py test tickets.tests.test_organizational_phase4_5 -v 2
+pytest tickets/tests/test_organizational.py::test_escalation_workflow -v
 
 # Run all ticket tests
-python manage.py test tickets -v 2
+pytest tickets/tests/ -v
 ```
 
 ---

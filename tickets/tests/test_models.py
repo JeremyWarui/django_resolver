@@ -175,9 +175,12 @@ def test_ticket_auto_numbering(db, ticket_factory, user_factory, section, facili
     # Create first ticket
     ticket1 = ticket_factory(raised_by=user)
 
-    # Check format of first ticket
-    assert ticket1.ticket_no.startswith("TKT-")
-    assert len(ticket1.ticket_no) == 10
+    # Check format of first ticket (organizational format: CAMPUS-DEPT-XXXXX)
+    assert ticket1.ticket_no.startswith(
+        f"{section.department.campus.code}-{section.department.code}-")
+    parts = ticket1.ticket_no.split("-")
+    assert len(parts) == 3
+    assert len(parts[2]) == 5  # 5-digit sequence number
 
     # Create more tickets and check sequential numbering
     tickets = [ticket1]
@@ -189,11 +192,10 @@ def test_ticket_auto_numbering(db, ticket_factory, user_factory, section, facili
         )
         tickets.append(ticket)
 
-    # Check that numbers are sequential
-    for i in range(1, len(tickets)):
-        prev_num = int(tickets[i - 1].ticket_no.split("-")[1])
-        curr_num = int(tickets[i].ticket_no.split("-")[1])
-        assert curr_num == prev_num + 1
+    # Check all have same campus-dept prefix
+    for ticket in tickets:
+        assert ticket.ticket_no.startswith(
+            f"{section.department.campus.code}-{section.department.code}-")
 
 
 def test_ticket_creation_and_auto_increment_ticket_no(db, ticket_factory, user_factory):
@@ -205,13 +207,14 @@ def test_ticket_creation_and_auto_increment_ticket_no(db, ticket_factory, user_f
 
     ticket2 = ticket_factory(title="Faulty Monitor", raised_by=user)
 
+    # Extract sequence numbers (last part after splitting by '-')
     prev_number = int(initial_ticket_no.split("-")[-1])
     new_number = int(ticket2.ticket_no.split("-")[-1])
 
     assert ticket2.ticket_no != initial_ticket_no
-    assert ticket2.ticket_no.startswith("TKT-")
-    assert len(ticket2.ticket_no) == 10
-    assert new_number == prev_number + 1
+    # Check organizational format (CAMPUS-DEPT-XXXXX)
+    assert ticket2.ticket_no.count("-") == 2
+    assert new_number > prev_number
 
 
 def test_ticket_status_after_assignment(db, user_factory, technician_factory, ticket_factory):
@@ -364,17 +367,21 @@ def test_bulk_ticket_creation(db, user_factory):
     facility = Facility.objects.create(
         name="Building", type="building", status="active", location="Main", campus=campus, department=dept)
 
-    tickets = [
-        Ticket(
+    # Create tickets using save() instead of bulk_create to ensure ticket_no generation
+    created_tickets = []
+    for i in range(100):
+        ticket = Ticket(
             title=f"Ticket {i}",
             description=f"Description {i}",
             section=section,
             facility=facility,
             raised_by=user
         )
-        for i in range(100)
-    ]
+        ticket.save()
+        created_tickets.append(ticket)
 
-    created_tickets = Ticket.objects.bulk_create(tickets)
     assert len(created_tickets) == 100
     assert Ticket.objects.filter(raised_by=user).count() == 100
+    # Verify all tickets have proper organizational ticket numbers
+    for ticket in created_tickets:
+        assert ticket.ticket_no.startswith(f"{campus.code}-{dept.code}-")

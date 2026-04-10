@@ -81,9 +81,11 @@ def test_user_create_serializer(db):
     assert user.email == "johndoe@test.com"
 
 
-def test_ticket_serializer_create(db, user_factory, section, facility):
+def test_ticket_serializer_create(db, org_aware_user_factory, section, facility):
     """Test ticket serializer create method"""
-    user = user_factory()
+    user = org_aware_user_factory()
+    # Add section access for the user
+    user.sections.add(section)
 
     data = {
         "title": "New Ticket",

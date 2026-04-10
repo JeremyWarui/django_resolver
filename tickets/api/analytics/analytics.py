@@ -221,6 +221,13 @@ class TechnicianAnalytics:
             avg_resolution_time = sum(
                 resolution_times) / len(resolution_times) if resolution_times else 0
 
+            # Get tickets by status breakdown
+            tickets_by_status = assigned_tickets.values('status').annotate(
+                count=Count('id')
+            ).values_list('status', 'count')
+            tickets_by_status_dict = {
+                status: count for status, count in tickets_by_status}
+
             performance_data.append({
                 'id': tech.id,
                 'username': tech.username,
@@ -235,7 +242,8 @@ class TechnicianAnalytics:
                 'resolution_percentage': round(
                     (resolved_tickets.count() / assigned_tickets.count() * 100)
                     if assigned_tickets.count() > 0 else 0, 2
-                )
+                ),
+                'tickets_by_status': tickets_by_status_dict
             })
 
         return performance_data
@@ -444,6 +452,57 @@ class OrganizationalAnalytics:
                 )
             })
 
+        # Facility-level metrics across organization
+        facility_stats = []
+        org_facilities = Facility.objects.filter(
+            campus__organization=org
+        )
+        for facility in org_facilities:
+            facility_tickets = all_tickets.filter(facility=facility)
+            facility_stats.append({
+                'facility': {
+                    'id': facility.id,
+                    'name': facility.name,
+                    'type': facility.type,
+                    'status': facility.status,
+                    'campus': facility.campus.name if facility.campus else None,
+                    'department': facility.department.name if facility.department else None
+                },
+                'total_tickets': facility_tickets.count(),
+                'open_tickets': facility_tickets.filter(status__in=['open', 'assigned']).count(),
+                'resolved_tickets': facility_tickets.filter(status__in=['resolved', 'closed']).count(),
+                'overdue_tickets': sum(1 for t in facility_tickets if t.is_overdue),
+                'avg_resolution_hours': OrganizationalAnalytics._calculate_avg_resolution_time(
+                    facility_tickets
+                )
+            })
+
+        # Organization-wide section metrics
+        section_stats = []
+        org_sections = Section.objects.filter(
+            department__campus__organization=org
+        )
+        for section in org_sections:
+            section_tickets = all_tickets.filter(section=section)
+            section_stats.append({
+                'section': {
+                    'id': section.id,
+                    'name': section.name,
+                    'code': section.code,
+                    'department': section.department.name if section.department else None,
+                    'campus': section.department.campus.name if section.department and section.department.campus else None,
+                    'section_head': section.section_head.username if section.section_head else None
+                },
+                'total_tickets': section_tickets.count(),
+                'open_tickets': section_tickets.filter(status__in=['open', 'assigned']).count(),
+                'resolved_tickets': section_tickets.filter(status__in=['resolved', 'closed']).count(),
+                'escalated_tickets': section_tickets.filter(escalation_level__gt=0).count(),
+                'avg_resolution_hours': OrganizationalAnalytics._calculate_avg_resolution_time(
+                    section_tickets
+                ),
+                'technician_count': section.technicians.count()
+            })
+
         # Status distribution
         status_dist = recent_tickets.values('status').annotate(
             count=Count('id')
@@ -465,6 +524,8 @@ class OrganizationalAnalytics:
             },
             'campuses': campus_stats,
             'departments': sorted(dept_performance, key=lambda x: x['ticket_count'], reverse=True),
+            'facilities': sorted(facility_stats, key=lambda x: x['total_tickets'], reverse=True),
+            'sections': sorted(section_stats, key=lambda x: x['total_tickets'], reverse=True),
             'status_distribution': list(status_dist),
             'escalation_trends': escalation_trends,
             'top_technicians': top_technicians,

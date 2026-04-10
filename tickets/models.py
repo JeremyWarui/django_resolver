@@ -308,6 +308,12 @@ class Ticket(models.Model):
         null=True,
         related_name="assigned_tickets",
     )
+    assigned_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        default=None,
+        help_text="Time when the ticket was assigned; used as reference for escalation timer"
+    )
 
     # Status and lifecycle
     status = models.CharField(
@@ -423,24 +429,35 @@ class Ticket(models.Model):
         super(Ticket, self).save(*args, **kwargs)
 
     def _schedule_next_escalation(self):
-        """Schedule next auto-escalation based on current level and timing rules"""
+        """Schedule next auto-escalation based on current level and timing rules.
+
+        Escalation timer is based on assigned_at, not created_at.
+        Unassigned tickets do not have an escalation timer.
+        """
         if not self.auto_escalation_enabled or self.status in ['resolved', 'closed']:
             self.next_escalation_due = None
             return
 
+        # If ticket is not assigned, do not schedule escalation
+        if self.assigned_at is None:
+            self.next_escalation_due = None
+            return
+
         from datetime import timedelta
-        now = timezone.now()
 
         if self.escalation_level == 0:
-            # Schedule escalation to section head after 48 hours
-            self.next_escalation_due = now + timedelta(hours=48)
+            # Schedule escalation to section head after 48 hours from assignment
+            self.next_escalation_due = self.assigned_at + \
+                timedelta(hours=self.escalation_threshold_hours)
         elif self.escalation_level == 1:
             # Schedule escalation to HOD 24 hours after first escalation
             if self.escalated_at:
                 self.next_escalation_due = self.escalated_at + \
                     timedelta(hours=24)
             else:
-                self.next_escalation_due = now + timedelta(hours=24)
+                # Fallback to assigned_at if escalated_at not set
+                self.next_escalation_due = self.assigned_at + \
+                    timedelta(hours=24)
         else:
             # No further escalation beyond HOD
             self.next_escalation_due = None
@@ -498,8 +515,15 @@ class Ticket(models.Model):
             )
 
     def is_due_for_escalation(self):
-        """Check if ticket is due for automatic escalation"""
+        """Check if ticket is due for automatic escalation.
+
+        Unassigned tickets (assigned_at is NULL) are never due for escalation.
+        """
         if not self.auto_escalation_enabled or not self.next_escalation_due:
+            return False
+
+        # If ticket has never been assigned, skip escalation
+        if self.assigned_at is None:
             return False
 
         return (
@@ -585,8 +609,15 @@ class Ticket(models.Model):
 
         This method centralizes status transition side-effects so services can
         perform validation and then call this for an atomic update+log.
+
+        Directors cannot modify ticket status (analytics-only role).
         """
         from django.db import transaction
+
+        # Directors have analytics-only access
+        if performed_by and performed_by.role == 'director':
+            raise PermissionError(
+                "Directors have analytics-only access and cannot modify tickets")
 
         original_status = self.status
         if original_status == new_status:
@@ -632,6 +663,13 @@ class Ticket(models.Model):
 
         with transaction.atomic():
             self.assigned_to = new_assigned_to
+            # Set assigned_at when ticket is assigned (or reassigned)
+            if new_assigned_to is not None:
+                self.assigned_at = timezone.now()
+            else:
+                # If unassigning (new_assigned_to is None), clear assigned_at
+                self.assigned_at = None
+
             # Update status to 'assigned' when assignment is made
             if self.status == 'open':
                 self.status = 'assigned'

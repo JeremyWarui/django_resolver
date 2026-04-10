@@ -13,7 +13,7 @@ from tickets.models import Ticket, CustomUser, Section, Facility
 def ticket_ops_setup(db, user_factory, admin_user_factory, technician_factory, organization, campus):
     """Set up ticket operations test data"""
     from tickets.models import Department
-    
+
     dept = Department.objects.create(
         campus=campus, name="Facilities", code="FAC"
     )
@@ -40,10 +40,12 @@ def ticket_ops_setup(db, user_factory, admin_user_factory, technician_factory, o
     tech_hvac = technician_factory(username="hvac.tech", primary_campus=campus)
     tech_hvac.sections.add(section_hvac)
 
-    tech_plumbing = technician_factory(username="plumb.tech", primary_campus=campus)
+    tech_plumbing = technician_factory(
+        username="plumb.tech", primary_campus=campus)
     tech_plumbing.sections.add(section_plumbing)
 
-    tech_both = technician_factory(username="multi.tech", primary_campus=campus)
+    tech_both = technician_factory(
+        username="multi.tech", primary_campus=campus)
     tech_both.sections.add(section_hvac, section_plumbing)
 
     return {
@@ -60,11 +62,11 @@ def ticket_ops_setup(db, user_factory, admin_user_factory, technician_factory, o
     }
 
 
-def test_create_ticket_direct_orm(authenticated_client, ticket_ops_setup):
+def test_create_ticket_direct_orm(authenticated_admin_client, ticket_ops_setup):
     """Test creating a new ticket via API"""
-    client = authenticated_client['client']
+    client = authenticated_admin_client['client']
     setup = ticket_ops_setup
-    
+
     data = {
         "title": "Broken AC",
         "description": "AC not working",
@@ -80,11 +82,11 @@ def test_create_ticket_direct_orm(authenticated_client, ticket_ops_setup):
     assert response.data["ticket_no"] is not None
 
 
-def test_ticket_includes_available_technicians(authenticated_client, ticket_ops_setup):
+def test_ticket_includes_available_technicians(authenticated_admin_client, ticket_ops_setup):
     """Test that ticket response includes available technicians"""
-    client = authenticated_client['client']
+    client = authenticated_admin_client['client']
     setup = ticket_ops_setup
-    
+
     data = {
         "title": "Broken AC",
         "description": "AC not working",
@@ -106,7 +108,7 @@ def test_assign_technician_to_ticket(authenticated_admin_client, ticket_ops_setu
     """Test assigning a technician to a ticket"""
     client = authenticated_admin_client['client']
     setup = ticket_ops_setup
-    
+
     ticket = ticket_factory(
         title="Broken AC",
         section=setup["section_hvac"],
@@ -129,7 +131,7 @@ def test_cannot_assign_wrong_section_technician(authenticated_admin_client, tick
     """Test that assigning technician from wrong section fails"""
     client = authenticated_admin_client['client']
     setup = ticket_ops_setup
-    
+
     # Create HVAC ticket
     ticket = ticket_factory(
         title="Broken AC",
@@ -152,7 +154,7 @@ def test_can_assign_multi_section_technician(authenticated_admin_client, ticket_
     """Test that technician with multiple sections can be assigned"""
     client = authenticated_admin_client['client']
     setup = ticket_ops_setup
-    
+
     # Create HVAC ticket
     ticket = ticket_factory(
         title="Broken AC",
@@ -176,7 +178,7 @@ def test_get_available_technicians_for_section(authenticated_admin_client, ticke
     """Test filtering technicians by section"""
     client = authenticated_admin_client['client']
     setup = ticket_ops_setup
-    
+
     response = client.get(
         reverse("technicians-by-section"),
         {"section_id": setup["section_hvac"].id},
@@ -190,9 +192,10 @@ def test_assign_same_technician_multiple_times(authenticated_admin_client, ticke
     """Test assigning same technician to multiple tickets"""
     client = authenticated_admin_client['client']
     setup = ticket_ops_setup
-    
+
     tickets = [
-        ticket_factory(section=setup["section_hvac"], facility=setup["facility"])
+        ticket_factory(section=setup["section_hvac"],
+                       facility=setup["facility"])
         for _ in range(3)
     ]
 
@@ -210,7 +213,7 @@ def test_unassign_technician_from_ticket(authenticated_admin_client, ticket_ops_
     """Test unassigning a technician from a ticket"""
     client = authenticated_admin_client['client']
     setup = ticket_ops_setup
-    
+
     ticket = ticket_factory(
         assigned_to=setup["tech_hvac"],
         section=setup["section_hvac"],

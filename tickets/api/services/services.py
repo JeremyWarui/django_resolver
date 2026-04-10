@@ -75,7 +75,7 @@ def validate_status_transition(old_status: str, new_status: str, user_role: str)
     """
     # Define valid transitions based on current status
     valid_transitions = {
-        'open': ['assigned', 'escalated'],
+        'open': ['assigned', 'pending', 'escalated'],
         'assigned': ['in_progress', 'pending', 'escalated'],
         'in_progress': ['pending', 'resolved', 'escalated'],
         'pending': ['in_progress', 'resolved', 'escalated'],
@@ -319,7 +319,7 @@ class TicketService:
 
         Raises:
             DRFPermissionDenied: User lacks escalation permission
-            InvalidEscalationException: Ticket cannot be escalated
+            DRFValidationError: Ticket cannot be escalated
         """
         # Check permission to escalate - allow technician, section_head, hod, admin
         if escalated_by.role not in ['technician', 'section_head', 'hod', 'admin']:
@@ -329,15 +329,14 @@ class TicketService:
 
         # Check ticket status allows escalation
         if ticket.status in ['resolved', 'closed']:
-            raise InvalidEscalationException(
+            raise ValidationError(
                 f"Cannot escalate resolved or closed ticket {ticket.ticket_no}"
             )
 
         # Check max escalation level not exceeded
         if ticket.escalation_level >= 2:
-            raise InvalidEscalationException(
-                f"Ticket {ticket.ticket_no} is already at maximum escalation level"
-            )
+            # Return ticket unchanged if already at maximum escalation level
+            return ticket
 
         with transaction.atomic():
             # Use model's atomic helper
@@ -383,7 +382,7 @@ class TicketService:
 
         Raises:
             DRFPermissionDenied: User lacks permission to change status
-            DRFValidationError: Invalid status transition or missing PENDING fields
+            ValidationError: Invalid status transition or missing PENDING fields
         """
         old_status = ticket.status
 
@@ -391,14 +390,14 @@ class TicketService:
         is_valid, error_msg = validate_status_transition(
             old_status, new_status, updated_by.role)
         if not is_valid:
-            raise DRFValidationError(error_msg)
+            raise ValidationError(error_msg)
 
         # Validate pending fields if marking as PENDING
         if new_status == 'pending':
             is_valid, error_msg = validate_pending_transition(
                 new_status, pending_reason, pending_comment)
             if not is_valid:
-                raise DRFValidationError(error_msg)
+                raise ValidationError(error_msg)
 
         # Check permission for this specific transition
         if new_status == 'closed' and updated_by.role not in ['admin', 'manager', 'user']:
@@ -579,6 +578,9 @@ class TicketService:
 
         Scheduled task to run periodically (e.g., every hour via management command).
 
+        Only considers tickets that have been assigned (assigned_at IS NOT NULL).
+        Unassigned tickets are excluded from escalation processing.
+
         Returns:
             Dictionary with escalation statistics:
             {
@@ -596,8 +598,10 @@ class TicketService:
         }
 
         # Find all tickets due for auto-escalation
+        # Must be assigned (assigned_at IS NOT NULL) to be considered for escalation
         tickets_due = Ticket.objects.filter(
             auto_escalation_enabled=True,
+            assigned_at__isnull=False,  # Only assigned tickets
             next_escalation_due__lte=timezone.now(),
             status__in=['open', 'assigned', 'in_progress', 'pending']
         ).exclude(escalation_level=2)  # Don't escalate beyond HOD

@@ -34,7 +34,8 @@ def test_organizational_structure_created(organization, campus, department, sect
 def test_director_access_all_tickets(organization, campus, department, section, facility, director_factory, user_factory, technician_factory):
     """Test that directors can access all tickets in their organization"""
     director = director_factory()
-    director.organizations.add(organization)
+    director.primary_campus = campus
+    director.save()
 
     user = user_factory()
     user.primary_campus = campus
@@ -189,10 +190,10 @@ def test_escalation_to_section_head(organization, campus, department, section, f
         status="open",
     )
 
-    # Escalate ticket
+    # Escalate ticket (technician can escalate)
     TicketService.escalate_ticket(
         ticket=ticket,
-        escalated_by=user,
+        escalated_by=technician,
         reason="Escalating to section head"
     )
 
@@ -228,10 +229,10 @@ def test_escalation_to_hod(organization, campus, department, section, facility, 
         escalation_level=1,
     )
 
-    # Escalate to HOD
+    # Escalate to HOD (technician can escalate)
     TicketService.escalate_ticket(
         ticket=ticket,
-        escalated_by=user,
+        escalated_by=technician,
         reason="Escalating to HOD"
     )
 
@@ -262,13 +263,14 @@ def test_cannot_escalate_beyond_hod(organization, campus, department, section, f
         escalation_level=2,  # Already at max
     )
 
-    # Try to escalate beyond HOD (should fail or be handled)
-    with pytest.raises(Exception) or True:  # Allow either behavior
-        TicketService.escalate_ticket(
-            ticket=ticket,
-            escalated_by=user,
-            reason="Trying to escalate beyond HOD"
-        )
+    # Try to escalate beyond HOD (should return ticket unchanged)
+    result = TicketService.escalate_ticket(
+        ticket=ticket,
+        escalated_by=technician,
+        reason="Trying to escalate beyond HOD"
+    )
+    # Should remain at level 2, cannot escalate further
+    assert result.escalation_level == 2
 
 
 # ============================================================================
@@ -345,7 +347,7 @@ def test_organizational_analytics_endpoint(authenticated_client, organization, c
     )
 
     client = authenticated_client['client']
-    url = reverse("ticket-analytics")
+    url = reverse("analytics-tickets")
     response = client.get(url)
 
     # Endpoint should return successfully or forbidden based on permissions
@@ -375,7 +377,7 @@ def test_escalate_ticket_manual_endpoint(authenticated_client, organization, cam
     )
 
     client = authenticated_client['client']
-    url = reverse("escalate-ticket", args=[ticket.id])
+    url = reverse("escalate-ticket-manual", args=[ticket.id])
     data = {"reason": "Needs urgent attention"}
 
     response = client.post(url, data, format="json")
@@ -392,7 +394,8 @@ def test_escalate_ticket_manual_endpoint(authenticated_client, organization, cam
 def test_director_dashboard_aggregates_metrics(director_factory, organization, campus, department, section, facility, user_factory, technician_factory):
     """Test director dashboard aggregates organization-wide metrics"""
     director = director_factory()
-    director.organizations.add(organization)
+    director.primary_campus = campus
+    director.save()
 
     user = user_factory()
     user.primary_campus = campus
@@ -459,6 +462,8 @@ def test_create_ticket_with_proper_scope(organization, campus, department, secti
     """Test creating ticket with proper organizational scope"""
     user = user_factory()
     user.primary_campus = campus
+    # Users can create tickets in sections they have access to, so add them to the section
+    user.sections.add(section)
     user.save()
 
     technician = technician_factory()
@@ -469,13 +474,15 @@ def test_create_ticket_with_proper_scope(organization, campus, department, secti
     ticket_data = {
         'title': 'Scope Test Ticket',
         'description': 'Testing organizational scope',
-        'section': section,
-        'facility': facility,
-        'raised_by': user,
         'priority': 'low',
     }
 
-    ticket = TicketService.create_ticket(**ticket_data)
+    ticket = TicketService.create_ticket(
+        data=ticket_data,
+        created_by=user,
+        section=section,
+        facility=facility
+    )
 
     assert ticket.id is not None
     assert ticket.section == section
@@ -484,7 +491,7 @@ def test_create_ticket_with_proper_scope(organization, campus, department, secti
 
 
 def test_create_ticket_exceeds_scope(organization, campus, department, section, facility, user_factory, technician_factory):
-    """Test creating ticket with section outside user scope"""
+    """Test creating ticket with section outside user scope raises error"""
     user = user_factory()
     user.primary_campus = campus
     user.save()
@@ -504,22 +511,32 @@ def test_create_ticket_exceeds_scope(organization, campus, department, section, 
     ticket_data = {
         'title': 'Out of Scope Ticket',
         'description': 'Testing out of scope access',
-        'section': other_section,
-        'facility': facility,
-        'raised_by': user,
         'priority': 'low',
     }
 
-    # Should still create but with proper access control in views
-    ticket = TicketService.create_ticket(**ticket_data)
-    assert ticket.id is not None
+    # Should raise InsufficientScopeException when user doesn't have access
+    from tickets.api.services import InsufficientScopeException
+    with pytest.raises(InsufficientScopeException):
+        TicketService.create_ticket(
+            data=ticket_data,
+            created_by=user,
+            section=other_section,
+            facility=facility
+        )
 
 
-def test_assign_ticket_with_proper_validation(organization, campus, department, section, facility, user_factory, technician_factory):
+def test_assign_ticket_with_proper_validation(organization, campus, department, section, facility, user_factory, technician_factory, section_head_factory):
     """Test ticket assignment with proper technician validation"""
     user = user_factory()
     user.primary_campus = campus
+    user.sections.add(section)
     user.save()
+
+    section_head = section_head_factory()
+    section_head.primary_campus = campus
+    section_head.primary_department = department
+    section_head.sections.add(section)
+    section_head.save()
 
     technician = technician_factory()
     technician.primary_campus = campus
@@ -535,11 +552,11 @@ def test_assign_ticket_with_proper_validation(organization, campus, department, 
         status="open",
     )
 
-    # Assign ticket
+    # Assign ticket (section_head can assign)
     TicketService.assign_ticket(
         ticket=ticket,
-        assigned_to=technician,
-        assigned_by=user
+        technician=technician,
+        assigned_by=section_head
     )
 
     ticket.refresh_from_db()
@@ -547,11 +564,18 @@ def test_assign_ticket_with_proper_validation(organization, campus, department, 
     assert ticket.status == "assigned"
 
 
-def test_assign_ticket_invalid_technician(organization, campus, department, section, facility, user_factory, technician_factory):
+def test_assign_ticket_invalid_technician(organization, campus, department, section, facility, user_factory, technician_factory, section_head_factory):
     """Test ticket assignment fails with invalid technician"""
     user = user_factory()
     user.primary_campus = campus
+    user.sections.add(section)
     user.save()
+
+    section_head = section_head_factory()
+    section_head.primary_campus = campus
+    section_head.primary_department = department
+    section_head.sections.add(section)
+    section_head.save()
 
     technician1 = technician_factory(username="tech1")
     technician1.primary_campus = campus
@@ -570,13 +594,13 @@ def test_assign_ticket_invalid_technician(organization, campus, department, sect
         status="open",
     )
 
-    # Try to assign to technician not in section
+    # Try to assign to technician not in section (section_head tries to assign)
     from tickets.api.services import InvalidAssignmentException
-    with pytest.raises(InvalidAssignmentException) or True:
+    with pytest.raises(InvalidAssignmentException):
         TicketService.assign_ticket(
             ticket=ticket,
-            assigned_to=technician2,
-            assigned_by=user
+            technician=technician2,
+            assigned_by=section_head
         )
 
 
@@ -601,10 +625,10 @@ def test_escalate_ticket(organization, campus, department, section, facility, us
         status="open",
     )
 
-    # Escalate ticket
+    # Escalate ticket (technician can escalate)
     TicketService.escalate_ticket(
         ticket=ticket,
-        escalated_by=user,
+        escalated_by=technician,
         reason="Needs escalation"
     )
 
@@ -700,7 +724,8 @@ def test_auto_escalation_processing(organization, campus, department, section, f
 def test_director_dashboard(director_factory, organization, campus, department, section, facility, user_factory, technician_factory):
     """Test director dashboard with organization-wide metrics"""
     director = director_factory()
-    director.organizations.add(organization)
+    director.primary_campus = campus
+    director.save()
 
     user = user_factory()
     user.primary_campus = campus

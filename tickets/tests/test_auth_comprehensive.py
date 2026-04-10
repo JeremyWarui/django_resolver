@@ -40,13 +40,13 @@ def test_technician_can_update_assigned_ticket(authenticated_technician_client, 
     """Test that technician can update tickets assigned to them"""
     client = authenticated_technician_client['client']
     technician = authenticated_technician_client['user']
-    
+
     ticket = ticket_factory(
         assigned_to=technician,
         status="assigned",
         section=section
     )
-    
+
     response = client.patch(
         reverse("ticket-detail", args=[ticket.id]),
         {"status": "in_progress"},
@@ -59,9 +59,9 @@ def test_regular_user_cannot_update_others_tickets(authenticated_client, ticket_
     """Test that regular users cannot update others' tickets"""
     client = authenticated_client['client']
     other_user = user_factory(username="other_user")
-    
+
     ticket = ticket_factory(raised_by=other_user)
-    
+
     response = client.patch(
         reverse("ticket-detail", args=[ticket.id]),
         {"status": "in_progress"},
@@ -70,10 +70,11 @@ def test_regular_user_cannot_update_others_tickets(authenticated_client, ticket_
     assert response.status_code == 403
 
 
+@pytest.mark.django_db
 def test_password_authentication_required(api_client):
     """Test that password authentication is required"""
     response = api_client.post(
-        reverse("login"),
+        reverse("simple_auth_login"),
         {"username": "nonexistent", "password": "wrong"},
         format="json"
     )
@@ -83,14 +84,14 @@ def test_password_authentication_required(api_client):
 def test_authenticated_user_can_create_ticket(authenticated_client, section, facility):
     """Test that authenticated user can create tickets"""
     client = authenticated_client['client']
-    
+
     payload = {
         "title": "Test Ticket",
         "description": "Test description",
         "section_id": section.id,
         "facility_id": facility.id,
     }
-    
+
     response = client.post(
         reverse("ticket-list"),
         payload,
@@ -107,7 +108,7 @@ def test_unauthenticated_user_cannot_create_ticket(api_client, section, facility
         "section_id": section.id,
         "facility_id": facility.id,
     }
-    
+
     response = api_client.post(
         reverse("ticket-list"),
         payload,
@@ -133,14 +134,15 @@ def test_technician_restricted_access(authenticated_technician_client, ticket_fa
 def test_authentication_persists_across_requests(authenticated_client):
     """Test that authentication persists across multiple requests"""
     client = authenticated_client['client']
-    
+
     response1 = client.get(reverse("ticket-list"))
     assert response1.status_code == 200
-    
+
     response2 = client.get(reverse("ticket-list"))
     assert response2.status_code == 200
 
 
+@pytest.mark.django_db
 def test_invalid_token_rejected(api_client):
     """Test that invalid authentication token is rejected"""
     api_client.credentials(HTTP_AUTHORIZATION="Token invalid_token_12345")
@@ -152,12 +154,7 @@ def test_user_role_determines_permissions(db, user_factory, technician_factory, 
     """Test that user role determines their permissions"""
     user = user_factory()
     technician = technician_factory()
-    
-    client_user = authenticated_client = {
-        'client': api_client,
-        'user': user
-    }
-    
+
     # Verify user role is correctly assigned
     assert user.role == "user"
     assert technician.role == "technician"

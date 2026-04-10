@@ -148,14 +148,14 @@ def director_factory(db):
 # ============================================================================
 
 @pytest.fixture
-def org_aware_user_factory(db, campus, department):
+def org_aware_user_factory(db, campus, department, section):
     """Factory for creating users with organizational assignments"""
-    def create_user(username=None, email=None, password="testpass", role="user", **kwargs):
+    def create_user(username=None, email=None, password="testpass", role="user", add_to_section=False, **kwargs):
         if username is None:
             username = f"org_user_{uuid.uuid4().hex[:8]}"
         if email is None:
             email = f"org_user_{uuid.uuid4().hex[:8]}@example.com"
-        
+
         user = get_user_model().objects.create_user(
             username=username,
             email=email,
@@ -165,6 +165,11 @@ def org_aware_user_factory(db, campus, department):
             primary_department=department,
             **kwargs
         )
+
+        # Add to section if requested (useful for technicians)
+        if add_to_section and hasattr(section, 'pk'):
+            user.sections.add(section)
+
         return user
     return create_user
 
@@ -195,43 +200,71 @@ def campus(db, organization):
 
 
 @pytest.fixture
-def department(db, campus):
-    """Create a test department"""
-    return Department.objects.create(
+def department(db, campus, hod_factory):
+    """Create a test department with HOD"""
+    hod = hod_factory()
+    hod.primary_campus = campus
+    hod.save()
+
+    dept = Department.objects.create(
         name="IT Department",
         code="IT",
-        campus=campus
+        campus=campus,
+        head_of_department=hod
     )
+    return dept
 
 
 @pytest.fixture
-def department_hvac(db, campus):
+def department_hvac(db, campus, hod_factory):
     """Create a second department for multi-department tests"""
-    return Department.objects.create(
+    hod = hod_factory()
+    hod.primary_campus = campus
+    hod.save()
+
+    dept = Department.objects.create(
         name="Facilities Department",
         code="FAC",
-        campus=campus
+        campus=campus,
+        head_of_department=hod
     )
+    return dept
 
 
 @pytest.fixture
-def section(db, department):
-    """Create a test section"""
-    return Section.objects.create(
+def section(db, department, section_head_factory):
+    """Create a test section with section head"""
+    section_head = section_head_factory()
+    section_head.primary_campus = department.campus
+    section_head.primary_department = department
+    section_head.save()
+
+    sec = Section.objects.create(
         name="Network Section",
         code="NETWORK",
-        department=department
+        department=department,
+        section_head=section_head
     )
+    sec.section_head.sections.add(sec)
+    return sec
 
 
 @pytest.fixture
-def section_hvac(db, department_hvac):
+def section_hvac(db, department_hvac, section_head_factory):
     """Create a second section for multi-section tests"""
-    return Section.objects.create(
+    section_head = section_head_factory()
+    section_head.primary_campus = department_hvac.campus
+    section_head.primary_department = department_hvac
+    section_head.save()
+
+    sec = Section.objects.create(
         name="HVAC Section",
         code="HVAC",
-        department=department_hvac
+        department=department_hvac,
+        section_head=section_head
     )
+    sec.section_head.sections.add(sec)
+    return sec
 
 
 # ============================================================================
@@ -274,7 +307,11 @@ def ticket_factory(db, section, facility, user_factory, technician_factory):
         if assigned_to is None:
             assigned_to = technician_factory()
 
-        return Ticket.objects.create(
+        # Extract created_at and assigned_at if provided (since auto_now_add prevents manual setting)
+        created_at = kwargs.pop('created_at', None)
+        assigned_at = kwargs.pop('assigned_at', None)
+
+        ticket = Ticket.objects.create(
             title=title,
             description=description,
             status=status,
@@ -285,6 +322,25 @@ def ticket_factory(db, section, facility, user_factory, technician_factory):
             assigned_to=assigned_to,
             **kwargs
         )
+
+        # Manually set created_at if provided
+        if created_at:
+            Ticket.objects.filter(id=ticket.id).update(created_at=created_at)
+            ticket.refresh_from_db()
+
+        # Manually set assigned_at if provided
+        # If not provided but assigned_to is set, use current time (default behavior)
+        if assigned_at is not None:
+            Ticket.objects.filter(id=ticket.id).update(assigned_at=assigned_at)
+            ticket.refresh_from_db()
+        elif assigned_to is not None and not assigned_at:
+            # Auto-set assigned_at to now if ticket is assigned and assigned_at not explicitly set to None
+            from django.utils import timezone
+            Ticket.objects.filter(id=ticket.id).update(
+                assigned_at=timezone.now())
+            ticket.refresh_from_db()
+
+        return ticket
     return create_ticket
 
 
@@ -354,9 +410,10 @@ def api_client():
 
 
 @pytest.fixture
-def authenticated_client(api_client, org_aware_user_factory, campus):
+def authenticated_client(api_client, org_aware_user_factory, campus, section):
     """Create an authenticated API client with organizational context"""
-    user = org_aware_user_factory(username="authuser", password="authpass")
+    user = org_aware_user_factory(
+        username="authuser", password="authpass", add_to_section=True)
     api_client.force_authenticate(user=user)
     return {
         'client': api_client,

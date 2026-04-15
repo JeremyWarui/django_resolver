@@ -222,11 +222,6 @@ class Facility(models.Model):
         Campus, on_delete=models.CASCADE, related_name='facilities',
         null=True, blank=True  # Temporary for migration
     )
-    department = models.ForeignKey(
-        Department, on_delete=models.CASCADE, related_name='facilities',
-        null=True, blank=True  # Temporary for migration
-    )
-
     # Physical details
     location = models.CharField(
         max_length=100, blank=True, null=True)  # Building, floor, room

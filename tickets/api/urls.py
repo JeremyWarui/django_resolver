@@ -14,6 +14,12 @@ from tickets.api.simple_auth_views import (
 
 # Import resource views
 from tickets.api.views.index import (
+    OrganizationListCreateView,
+    OrganizationDetailView,
+    CampusListCreateView,
+    CampusDetailView,
+    DepartmentListCreateView,
+    DepartmentDetailView,
     SectionListCreateView,
     SectionDetailView,
     FacilityListCreateView,
@@ -59,6 +65,13 @@ urlpatterns = [
     path("auth/logout/", simple_logout, name="simple_logout"),
     path("auth/profile/", user_profile, name="user_profile"),
     path("auth/register/", register_user, name="register_user"),
+    # ORGANIZATION HIERARCHY
+    path("organizations/", OrganizationListCreateView.as_view(), name="organization-list"),
+    path("organizations/<int:pk>/", OrganizationDetailView.as_view(), name="organization-detail"),
+    path("campuses/", CampusListCreateView.as_view(), name="campus-list"),
+    path("campuses/<int:pk>/", CampusDetailView.as_view(), name="campus-detail"),
+    path("departments/", DepartmentListCreateView.as_view(), name="department-list"),
+    path("departments/<int:pk>/", DepartmentDetailView.as_view(), name="department-detail"),
     # SECTION
     path("sections/", SectionListCreateView.as_view(), name="section-list"),
     path("sections/<int:pk>/", SectionDetailView.as_view(), name="section-detail"),

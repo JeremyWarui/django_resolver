@@ -9,6 +9,12 @@ class UsernameField(serializers.RelatedField):
         return value.username
 
 
+class NestedOrganizationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Organization
+        fields = ["id", "code", "name"]
+
+
 class NestedCampusSerializer(serializers.ModelSerializer):
     class Meta:
         model = Campus
@@ -35,17 +41,79 @@ class NestedFacilitySerializer(serializers.ModelSerializer):
         fields = ["id", "code", "name"]
 
 
+class OrganizationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Organization
+        fields = ["id", "name", "code", "organization_type", "headquarters"]
+
+
+class CampusSerializer(serializers.ModelSerializer):
+    organization = NestedOrganizationSerializer(read_only=True)
+    organization_id = serializers.PrimaryKeyRelatedField(
+        queryset=Organization.objects.all(),
+        source="organization",
+        write_only=True,
+        label="Organization ID",
+    )
+
+    class Meta:
+        model = Campus
+        fields = ["id", "name", "code", "location", "organization", "organization_id"]
+
+
+class DepartmentSerializer(serializers.ModelSerializer):
+    campus = NestedCampusSerializer(read_only=True)
+    campus_id = serializers.PrimaryKeyRelatedField(
+        queryset=Campus.objects.all(),
+        source="campus",
+        write_only=True,
+        label="Campus ID",
+    )
+    head_of_department = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Department
+        fields = [
+            "id", "name", "code",
+            "campus", "campus_id",
+            "head_of_department", "is_active",
+        ]
+
+    def get_head_of_department(self, obj):
+        if not obj.head_of_department:
+            return None
+        u = obj.head_of_department
+        return {
+            "id": u.id,
+            "username": u.username,
+            "name": f"{u.first_name} {u.last_name}".strip() or u.username,
+        }
+
+
 class FacilitySerializer(serializers.ModelSerializer):
     campus = NestedCampusSerializer(read_only=True)
-    department = NestedDepartmentSerializer(read_only=True)
+    campus_id = serializers.PrimaryKeyRelatedField(
+        queryset=Campus.objects.all(),
+        source="campus",
+        write_only=True,
+        label="Campus ID",
+    )
 
     class Meta:
         model = Facility
         fields = [
-            "id", "name", "type", "status", "location",
-            "campus", "department",
+            "id", "name", "facility_code", "type", "status", "location",
+            "campus", "campus_id",
             "purchase_date", "warranty_expiry", "asset_value"
         ]
+
+    def get_fields(self):
+        fields = super().get_fields()
+        request = self.context.get('request')
+        if request and request.user.role not in ('hod', 'director', 'admin'):
+            for f in ('purchase_date', 'warranty_expiry', 'asset_value'):
+                fields.pop(f, None)
+        return fields
 
 
 class SectionSerializer(serializers.ModelSerializer):
@@ -71,6 +139,13 @@ class SectionSerializer(serializers.ModelSerializer):
             "username": u.username,
             "name": f"{u.first_name} {u.last_name}".strip() or u.username
         }
+
+    def get_fields(self):
+        fields = super().get_fields()
+        request = self.context.get('request')
+        if request and request.user.role in ('user', 'technician'):
+            fields.pop('technicians', None)
+        return fields
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -367,6 +442,24 @@ class TicketSerializer(serializers.ModelSerializer):
             }
         except (AttributeError, TypeError):
             return None
+
+    def get_fields(self):
+        fields = super().get_fields()
+        request = self.context.get('request')
+        if not request:
+            return fields
+        role = request.user.role
+        # available_technicians: only needed by those who can assign tickets
+        if role not in ('section_head', 'hod', 'admin'):
+            fields.pop('available_technicians', None)
+        # Detailed escalation fields: not actionable for regular users
+        if role == 'user':
+            for f in ('escalated_to', 'escalated_at', 'escalation_reason', 'next_escalation_due'):
+                fields.pop(f, None)
+        # Organizational path: only useful for management-level and above
+        if role in ('user', 'technician'):
+            fields.pop('organizational_path', None)
+        return fields
 
     def update(self, instance, validated_data):
         """Use default ModelSerializer update then let services call

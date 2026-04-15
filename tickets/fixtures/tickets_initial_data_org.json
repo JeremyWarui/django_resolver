@@ -3,10 +3,10 @@
     "model": "tickets.organization",
     "pk": 1,
     "fields": {
-      "name": "Government Institution",
+      "name": "Kenya School of Government",
       "code": "KSG",
       "organization_type": "government",
-      "headquarters": "Nairobi, Kenya"
+      "headquarters": "Lower Kabete Road, Nairobi, Kenya"
     }
   },
   {
@@ -16,7 +16,7 @@
       "organization": 1,
       "name": "Nairobi Campus",
       "code": "NRB",
-      "location": "Nairobi"
+      "location": "Lower Kabete Road, Nairobi"
     }
   },
   {
@@ -36,7 +36,7 @@
       "organization": 1,
       "name": "Matuga Campus",
       "code": "MTG",
-      "location": "Matuga"
+      "location": "Matuga, Kwale County"
     }
   },
   {
@@ -66,7 +66,7 @@
       "campus": 1,
       "name": "Information and Communication Technology",
       "code": "ICT",
-      "head_of_department": 3,
+      "head_of_department": 11,
       "is_active": true
     }
   },
@@ -75,8 +75,8 @@
     "pk": 2,
     "fields": {
       "campus": 1,
-      "name": "Hospitality Services",
-      "code": "HOS",
+      "name": "Administration",
+      "code": "ADM",
       "head_of_department": 4,
       "is_active": true
     }
@@ -98,7 +98,7 @@
     "fields": {
       "campus": 2,
       "name": "Learning and Development",
-      "code": "L&D",
+      "code": "LND",
       "head_of_department": null,
       "is_active": true
     }
@@ -119,8 +119,8 @@
     "pk": 6,
     "fields": {
       "campus": 4,
-      "name": "Facilities Management",
-      "code": "FAC",
+      "name": "Information and Communication Technology",
+      "code": "ICT",
       "head_of_department": null,
       "is_active": true
     }
@@ -129,9 +129,31 @@
     "model": "tickets.department",
     "pk": 7,
     "fields": {
+      "campus": 4,
+      "name": "Administration",
+      "code": "ADM",
+      "head_of_department": null,
+      "is_active": true
+    }
+  },
+  {
+    "model": "tickets.department",
+    "pk": 8,
+    "fields": {
       "campus": 5,
-      "name": "Operations",
-      "code": "OPS",
+      "name": "Information and Communication Technology",
+      "code": "ICT",
+      "head_of_department": null,
+      "is_active": true
+    }
+  },
+  {
+    "model": "tickets.department",
+    "pk": 9,
+    "fields": {
+      "campus": 5,
+      "name": "Administration",
+      "code": "ADM",
       "head_of_department": null,
       "is_active": true
     }
@@ -143,7 +165,7 @@
       "department": 1,
       "name": "ICT Support",
       "code": "SUP",
-      "description": "Information Technology infrastructure and support services.",
+      "description": "IT infrastructure, helpdesk, and support services.",
       "section_head": 6,
       "is_active": true
     }
@@ -177,7 +199,7 @@
     "pk": 4,
     "fields": {
       "department": 2,
-      "name": "Carpentry & Masonry",
+      "name": "Carpentry and Masonry",
       "code": "CARP",
       "description": "Carpentry, masonry, and structural repairs.",
       "section_head": 9,
@@ -189,9 +211,9 @@
     "pk": 5,
     "fields": {
       "department": 4,
-      "name": "Quality Assurance",
-      "code": "QA",
-      "description": "Quality assurance and testing services.",
+      "name": "Training Services",
+      "code": "TRN",
+      "description": "Classroom equipment, AV systems, and training room upkeep.",
       "section_head": null,
       "is_active": true
     }
@@ -203,7 +225,7 @@
       "department": 5,
       "name": "Recruitment",
       "code": "REC",
-      "description": "Recruitment and HR operations.",
+      "description": "Recruitment infrastructure and HR office maintenance.",
       "section_head": null,
       "is_active": true
     }
@@ -212,10 +234,10 @@
     "model": "tickets.section",
     "pk": 7,
     "fields": {
-      "department": 6,
-      "name": "Maintenance",
-      "code": "MTCE",
-      "description": "Building and equipment maintenance services.",
+      "department": 2,
+      "name": "General Services",
+      "code": "GEN",
+      "description": "Campus grounds, cleaning, waste management, and general support services.",
       "section_head": null,
       "is_active": true
     }
@@ -224,10 +246,154 @@
     "model": "tickets.section",
     "pk": 8,
     "fields": {
+      "department": 2,
+      "name": "Operations",
+      "code": "OPS",
+      "description": "Transport, logistics, security, and campus-wide operational coordination.",
+      "section_head": null,
+      "is_active": true
+    }
+  },
+  {
+    "model": "tickets.section",
+    "pk": 9,
+    "fields": {
+      "department": 6,
+      "name": "ICT Support",
+      "code": "SUP",
+      "description": "IT infrastructure, helpdesk, and support services.",
+      "section_head": null,
+      "is_active": true
+    }
+  },
+  {
+    "model": "tickets.section",
+    "pk": 10,
+    "fields": {
+      "department": 7,
+      "name": "Plumbing",
+      "code": "PLB",
+      "description": "Water systems, drainage, and plumbing maintenance.",
+      "section_head": null,
+      "is_active": true
+    }
+  },
+  {
+    "model": "tickets.section",
+    "pk": 11,
+    "fields": {
+      "department": 7,
+      "name": "Electrical",
+      "code": "ELE",
+      "description": "Electrical systems, power distribution, and lighting.",
+      "section_head": null,
+      "is_active": true
+    }
+  },
+  {
+    "model": "tickets.section",
+    "pk": 12,
+    "fields": {
+      "department": 7,
+      "name": "Carpentry and Masonry",
+      "code": "CARP",
+      "description": "Carpentry, masonry, and structural repairs.",
+      "section_head": null,
+      "is_active": true
+    }
+  },
+  {
+    "model": "tickets.section",
+    "pk": 13,
+    "fields": {
       "department": 7,
       "name": "General Services",
       "code": "GEN",
-      "description": "General operations and campus services.",
+      "description": "Campus grounds, cleaning, waste management, and general support services.",
+      "section_head": null,
+      "is_active": true
+    }
+  },
+  {
+    "model": "tickets.section",
+    "pk": 14,
+    "fields": {
+      "department": 7,
+      "name": "Operations",
+      "code": "OPS",
+      "description": "Transport, logistics, security, and campus-wide operational coordination.",
+      "section_head": null,
+      "is_active": true
+    }
+  },
+  {
+    "model": "tickets.section",
+    "pk": 15,
+    "fields": {
+      "department": 8,
+      "name": "ICT Support",
+      "code": "SUP",
+      "description": "IT infrastructure, helpdesk, and support services.",
+      "section_head": null,
+      "is_active": true
+    }
+  },
+  {
+    "model": "tickets.section",
+    "pk": 16,
+    "fields": {
+      "department": 9,
+      "name": "Plumbing",
+      "code": "PLB",
+      "description": "Water systems, drainage, and plumbing maintenance.",
+      "section_head": null,
+      "is_active": true
+    }
+  },
+  {
+    "model": "tickets.section",
+    "pk": 17,
+    "fields": {
+      "department": 9,
+      "name": "Electrical",
+      "code": "ELE",
+      "description": "Electrical systems, power distribution, and lighting.",
+      "section_head": null,
+      "is_active": true
+    }
+  },
+  {
+    "model": "tickets.section",
+    "pk": 18,
+    "fields": {
+      "department": 9,
+      "name": "Carpentry and Masonry",
+      "code": "CARP",
+      "description": "Carpentry, masonry, and structural repairs.",
+      "section_head": null,
+      "is_active": true
+    }
+  },
+  {
+    "model": "tickets.section",
+    "pk": 19,
+    "fields": {
+      "department": 9,
+      "name": "General Services",
+      "code": "GEN",
+      "description": "Campus grounds, cleaning, waste management, and general support services.",
+      "section_head": null,
+      "is_active": true
+    }
+  },
+  {
+    "model": "tickets.section",
+    "pk": 20,
+    "fields": {
+      "department": 9,
+      "name": "Operations",
+      "code": "OPS",
+      "description": "Transport, logistics, security, and campus-wide operational coordination.",
       "section_head": null,
       "is_active": true
     }
@@ -237,12 +403,14 @@
     "pk": 1,
     "fields": {
       "name": "Main Office Block",
-      "facility_code": "MOB-001",
+      "facility_code": "NRB-MOB-001",
       "type": "building",
       "campus": 1,
-      "department": 1,
       "location": "Floor 1, West Wing",
-      "status": "active"
+      "status": "active",
+      "purchase_date": null,
+      "warranty_expiry": null,
+      "asset_value": null
     }
   },
   {
@@ -250,12 +418,14 @@
     "pk": 2,
     "fields": {
       "name": "Server Rack 01",
-      "facility_code": "ICT-001",
+      "facility_code": "NRB-ICT-001",
       "type": "ict",
       "campus": 1,
-      "department": 1,
-      "location": "IT Server Room",
-      "status": "active"
+      "location": "IT Server Room, Basement",
+      "status": "active",
+      "purchase_date": "2022-01-15",
+      "warranty_expiry": "2025-01-15",
+      "asset_value": "45000.00"
     }
   },
   {
@@ -263,12 +433,14 @@
     "pk": 3,
     "fields": {
       "name": "Kitchen Unit A",
-      "facility_code": "KIT-001",
+      "facility_code": "NRB-KIT-001",
       "type": "kitchen",
       "campus": 1,
-      "department": 2,
-      "location": "Main Cafeteria",
-      "status": "active"
+      "location": "Main Cafeteria, Ground Floor",
+      "status": "active",
+      "purchase_date": null,
+      "warranty_expiry": null,
+      "asset_value": null
     }
   },
   {
@@ -276,12 +448,14 @@
     "pk": 4,
     "fields": {
       "name": "Apartment 101",
-      "facility_code": "RES-101",
+      "facility_code": "NRB-RES-101",
       "type": "residential",
       "campus": 1,
-      "department": 2,
       "location": "Residential Block A",
-      "status": "active"
+      "status": "active",
+      "purchase_date": null,
+      "warranty_expiry": null,
+      "asset_value": null
     }
   },
   {
@@ -289,12 +463,14 @@
     "pk": 5,
     "fields": {
       "name": "Laundry Room",
-      "facility_code": "LAU-001",
+      "facility_code": "NRB-LAU-001",
       "type": "laundry",
       "campus": 1,
-      "department": 2,
-      "location": "Basement Level",
-      "status": "active"
+      "location": "Basement Level, Block A",
+      "status": "active",
+      "purchase_date": null,
+      "warranty_expiry": null,
+      "asset_value": null
     }
   },
   {
@@ -302,12 +478,14 @@
     "pk": 6,
     "fields": {
       "name": "Conference Room B",
-      "facility_code": "CONF-002",
+      "facility_code": "NRB-CONF-002",
       "type": "building",
       "campus": 1,
-      "department": 1,
-      "location": "Floor 2",
-      "status": "active"
+      "location": "Floor 2, East Wing",
+      "status": "active",
+      "purchase_date": null,
+      "warranty_expiry": null,
+      "asset_value": null
     }
   },
   {
@@ -315,12 +493,14 @@
     "pk": 7,
     "fields": {
       "name": "Data Center",
-      "facility_code": "DCT-001",
+      "facility_code": "NRB-DCT-001",
       "type": "ict",
       "campus": 1,
-      "department": 1,
       "location": "Basement Level, East Wing",
-      "status": "active"
+      "status": "active",
+      "purchase_date": "2020-06-01",
+      "warranty_expiry": "2025-06-01",
+      "asset_value": "250000.00"
     }
   },
   {
@@ -328,12 +508,14 @@
     "pk": 8,
     "fields": {
       "name": "Apartment 205",
-      "facility_code": "RES-205",
+      "facility_code": "NRB-RES-205",
       "type": "residential",
       "campus": 1,
-      "department": 2,
       "location": "Residential Block B",
-      "status": "active"
+      "status": "active",
+      "purchase_date": null,
+      "warranty_expiry": null,
+      "asset_value": null
     }
   },
   {
@@ -341,12 +523,14 @@
     "pk": 9,
     "fields": {
       "name": "Cafeteria Kitchen",
-      "facility_code": "KIT-002",
+      "facility_code": "NRB-KIT-002",
       "type": "kitchen",
       "campus": 1,
-      "department": 2,
       "location": "Ground Floor, South Wing",
-      "status": "active"
+      "status": "active",
+      "purchase_date": null,
+      "warranty_expiry": null,
+      "asset_value": null
     }
   },
   {
@@ -354,12 +538,14 @@
     "pk": 10,
     "fields": {
       "name": "Mombasa Administration Block",
-      "facility_code": "ADM-001",
+      "facility_code": "MSA-ADM-001",
       "type": "building",
       "campus": 2,
-      "department": 3,
-      "location": "Mombasa Campus",
-      "status": "active"
+      "location": "Mombasa Campus, Main Block",
+      "status": "active",
+      "purchase_date": null,
+      "warranty_expiry": null,
+      "asset_value": null
     }
   },
   {
@@ -367,57 +553,33 @@
     "pk": 11,
     "fields": {
       "name": "Matuga Staff Office",
-      "facility_code": "STO-001",
+      "facility_code": "MTG-STO-001",
       "type": "office",
       "campus": 3,
-      "department": 5,
-      "location": "Matuga Campus",
-      "status": "active"
-    }
-  },
-  {
-    "model": "tickets.facility",
-    "pk": 12,
-    "fields": {
-      "name": "Embu ICT Lab",
-      "facility_code": "ICT-001",
-      "type": "ict",
-      "campus": 4,
-      "department": 6,
-      "location": "Embu Campus",
-      "status": "active"
-    }
-  },
-  {
-    "model": "tickets.facility",
-    "pk": 13,
-    "fields": {
-      "name": "Baringo Cafeteria",
-      "facility_code": "CAF-001",
-      "type": "kitchen",
-      "campus": 5,
-      "department": 7,
-      "location": "Baringo Campus",
-      "status": "active"
+      "location": "Matuga Campus, Block B",
+      "status": "active",
+      "purchase_date": null,
+      "warranty_expiry": null,
+      "asset_value": null
     }
   },
   {
     "model": "tickets.customuser",
     "pk": 1,
     "fields": {
-      "password": "pbkdf2_sha256$1000000$ZvGuVX0X6VTjLFVlNr8wMc$46on0T+/xtdtVtYTKmAXGdjIRUopB+As0+qPGkvh8gY=",
+      "password": "pbkdf2_sha256$1200000$vreSnIHT54LLxvqshySYIJ$g1yrN+g/MSh1EaK22L2H3+z+8ucW+MBv+6OSwjIVnUk=",
       "is_superuser": true,
       "username": "admin_user",
       "first_name": "System",
       "last_name": "Admin",
-      "email": "admin@example.com",
+      "email": "admin@ksg.go.ke",
       "is_staff": true,
       "is_active": true,
       "date_joined": "2025-10-01T10:00:00Z",
       "role": "admin",
       "primary_campus": 1,
       "primary_department": 1,
-      "phone_number": "",
+      "phone_number": "0700000001",
       "can_assign_tickets": true,
       "can_escalate_tickets": true,
       "can_view_analytics": true,
@@ -428,19 +590,19 @@
     "model": "tickets.customuser",
     "pk": 2,
     "fields": {
-      "password": "pbkdf2_sha256$1000000$2igHblhkba05SecRpW7daJ$Gf4tfsfs2Id9Q2iks0Sf5FZ8iFS+sqD4uacjV5Ohzcg=",
+      "password": "pbkdf2_sha256$1200000$vreSnIHT54LLxvqshySYIJ$g1yrN+g/MSh1EaK22L2H3+z+8ucW+MBv+6OSwjIVnUk=",
       "is_superuser": false,
       "username": "user_sarah",
       "first_name": "Sarah",
       "last_name": "Wilson",
-      "email": "sarah.wilson@example.com",
+      "email": "sarah.wilson@ksg.go.ke",
       "is_staff": false,
       "is_active": true,
       "date_joined": "2025-10-02T09:00:00Z",
       "role": "user",
       "primary_campus": 1,
       "primary_department": 2,
-      "phone_number": "555-0001",
+      "phone_number": "0700000002",
       "can_assign_tickets": false,
       "can_escalate_tickets": false,
       "can_view_analytics": false,
@@ -451,19 +613,19 @@
     "model": "tickets.customuser",
     "pk": 3,
     "fields": {
-      "password": "pbkdf2_sha256$1000000$p9KSND1G1xc09RQMj0opFc$JWOIxm9LqRHo+ZH3gOn5AXszd1j/WX4sizEKqpStStU=",
+      "password": "pbkdf2_sha256$1200000$vreSnIHT54LLxvqshySYIJ$g1yrN+g/MSh1EaK22L2H3+z+8ucW+MBv+6OSwjIVnUk=",
       "is_superuser": false,
       "username": "director_jane",
       "first_name": "Jane",
-      "last_name": "Director",
-      "email": "jane.director@example.com",
+      "last_name": "Mwangi",
+      "email": "jane.mwangi@ksg.go.ke",
       "is_staff": true,
       "is_active": true,
       "date_joined": "2025-10-01T10:05:00Z",
       "role": "director",
       "primary_campus": 1,
-      "primary_department": 1,
-      "phone_number": "555-0100",
+      "primary_department": null,
+      "phone_number": "0700000003",
       "can_assign_tickets": false,
       "can_escalate_tickets": false,
       "can_view_analytics": true,
@@ -474,19 +636,19 @@
     "model": "tickets.customuser",
     "pk": 4,
     "fields": {
-      "password": "pbkdf2_sha256$1000000$NKkfRTfWJT6fT5JaUMMDxV$401DJS/fuuFTgVoQrvh3sY7oNA0c/wfLwFkobDk2rtE=",
+      "password": "pbkdf2_sha256$1200000$vreSnIHT54LLxvqshySYIJ$g1yrN+g/MSh1EaK22L2H3+z+8ucW+MBv+6OSwjIVnUk=",
       "is_superuser": false,
       "username": "hod_alex",
       "first_name": "Alex",
-      "last_name": "Smith",
-      "email": "alex.smith@example.com",
+      "last_name": "Odhiambo",
+      "email": "alex.odhiambo@ksg.go.ke",
       "is_staff": true,
       "is_active": true,
       "date_joined": "2025-10-01T10:10:00Z",
       "role": "hod",
       "primary_campus": 1,
       "primary_department": 2,
-      "phone_number": "555-0101",
+      "phone_number": "0700000004",
       "can_assign_tickets": true,
       "can_escalate_tickets": true,
       "can_view_analytics": true,
@@ -497,19 +659,19 @@
     "model": "tickets.customuser",
     "pk": 5,
     "fields": {
-      "password": "pbkdf2_sha256$1000000$zneRNo8dktMbDlV9E4ixJM$1yrUMfNzty17UdQqIHSBWQucKS+lDDPe5JG+EkErjqY=",
+      "password": "pbkdf2_sha256$1200000$vreSnIHT54LLxvqshySYIJ$g1yrN+g/MSh1EaK22L2H3+z+8ucW+MBv+6OSwjIVnUk=",
       "is_superuser": false,
       "username": "hod_maria",
       "first_name": "Maria",
       "last_name": "Garcia",
-      "email": "maria@example.com",
+      "email": "maria.garcia@ksg.go.ke",
       "is_staff": true,
       "is_active": true,
       "date_joined": "2025-10-01T10:15:00Z",
       "role": "hod",
       "primary_campus": 2,
       "primary_department": 3,
-      "phone_number": "555-0102",
+      "phone_number": "0700000005",
       "can_assign_tickets": true,
       "can_escalate_tickets": true,
       "can_view_analytics": true,
@@ -520,230 +682,327 @@
     "model": "tickets.customuser",
     "pk": 6,
     "fields": {
-      "password": "pbkdf2_sha256$1000000$I7DtPv6XeE1lAXm8d6n094$eBDEvqtTy9ySw5MZzmuMdhZbg6hosJE0rByrWES8aY4=",
+      "password": "pbkdf2_sha256$1200000$vreSnIHT54LLxvqshySYIJ$g1yrN+g/MSh1EaK22L2H3+z+8ucW+MBv+6OSwjIVnUk=",
       "is_superuser": false,
       "username": "section_head_ben",
       "first_name": "Ben",
-      "last_name": "Clark",
-      "email": "ben@example.com",
+      "last_name": "Kamau",
+      "email": "ben.kamau@ksg.go.ke",
       "is_staff": true,
       "is_active": true,
       "date_joined": "2025-10-01T10:20:00Z",
       "role": "section_head",
       "primary_campus": 1,
       "primary_department": 1,
-      "phone_number": "555-0103",
+      "phone_number": "0700000006",
       "can_assign_tickets": true,
       "can_escalate_tickets": true,
       "can_view_analytics": true,
-      "sections": [1]
+      "sections": []
     }
   },
   {
     "model": "tickets.customuser",
     "pk": 7,
     "fields": {
-      "password": "pbkdf2_sha256$1000000$uZlIXuuw8dW5nPP8vgfHIo$cnQ6nnzuv1FEHuL1eh8J72gZCjTGCv/Kvf6mP/EsFxw=",
+      "password": "pbkdf2_sha256$1200000$vreSnIHT54LLxvqshySYIJ$g1yrN+g/MSh1EaK22L2H3+z+8ucW+MBv+6OSwjIVnUk=",
       "is_superuser": false,
       "username": "section_head_mike",
       "first_name": "Mike",
       "last_name": "Brown",
-      "email": "mike.brown@example.com",
+      "email": "mike.brown@ksg.go.ke",
       "is_staff": true,
       "is_active": true,
       "date_joined": "2025-10-02T10:00:00Z",
       "role": "section_head",
       "primary_campus": 1,
       "primary_department": 2,
-      "phone_number": "555-0104",
+      "phone_number": "0700000007",
       "can_assign_tickets": true,
       "can_escalate_tickets": true,
       "can_view_analytics": true,
-      "sections": [2]
+      "sections": []
     }
   },
   {
     "model": "tickets.customuser",
     "pk": 8,
     "fields": {
-      "password": "pbkdf2_sha256$1000000$Dho7j2JAXoRUL7FXkXkmZV$CIple1OXrv2Lnpt2xpU9aVrkK8hGSEGwkmoK+2DlMWc=",
+      "password": "pbkdf2_sha256$1200000$vreSnIHT54LLxvqshySYIJ$g1yrN+g/MSh1EaK22L2H3+z+8ucW+MBv+6OSwjIVnUk=",
       "is_superuser": false,
       "username": "section_head_linda",
       "first_name": "Linda",
       "last_name": "Davis",
-      "email": "linda.davis@example.com",
+      "email": "linda.davis@ksg.go.ke",
       "is_staff": true,
       "is_active": true,
       "date_joined": "2025-10-03T08:30:00Z",
       "role": "section_head",
       "primary_campus": 1,
       "primary_department": 2,
-      "phone_number": "555-0105",
+      "phone_number": "0700000008",
       "can_assign_tickets": true,
       "can_escalate_tickets": true,
       "can_view_analytics": true,
-      "sections": [3]
+      "sections": []
     }
   },
   {
     "model": "tickets.customuser",
     "pk": 9,
     "fields": {
-      "password": "pbkdf2_sha256$1000000$ohxEa32QhT1d2WTUo4m7ng$Ucq3mVYDvnPa/cESr0qHVJPZ7s0ZVKAkR9Z0X/OgQP8=",
+      "password": "pbkdf2_sha256$1200000$vreSnIHT54LLxvqshySYIJ$g1yrN+g/MSh1EaK22L2H3+z+8ucW+MBv+6OSwjIVnUk=",
       "is_superuser": false,
       "username": "section_head_david",
       "first_name": "David",
-      "last_name": "Lee",
-      "email": "david.lee@example.com",
+      "last_name": "Otieno",
+      "email": "david.otieno@ksg.go.ke",
       "is_staff": true,
       "is_active": true,
       "date_joined": "2025-10-03T11:00:00Z",
       "role": "section_head",
       "primary_campus": 1,
       "primary_department": 2,
-      "phone_number": "555-0106",
+      "phone_number": "0700000009",
       "can_assign_tickets": true,
       "can_escalate_tickets": true,
       "can_view_analytics": true,
-      "sections": [4]
+      "sections": []
     }
   },
   {
     "model": "tickets.customuser",
     "pk": 10,
     "fields": {
-      "password": "pbkdf2_sha256$1000000$newpasshash5$test",
+      "password": "pbkdf2_sha256$1200000$vreSnIHT54LLxvqshySYIJ$g1yrN+g/MSh1EaK22L2H3+z+8ucW+MBv+6OSwjIVnUk=",
       "is_superuser": false,
       "username": "tech_robert",
       "first_name": "Robert",
-      "last_name": "Carpenter",
-      "email": "robert.carpenter@example.com",
-      "is_staff": true,
+      "last_name": "Njoroge",
+      "email": "robert.njoroge@ksg.go.ke",
+      "is_staff": false,
       "is_active": true,
       "date_joined": "2025-10-09T10:00:00Z",
       "role": "technician",
       "primary_campus": 1,
       "primary_department": 2,
-      "phone_number": "555-0204",
+      "phone_number": "0700000010",
       "can_assign_tickets": false,
       "can_escalate_tickets": false,
       "can_view_analytics": false,
-      "sections": [4]
+      "sections": [
+        4
+      ]
+    }
+  },
+  {
+    "model": "tickets.customuser",
+    "pk": 11,
+    "fields": {
+      "password": "pbkdf2_sha256$1200000$vreSnIHT54LLxvqshySYIJ$g1yrN+g/MSh1EaK22L2H3+z+8ucW+MBv+6OSwjIVnUk=",
+      "is_superuser": false,
+      "username": "hod_kevin",
+      "first_name": "Kevin",
+      "last_name": "Mutua",
+      "email": "kevin.mutua@ksg.go.ke",
+      "is_staff": true,
+      "is_active": true,
+      "date_joined": "2025-10-01T10:25:00Z",
+      "role": "hod",
+      "primary_campus": 1,
+      "primary_department": 1,
+      "phone_number": "0700000011",
+      "can_assign_tickets": true,
+      "can_escalate_tickets": true,
+      "can_view_analytics": true,
+      "sections": []
     }
   },
   {
     "model": "tickets.customuser",
     "pk": 12,
     "fields": {
-      "password": "pbkdf2_sha256$1000000$newpasshash2$test",
+      "password": "pbkdf2_sha256$1200000$vreSnIHT54LLxvqshySYIJ$g1yrN+g/MSh1EaK22L2H3+z+8ucW+MBv+6OSwjIVnUk=",
       "is_superuser": false,
       "username": "tech_alex",
       "first_name": "Alex",
       "last_name": "Mugo",
-      "email": "alex.mugo@example.com",
-      "is_staff": true,
+      "email": "alex.mugo@ksg.go.ke",
+      "is_staff": false,
       "is_active": true,
       "date_joined": "2025-10-06T10:00:00Z",
       "role": "technician",
       "primary_campus": 1,
       "primary_department": 1,
-      "phone_number": "555-0201",
+      "phone_number": "0700000012",
       "can_assign_tickets": false,
       "can_escalate_tickets": false,
       "can_view_analytics": false,
-      "sections": [1]
+      "sections": [
+        1
+      ]
     }
   },
   {
     "model": "tickets.customuser",
     "pk": 13,
     "fields": {
-      "password": "pbkdf2_sha256$1000000$newpasshash3$test",
+      "password": "pbkdf2_sha256$1200000$vreSnIHT54LLxvqshySYIJ$g1yrN+g/MSh1EaK22L2H3+z+8ucW+MBv+6OSwjIVnUk=",
       "is_superuser": false,
       "username": "tech_john",
       "first_name": "John",
       "last_name": "Omondi",
-      "email": "john.omondi@example.com",
-      "is_staff": true,
+      "email": "john.omondi@ksg.go.ke",
+      "is_staff": false,
       "is_active": true,
       "date_joined": "2025-10-07T10:00:00Z",
       "role": "technician",
       "primary_campus": 1,
       "primary_department": 2,
-      "phone_number": "555-0202",
+      "phone_number": "0700000013",
       "can_assign_tickets": false,
       "can_escalate_tickets": false,
       "can_view_analytics": false,
-      "sections": [2]
+      "sections": [
+        2
+      ]
     }
   },
   {
     "model": "tickets.customuser",
     "pk": 14,
     "fields": {
-      "password": "pbkdf2_sha256$1000000$newpasshash4$test",
+      "password": "pbkdf2_sha256$1200000$vreSnIHT54LLxvqshySYIJ$g1yrN+g/MSh1EaK22L2H3+z+8ucW+MBv+6OSwjIVnUk=",
       "is_superuser": false,
       "username": "tech_carol",
       "first_name": "Carol",
       "last_name": "Wanjiku",
-      "email": "carol.wanjiku@example.com",
-      "is_staff": true,
+      "email": "carol.wanjiku@ksg.go.ke",
+      "is_staff": false,
       "is_active": true,
       "date_joined": "2025-10-08T10:00:00Z",
       "role": "technician",
       "primary_campus": 1,
       "primary_department": 2,
-      "phone_number": "555-0203",
+      "phone_number": "0700000014",
       "can_assign_tickets": false,
       "can_escalate_tickets": false,
       "can_view_analytics": false,
-      "sections": [3]
+      "sections": [
+        3
+      ]
     }
   },
   {
     "model": "tickets.customuser",
-    "pk": 15,
+    "pk": 17,
     "fields": {
-      "password": "pbkdf2_sha256$1000000$newpasshash6$test",
+      "password": "pbkdf2_sha256$1200000$vreSnIHT54LLxvqshySYIJ$g1yrN+g/MSh1EaK22L2H3+z+8ucW+MBv+6OSwjIVnUk=",
       "is_superuser": false,
-      "username": "tech_embu",
-      "first_name": "James",
-      "last_name": "Kariuki",
-      "email": "james.kariuki@example.com",
-      "is_staff": true,
+      "username": "user_msa",
+      "first_name": "Grace",
+      "last_name": "Achieng",
+      "email": "grace.achieng@ksg.go.ke",
+      "is_staff": false,
       "is_active": true,
-      "date_joined": "2025-10-10T10:00:00Z",
-      "role": "technician",
-      "primary_campus": 4,
-      "primary_department": 6,
-      "phone_number": "555-0301",
+      "date_joined": "2025-10-12T08:00:00Z",
+      "role": "user",
+      "primary_campus": 2,
+      "primary_department": 4,
+      "phone_number": "0700000017",
       "can_assign_tickets": false,
       "can_escalate_tickets": false,
       "can_view_analytics": false,
-      "sections": [7]
+      "sections": []
     }
   },
   {
     "model": "tickets.customuser",
-    "pk": 16,
+    "pk": 18,
     "fields": {
-      "password": "pbkdf2_sha256$1000000$newpasshash7$test",
+      "password": "pbkdf2_sha256$1200000$vreSnIHT54LLxvqshySYIJ$g1yrN+g/MSh1EaK22L2H3+z+8ucW+MBv+6OSwjIVnUk=",
       "is_superuser": false,
-      "username": "tech_baringo",
-      "first_name": "Peter",
-      "last_name": "Rotich",
-      "email": "peter.rotich@example.com",
-      "is_staff": true,
+      "username": "tech_msa",
+      "first_name": "Dennis",
+      "last_name": "Okello",
+      "email": "dennis.okello@ksg.go.ke",
+      "is_staff": false,
       "is_active": true,
-      "date_joined": "2025-10-11T10:00:00Z",
+      "date_joined": "2025-10-12T09:00:00Z",
       "role": "technician",
-      "primary_campus": 5,
-      "primary_department": 7,
-      "phone_number": "555-0302",
+      "primary_campus": 2,
+      "primary_department": 4,
+      "phone_number": "0700000018",
       "can_assign_tickets": false,
       "can_escalate_tickets": false,
       "can_view_analytics": false,
-      "sections": [8]
+      "sections": [
+        5
+      ]
+    }
+  },
+  {
+    "model": "authtoken.token",
+    "pk": "35736009bb13914443795bc65bc65eed01f6c004",
+    "fields": {
+      "user": 1,
+      "created": "2025-10-01T10:00:00Z"
+    }
+  },
+  {
+    "model": "authtoken.token",
+    "pk": "a9848d06a63af557cba0fd7e8de83c46da618e47",
+    "fields": {
+      "user": 2,
+      "created": "2025-10-02T09:00:00Z"
+    }
+  },
+  {
+    "model": "authtoken.token",
+    "pk": "9c5d55a699f31f66356229043485a022aa7f08ab",
+    "fields": {
+      "user": 3,
+      "created": "2025-10-01T10:05:00Z"
+    }
+  },
+  {
+    "model": "authtoken.token",
+    "pk": "555a41926f1f95bd63baef9ffd4a3cd60fcf10cb",
+    "fields": {
+      "user": 4,
+      "created": "2025-10-01T10:10:00Z"
+    }
+  },
+  {
+    "model": "authtoken.token",
+    "pk": "5d7ac6932b16936af5e04e5d8aa9df884bca7b57",
+    "fields": {
+      "user": 11,
+      "created": "2025-10-01T10:25:00Z"
+    }
+  },
+  {
+    "model": "authtoken.token",
+    "pk": "c49227af297f7e37e66457995411030ae3e1ce6d",
+    "fields": {
+      "user": 6,
+      "created": "2025-10-01T10:20:00Z"
+    }
+  },
+  {
+    "model": "authtoken.token",
+    "pk": "e8609f63023c331717bfd4f87d17610bc9ad1990",
+    "fields": {
+      "user": 12,
+      "created": "2025-10-06T10:00:00Z"
+    }
+  },
+  {
+    "model": "authtoken.token",
+    "pk": "7605684bfa7beb55260ea4921571b93dbf093e64",
+    "fields": {
+      "user": 17,
+      "created": "2025-10-12T08:00:00Z"
     }
   },
   {
@@ -752,7 +1011,7 @@
     "fields": {
       "ticket_no": "NRB-ICT-00001",
       "title": "Office Network Outage",
-      "description": "Entire office unable to connect to network",
+      "description": "Entire office on Floor 1 unable to connect to the network. All workstations affected.",
       "section": 1,
       "facility": 1,
       "raised_by": 2,
@@ -762,13 +1021,15 @@
       "updated_at": "2025-10-10T12:00:00Z",
       "resolved_at": null,
       "assigned_to": 12,
+      "assigned_at": "2025-10-10T08:30:00Z",
       "escalation_level": 2,
       "escalated_to": null,
       "escalated_at": "2025-10-11T08:00:00Z",
+      "escalation_reason": "Unresolved after 48 hours, escalated to HOD",
       "auto_escalation_enabled": true,
       "next_escalation_due": null,
       "escalation_threshold_hours": 48,
-      "escalation_reason": "Unresolved after 48 hours"
+      "location_details": "Floor 1, Open Plan Office"
     }
   },
   {
@@ -777,23 +1038,26 @@
     "fields": {
       "ticket_no": "NRB-ICT-00002",
       "title": "Server Temperature Alert",
-      "description": "Critical temperature alert from Data Center",
+      "description": "Critical temperature alert triggered in Data Center. Server room temperature exceeding safe threshold.",
       "section": 1,
       "facility": 7,
       "raised_by": 1,
       "status": "pending",
       "priority": "high",
       "created_at": "2025-10-11T14:30:00Z",
-      "updated_at": "2025-10-11T14:30:00Z",
+      "updated_at": "2025-10-11T16:00:00Z",
       "resolved_at": null,
       "assigned_to": 12,
+      "assigned_at": "2025-10-11T15:00:00Z",
       "escalation_level": 2,
       "escalated_to": null,
       "escalated_at": "2025-10-12T14:30:00Z",
+      "escalation_reason": "Temperature risk escalated to HOD. Cooling system failure.",
       "auto_escalation_enabled": true,
       "next_escalation_due": null,
       "escalation_threshold_hours": 48,
-      "escalation_reason": "Temperature risk escalated to HOD"
+      "pending_reason": "vendor_dependency",
+      "pending_comment": "Cooling unit repair requires specialist HVAC vendor. Server room maintained at safe temperature via temporary portable cooling unit. Vendor appointment scheduled."
     }
   },
   {
@@ -802,23 +1066,25 @@
     "fields": {
       "ticket_no": "NRB-HOS-00001",
       "title": "Leaking Faucet",
-      "description": "Kitchen sink faucet has continuous drip",
+      "description": "Kitchen sink faucet in Cafeteria has continuous drip. Water wastage is significant.",
       "section": 2,
-      "facility": 4,
+      "facility": 3,
       "raised_by": 2,
       "status": "closed",
       "priority": "low",
       "created_at": "2025-10-12T10:00:00Z",
-      "updated_at": "2025-10-12T14:30:00Z",
+      "updated_at": "2025-10-12T15:00:00Z",
       "resolved_at": "2025-10-12T14:30:00Z",
+      "closed_at": "2025-10-12T15:00:00Z",
       "assigned_to": 13,
+      "assigned_at": "2025-10-12T10:30:00Z",
       "escalation_level": 0,
       "escalated_to": null,
       "escalated_at": null,
+      "escalation_reason": "",
       "auto_escalation_enabled": true,
       "next_escalation_due": null,
-      "escalation_threshold_hours": 48,
-      "escalation_reason": ""
+      "escalation_threshold_hours": 48
     }
   },
   {
@@ -827,7 +1093,7 @@
     "fields": {
       "ticket_no": "NRB-ICT-00003",
       "title": "Network Port Damage",
-      "description": "Wall port in Conference Room damaged",
+      "description": "Wall network port in Conference Room B physically damaged, likely from accidental impact.",
       "section": 1,
       "facility": 6,
       "raised_by": 1,
@@ -837,47 +1103,50 @@
       "updated_at": "2025-10-13T16:45:00Z",
       "resolved_at": "2025-10-13T16:45:00Z",
       "assigned_to": 12,
+      "assigned_at": "2025-10-13T09:45:00Z",
       "escalation_level": 0,
       "escalated_to": null,
       "escalated_at": null,
+      "escalation_reason": "",
       "auto_escalation_enabled": true,
       "next_escalation_due": null,
       "escalation_threshold_hours": 48,
-      "escalation_reason": ""
+      "location_details": "Conference Room B, North Wall"
     }
   },
   {
     "model": "tickets.ticket",
     "pk": 5,
     "fields": {
-      "ticket_no": "NRB-HOS-00002",
+      "ticket_no": "NRB-CARP-00001",
       "title": "AC Unit Malfunction",
-      "description": "HVAC unit in West Wing not cooling",
+      "description": "HVAC unit in West Wing not providing cooling. Room temperature uncomfortably high.",
       "section": 4,
       "facility": 1,
       "raised_by": 2,
-      "status": "assigned",
+      "status": "open",
       "priority": "low",
       "created_at": "2025-10-14T11:00:00Z",
-      "updated_at": "2025-10-14T11:30:00Z",
+      "updated_at": "2025-10-14T11:00:00Z",
       "resolved_at": null,
       "assigned_to": null,
+      "assigned_at": null,
       "escalation_level": 0,
       "escalated_to": null,
       "escalated_at": null,
+      "escalation_reason": "",
       "auto_escalation_enabled": true,
-      "next_escalation_due": "2025-10-16T11:00:00Z",
-      "escalation_threshold_hours": 48,
-      "escalation_reason": ""
+      "next_escalation_due": null,
+      "escalation_threshold_hours": 48
     }
   },
   {
     "model": "tickets.ticket",
     "pk": 6,
     "fields": {
-      "ticket_no": "NRB-HOS-00003",
+      "ticket_no": "NRB-CARP-00002",
       "title": "Oven Element Burnout",
-      "description": "Cafeteria oven heating element not working",
+      "description": "Cafeteria primary oven heating element not working. Baking operations affected.",
       "section": 4,
       "facility": 9,
       "raised_by": 1,
@@ -887,14 +1156,16 @@
       "updated_at": "2025-10-15T15:00:00Z",
       "resolved_at": null,
       "assigned_to": null,
+      "assigned_at": null,
       "escalation_level": 0,
       "escalated_to": null,
       "escalated_at": null,
-      "auto_escalation_enabled": true,
-      "next_escalation_due": "2025-10-17T07:45:00Z",
-      "escalation_threshold_hours": 48,
       "escalation_reason": "",
-      "pending_reason": "Ordered replacement element - arrives Friday"
+      "auto_escalation_enabled": true,
+      "next_escalation_due": null,
+      "escalation_threshold_hours": 48,
+      "pending_reason": "awaiting_procurement",
+      "pending_comment": "Oven heating element ordered from supplier, expected delivery Friday. Cafeteria operations temporarily using secondary stove for baking."
     }
   },
   {
@@ -903,7 +1174,7 @@
     "fields": {
       "ticket_no": "NRB-ICT-00004",
       "title": "Slow Internet Speed",
-      "description": "Internet connection running at half speed",
+      "description": "Internet connection running at approximately half the contracted speed. Confirmed on multiple devices.",
       "section": 1,
       "facility": 1,
       "raised_by": 1,
@@ -913,22 +1184,23 @@
       "updated_at": "2025-10-16T17:00:00Z",
       "resolved_at": "2025-10-16T17:00:00Z",
       "assigned_to": 12,
+      "assigned_at": "2025-10-16T13:30:00Z",
       "escalation_level": 0,
       "escalated_to": null,
       "escalated_at": null,
+      "escalation_reason": "",
       "auto_escalation_enabled": true,
       "next_escalation_due": null,
-      "escalation_threshold_hours": 48,
-      "escalation_reason": ""
+      "escalation_threshold_hours": 48
     }
   },
   {
     "model": "tickets.ticket",
     "pk": 8,
     "fields": {
-      "ticket_no": "NRB-HOS-00004",
+      "ticket_no": "NRB-PLB-00001",
       "title": "Blocked Drainage",
-      "description": "Laundry room main drain backing up",
+      "description": "Laundry room main drain backing up. Standing water accumulating, creating slip hazard.",
       "section": 2,
       "facility": 5,
       "raised_by": 2,
@@ -938,22 +1210,23 @@
       "updated_at": "2025-10-17T09:30:00Z",
       "resolved_at": null,
       "assigned_to": null,
+      "assigned_at": null,
       "escalation_level": 1,
       "escalated_to": null,
       "escalated_at": "2025-10-18T09:30:00Z",
+      "escalation_reason": "Slip hazard unresolved after 24 hours, escalated to section head",
       "auto_escalation_enabled": true,
       "next_escalation_due": "2025-10-19T09:30:00Z",
-      "escalation_threshold_hours": 48,
-      "escalation_reason": "Unresolved after 24 hours"
+      "escalation_threshold_hours": 48
     }
   },
   {
     "model": "tickets.ticket",
     "pk": 9,
     "fields": {
-      "ticket_no": "NRB-HOS-00005",
+      "ticket_no": "NRB-ELE-00001",
       "title": "Damaged Power Outlet",
-      "description": "Outlet casing near water cooler broken",
+      "description": "Power outlet casing near water cooler broken and exposed. Potential electrical safety hazard.",
       "section": 3,
       "facility": 1,
       "raised_by": 1,
@@ -963,13 +1236,15 @@
       "updated_at": "2025-10-18T11:00:00Z",
       "resolved_at": null,
       "assigned_to": 14,
+      "assigned_at": "2025-10-18T10:45:00Z",
       "escalation_level": 0,
       "escalated_to": null,
       "escalated_at": null,
+      "escalation_reason": "",
       "auto_escalation_enabled": true,
       "next_escalation_due": "2025-10-20T10:15:00Z",
       "escalation_threshold_hours": 48,
-      "escalation_reason": ""
+      "location_details": "Ground Floor, Water Cooler Alcove"
     }
   },
   {
@@ -978,7 +1253,7 @@
     "fields": {
       "ticket_no": "NRB-ICT-00005",
       "title": "Software License Expiring",
-      "description": "Project management software license expires next week",
+      "description": "Project management software license expires in 7 days. Renewal or replacement required urgently.",
       "section": 1,
       "facility": 1,
       "raised_by": 1,
@@ -988,47 +1263,50 @@
       "updated_at": "2025-10-19T14:00:00Z",
       "resolved_at": null,
       "assigned_to": null,
+      "assigned_at": null,
       "escalation_level": 0,
       "escalated_to": null,
       "escalated_at": null,
+      "escalation_reason": "",
       "auto_escalation_enabled": true,
-      "next_escalation_due": "2025-10-21T14:00:00Z",
-      "escalation_threshold_hours": 48,
-      "escalation_reason": ""
+      "next_escalation_due": null,
+      "escalation_threshold_hours": 48
     }
   },
   {
     "model": "tickets.ticket",
     "pk": 11,
     "fields": {
-      "ticket_no": "NRB-HOS-00006",
+      "ticket_no": "NRB-PLB-00002",
       "title": "Door Lock Sticky",
-      "description": "Apartment entrance door lock difficult to turn",
+      "description": "Apartment 101 entrance door lock very difficult to turn. Residents struggling to access unit.",
       "section": 2,
       "facility": 4,
       "raised_by": 2,
       "status": "closed",
       "priority": "low",
       "created_at": "2025-10-20T08:30:00Z",
-      "updated_at": "2025-10-20T11:00:00Z",
+      "updated_at": "2025-10-20T11:30:00Z",
       "resolved_at": "2025-10-20T11:00:00Z",
+      "closed_at": "2025-10-20T11:30:00Z",
       "assigned_to": 13,
+      "assigned_at": "2025-10-20T09:00:00Z",
       "escalation_level": 0,
       "escalated_to": null,
       "escalated_at": null,
+      "escalation_reason": "",
       "auto_escalation_enabled": true,
       "next_escalation_due": null,
-      "escalation_threshold_hours": 48,
-      "escalation_reason": ""
+      "escalation_threshold_hours": 48
     }
   },
   {
     "model": "tickets.ticket",
     "pk": 12,
     "fields": {
-      "ticket_no": "NRB-HOS-00007",
+      "ticket_no": "NRB-CARP-00003",
       "title": "Cold Draft in Conference Room",
-      "description": "Cold air draft from windows in Conference Room B",
+      "description": "Cold air draft entering from window frames in Conference Room B. Heating costs affected.",
       "section": 4,
       "facility": 6,
       "raised_by": 1,
@@ -1037,14 +1315,15 @@
       "created_at": "2025-10-21T12:00:00Z",
       "updated_at": "2025-10-21T14:00:00Z",
       "resolved_at": null,
-      "assigned_to": null,
+      "assigned_to": 10,
+      "assigned_at": "2025-10-21T12:30:00Z",
       "escalation_level": 0,
       "escalated_to": null,
       "escalated_at": null,
+      "escalation_reason": "",
       "auto_escalation_enabled": true,
       "next_escalation_due": "2025-10-23T12:00:00Z",
-      "escalation_threshold_hours": 48,
-      "escalation_reason": ""
+      "escalation_threshold_hours": 48
     }
   },
   {
@@ -1053,7 +1332,7 @@
     "fields": {
       "ticket_no": "NRB-ICT-00006",
       "title": "Database Backup Failed",
-      "description": "Automated database backup failed with error 500",
+      "description": "Automated nightly database backup failed with error code 500. Last successful backup was 36 hours ago.",
       "section": 1,
       "facility": 7,
       "raised_by": 1,
@@ -1063,47 +1342,49 @@
       "updated_at": "2025-10-22T02:30:00Z",
       "resolved_at": null,
       "assigned_to": null,
+      "assigned_at": null,
       "escalation_level": 1,
       "escalated_to": null,
       "escalated_at": "2025-10-23T02:30:00Z",
+      "escalation_reason": "Critical system backup failure escalated to section head",
       "auto_escalation_enabled": true,
       "next_escalation_due": "2025-10-24T02:30:00Z",
-      "escalation_threshold_hours": 48,
-      "escalation_reason": "Critical system backup failure escalated to section head"
+      "escalation_threshold_hours": 48
     }
   },
   {
     "model": "tickets.ticket",
     "pk": 14,
     "fields": {
-      "ticket_no": "MSA-L&D-00001",
-      "title": "Broken Shelf",
-      "description": "Library cabinet shelf collapsed in training room",
+      "ticket_no": "MSA-LND-00001",
+      "title": "Broken Training Room Shelf",
+      "description": "Library cabinet shelf in training room collapsed under weight. Shelf must be replaced before next session.",
       "section": 5,
       "facility": 10,
-      "raised_by": 2,
+      "raised_by": 17,
       "status": "assigned",
       "priority": "low",
       "created_at": "2025-10-22T09:00:00Z",
       "updated_at": "2025-10-22T10:30:00Z",
       "resolved_at": null,
-      "assigned_to": 12,
+      "assigned_to": 18,
+      "assigned_at": "2025-10-22T10:00:00Z",
       "escalation_level": 0,
       "escalated_to": null,
       "escalated_at": null,
+      "escalation_reason": "",
       "auto_escalation_enabled": true,
       "next_escalation_due": "2025-10-24T09:00:00Z",
-      "escalation_threshold_hours": 48,
-      "escalation_reason": ""
+      "escalation_threshold_hours": 48
     }
   },
   {
     "model": "tickets.ticket",
     "pk": 15,
     "fields": {
-      "ticket_no": "NRB-HOS-00008",
+      "ticket_no": "NRB-CARP-00004",
       "title": "Refrigerator Malfunction",
-      "description": "Main cafeteria refrigerator not maintaining temperature",
+      "description": "Main cafeteria refrigerator not maintaining safe storage temperature. Food safety concern.",
       "section": 4,
       "facility": 9,
       "raised_by": 1,
@@ -1112,23 +1393,24 @@
       "created_at": "2025-10-23T06:15:00Z",
       "updated_at": "2025-10-23T08:45:00Z",
       "resolved_at": null,
-      "assigned_to": null,
+      "assigned_to": 10,
+      "assigned_at": "2025-10-23T07:00:00Z",
       "escalation_level": 0,
       "escalated_to": null,
       "escalated_at": null,
+      "escalation_reason": "",
       "auto_escalation_enabled": true,
       "next_escalation_due": "2025-10-25T06:15:00Z",
-      "escalation_threshold_hours": 48,
-      "escalation_reason": ""
+      "escalation_threshold_hours": 48
     }
   },
   {
     "model": "tickets.ticket",
     "pk": 16,
     "fields": {
-      "ticket_no": "NRB-HOS-00009",
+      "ticket_no": "NRB-ELE-00002",
       "title": "Fire Alarm False Trigger",
-      "description": "Fire alarm triggered twice without cause",
+      "description": "Fire alarm triggered twice without any actual fire. Causing unnecessary evacuations and disruption.",
       "section": 3,
       "facility": 1,
       "raised_by": 1,
@@ -1138,13 +1420,14 @@
       "updated_at": "2025-10-24T10:00:00Z",
       "resolved_at": "2025-10-24T10:00:00Z",
       "assigned_to": 14,
+      "assigned_at": "2025-10-23T14:30:00Z",
       "escalation_level": 0,
       "escalated_to": null,
       "escalated_at": null,
+      "escalation_reason": "",
       "auto_escalation_enabled": true,
       "next_escalation_due": null,
-      "escalation_threshold_hours": 48,
-      "escalation_reason": ""
+      "escalation_threshold_hours": 48
     }
   },
   {
@@ -1153,7 +1436,7 @@
     "fields": {
       "ticket_no": "NRB-ICT-00007",
       "title": "Wi-Fi Dead Zone",
-      "description": "No Wi-Fi signal in Conference Room corner",
+      "description": "No Wi-Fi signal in the south corner of Conference Room B. Affects meetings and presentations.",
       "section": 1,
       "facility": 6,
       "raised_by": 1,
@@ -1163,14 +1446,16 @@
       "updated_at": "2025-10-25T09:00:00Z",
       "resolved_at": null,
       "assigned_to": 12,
+      "assigned_at": "2025-10-24T12:00:00Z",
       "escalation_level": 0,
       "escalated_to": null,
       "escalated_at": null,
+      "escalation_reason": "",
       "auto_escalation_enabled": true,
       "next_escalation_due": "2025-10-26T11:30:00Z",
       "escalation_threshold_hours": 48,
-      "escalation_reason": "",
-      "pending_reason": "Waiting for access point delivery"
+      "pending_reason": "awaiting_procurement",
+      "pending_comment": "Access point ordered from supplier. Estimated delivery 3-5 business days. Affected area has partial coverage via neighbouring access point."
     }
   },
   {
@@ -1179,7 +1464,7 @@
     "fields": {
       "ticket_no": "MTG-HR-00001",
       "title": "Treadmill Belt Slipping",
-      "description": "Gym equipment treadmill belt slipping",
+      "description": "Staff gym treadmill belt slipping under load. Equipment unsafe to use until repaired.",
       "section": 6,
       "facility": 11,
       "raised_by": 2,
@@ -1189,38 +1474,41 @@
       "updated_at": "2025-10-25T07:00:00Z",
       "resolved_at": null,
       "assigned_to": null,
+      "assigned_at": null,
       "escalation_level": 0,
       "escalated_to": null,
       "escalated_at": null,
+      "escalation_reason": "",
       "auto_escalation_enabled": true,
-      "next_escalation_due": "2025-10-27T07:00:00Z",
-      "escalation_threshold_hours": 48,
-      "escalation_reason": ""
+      "next_escalation_due": null,
+      "escalation_threshold_hours": 48
     }
   },
   {
     "model": "tickets.ticket",
     "pk": 19,
     "fields": {
-      "ticket_no": "NRB-HOS-00010",
+      "ticket_no": "NRB-PLB-00003",
       "title": "Water Heater Leaking",
-      "description": "Water heater in apartment leaking from bottom",
+      "description": "Water heater in Apartment 205 leaking from the base. Risk of water damage to flooring below.",
       "section": 2,
-      "facility": 4,
+      "facility": 8,
       "raised_by": 2,
       "status": "closed",
       "priority": "low",
       "created_at": "2025-10-26T08:00:00Z",
-      "updated_at": "2025-10-27T15:30:00Z",
+      "updated_at": "2025-10-27T16:00:00Z",
       "resolved_at": "2025-10-27T15:30:00Z",
+      "closed_at": "2025-10-27T16:00:00Z",
       "assigned_to": 13,
+      "assigned_at": "2025-10-26T08:30:00Z",
       "escalation_level": 0,
       "escalated_to": null,
       "escalated_at": null,
+      "escalation_reason": "",
       "auto_escalation_enabled": true,
       "next_escalation_due": null,
-      "escalation_threshold_hours": 48,
-      "escalation_reason": ""
+      "escalation_threshold_hours": 48
     }
   },
   {
@@ -1229,7 +1517,7 @@
     "fields": {
       "ticket_no": "NRB-ICT-00008",
       "title": "Projector Display Issues",
-      "description": "Projector showing distorted colors and lines",
+      "description": "Conference Room B projector showing distorted colours and horizontal lines across the image.",
       "section": 1,
       "facility": 6,
       "raised_by": 1,
@@ -1239,22 +1527,23 @@
       "updated_at": "2025-10-27T16:00:00Z",
       "resolved_at": "2025-10-27T16:00:00Z",
       "assigned_to": 12,
+      "assigned_at": "2025-10-27T09:30:00Z",
       "escalation_level": 0,
       "escalated_to": null,
       "escalated_at": null,
+      "escalation_reason": "",
       "auto_escalation_enabled": true,
       "next_escalation_due": null,
-      "escalation_threshold_hours": 48,
-      "escalation_reason": ""
+      "escalation_threshold_hours": 48
     }
   },
   {
     "model": "tickets.ticket",
     "pk": 21,
     "fields": {
-      "ticket_no": "NRB-HOS-00011",
+      "ticket_no": "NRB-ELE-00003",
       "title": "Electrical Panel Noise",
-      "description": "Electrical panel making unusual buzzing sound",
+      "description": "Electrical distribution panel in Main Office Block producing unusual buzzing sound. Potential fault.",
       "section": 3,
       "facility": 1,
       "raised_by": 1,
@@ -1264,22 +1553,24 @@
       "updated_at": "2025-10-28T10:00:00Z",
       "resolved_at": null,
       "assigned_to": null,
+      "assigned_at": null,
       "escalation_level": 0,
       "escalated_to": null,
       "escalated_at": null,
+      "escalation_reason": "",
       "auto_escalation_enabled": true,
-      "next_escalation_due": "2025-10-30T10:00:00Z",
+      "next_escalation_due": null,
       "escalation_threshold_hours": 48,
-      "escalation_reason": ""
+      "location_details": "Ground Floor, Main Distribution Board Room"
     }
   },
   {
     "model": "tickets.ticket",
     "pk": 22,
     "fields": {
-      "ticket_no": "NRB-HOS-00012",
+      "ticket_no": "NRB-PLB-00004",
       "title": "Dishwasher Not Draining",
-      "description": "Industrial dishwasher in cafeteria not draining",
+      "description": "Industrial dishwasher in cafeteria not completing drain cycle. Standing water remaining in drum.",
       "section": 2,
       "facility": 9,
       "raised_by": 2,
@@ -1289,22 +1580,23 @@
       "updated_at": "2025-10-29T08:00:00Z",
       "resolved_at": null,
       "assigned_to": 13,
+      "assigned_at": "2025-10-29T07:00:00Z",
       "escalation_level": 0,
       "escalated_to": null,
       "escalated_at": null,
+      "escalation_reason": "",
       "auto_escalation_enabled": true,
       "next_escalation_due": "2025-10-31T06:30:00Z",
-      "escalation_threshold_hours": 48,
-      "escalation_reason": ""
+      "escalation_threshold_hours": 48
     }
   },
   {
     "model": "tickets.ticket",
     "pk": 23,
     "fields": {
-      "ticket_no": "NRB-HOS-00013",
+      "ticket_no": "NRB-CARP-00005",
       "title": "HVAC Making Noise",
-      "description": "Data Center HVAC unit producing loud rattling noise",
+      "description": "Data Center HVAC unit producing loud rattling noise during operation. May indicate loose component.",
       "section": 4,
       "facility": 7,
       "raised_by": 1,
@@ -1313,14 +1605,15 @@
       "created_at": "2025-10-30T11:00:00Z",
       "updated_at": "2025-10-30T13:00:00Z",
       "resolved_at": null,
-      "assigned_to": null,
+      "assigned_to": 10,
+      "assigned_at": "2025-10-30T11:30:00Z",
       "escalation_level": 0,
       "escalated_to": null,
       "escalated_at": null,
+      "escalation_reason": "",
       "auto_escalation_enabled": true,
       "next_escalation_due": "2025-11-01T11:00:00Z",
-      "escalation_threshold_hours": 48,
-      "escalation_reason": ""
+      "escalation_threshold_hours": 48
     }
   },
   {
@@ -1329,23 +1622,25 @@
     "fields": {
       "ticket_no": "MTG-HR-00002",
       "title": "Loose Door Handle",
-      "description": "Main entrance door handle loose and needs tightening",
+      "description": "Main entrance door handle loose and wobbles. Needs tightening before it detaches completely.",
       "section": 6,
       "facility": 11,
       "raised_by": 2,
       "status": "closed",
       "priority": "low",
       "created_at": "2025-10-31T08:00:00Z",
-      "updated_at": "2025-10-31T10:30:00Z",
+      "updated_at": "2025-10-31T11:00:00Z",
       "resolved_at": "2025-10-31T10:30:00Z",
+      "closed_at": "2025-10-31T11:00:00Z",
       "assigned_to": null,
+      "assigned_at": null,
       "escalation_level": 0,
       "escalated_to": null,
       "escalated_at": null,
+      "escalation_reason": "",
       "auto_escalation_enabled": true,
       "next_escalation_due": null,
-      "escalation_threshold_hours": 48,
-      "escalation_reason": ""
+      "escalation_threshold_hours": 48
     }
   },
   {
@@ -1354,7 +1649,7 @@
     "fields": {
       "ticket_no": "NRB-ICT-00009",
       "title": "Printer Offline",
-      "description": "Network printer in office block keeps going offline",
+      "description": "Network printer in Main Office Block keeps dropping offline every few hours. Multiple users affected.",
       "section": 1,
       "facility": 1,
       "raised_by": 2,
@@ -1364,139 +1659,147 @@
       "updated_at": "2025-11-02T11:00:00Z",
       "resolved_at": null,
       "assigned_to": 12,
+      "assigned_at": "2025-11-01T09:45:00Z",
       "escalation_level": 0,
       "escalated_to": null,
       "escalated_at": null,
+      "escalation_reason": "",
       "auto_escalation_enabled": true,
       "next_escalation_due": "2025-11-03T09:15:00Z",
       "escalation_threshold_hours": 48,
-      "escalation_reason": "",
-      "pending_reason": "Ordered replacement network module"
+      "pending_reason": "awaiting_procurement",
+      "pending_comment": "Replacement network interface card ordered. Estimated arrival 2-3 business days. Users directed to use alternate printer on Floor 2."
     }
   },
   {
     "model": "tickets.ticket",
     "pk": 26,
     "fields": {
-      "ticket_no": "MSA-L&D-00002",
+      "ticket_no": "MSA-LND-00002",
       "title": "Projector Not Working",
-      "description": "Classroom projector displaying no image",
+      "description": "Classroom projector displaying no image. Power light on but no signal output to screen.",
       "section": 5,
       "facility": 10,
-      "raised_by": 2,
+      "raised_by": 17,
       "status": "open",
       "priority": "low",
       "created_at": "2025-11-03T10:00:00Z",
       "updated_at": "2025-11-03T10:00:00Z",
       "resolved_at": null,
       "assigned_to": null,
+      "assigned_at": null,
       "escalation_level": 0,
       "escalated_to": null,
       "escalated_at": null,
+      "escalation_reason": "",
       "auto_escalation_enabled": true,
-      "next_escalation_due": "2025-11-05T10:00:00Z",
-      "escalation_threshold_hours": 48,
-      "escalation_reason": ""
+      "next_escalation_due": null,
+      "escalation_threshold_hours": 48
     }
   },
   {
     "model": "tickets.ticket",
     "pk": 27,
     "fields": {
-      "ticket_no": "MSA-L&D-00003",
-      "title": "Whiteboard Marker Issue",
-      "description": "Whiteboard markers dried out and need replacement",
+      "ticket_no": "MSA-LND-00003",
+      "title": "Whiteboard Markers Dried Out",
+      "description": "All whiteboard markers in Training Room 2 dried out and unusable. Session starting Monday.",
       "section": 5,
       "facility": 10,
-      "raised_by": 1,
+      "raised_by": 17,
       "status": "assigned",
       "priority": "low",
       "created_at": "2025-11-04T08:30:00Z",
       "updated_at": "2025-11-04T09:00:00Z",
       "resolved_at": null,
-      "assigned_to": 12,
+      "assigned_to": 18,
+      "assigned_at": "2025-11-04T09:00:00Z",
       "escalation_level": 0,
       "escalated_to": null,
       "escalated_at": null,
+      "escalation_reason": "",
       "auto_escalation_enabled": true,
       "next_escalation_due": "2025-11-06T08:30:00Z",
-      "escalation_threshold_hours": 48,
-      "escalation_reason": ""
+      "escalation_threshold_hours": 48
     }
   },
   {
     "model": "tickets.ticket",
     "pk": 28,
     "fields": {
-      "ticket_no": "MSA-L&D-00004",
+      "ticket_no": "MSA-LND-00004",
       "title": "Sound System Feedback",
-      "description": "Audio feedback from classroom sound system during playback",
+      "description": "Audio feedback (high-pitched squeal) from classroom sound system when microphone is used. Disrupting training.",
       "section": 5,
       "facility": 10,
-      "raised_by": 2,
+      "raised_by": 17,
       "status": "in_progress",
       "priority": "medium",
       "created_at": "2025-11-05T14:15:00Z",
-      "updated_at": "2025-11-05T15:00:00Z",
+      "updated_at": "2025-11-05T15:30:00Z",
       "resolved_at": null,
-      "assigned_to": null,
+      "assigned_to": 18,
+      "assigned_at": "2025-11-05T15:00:00Z",
       "escalation_level": 1,
       "escalated_to": null,
       "escalated_at": "2025-11-06T14:15:00Z",
+      "escalation_reason": "Sound feedback persisting across multiple classrooms, escalated to section head",
       "auto_escalation_enabled": true,
       "next_escalation_due": "2025-11-07T14:15:00Z",
-      "escalation_threshold_hours": 48,
-      "escalation_reason": "Sound issue persisting in multiple classrooms"
+      "escalation_threshold_hours": 48
     }
   },
   {
     "model": "tickets.ticket",
     "pk": 29,
     "fields": {
-      "ticket_no": "MSA-L&D-00005",
+      "ticket_no": "MSA-LND-00005",
       "title": "Faulty Desk Lamp",
-      "description": "Instructor desk lamp flickering and intermittent",
+      "description": "Instructor desk lamp in Training Room 1 flickering intermittently. Eye strain concern for long sessions.",
       "section": 5,
       "facility": 10,
-      "raised_by": 1,
+      "raised_by": 17,
       "status": "resolved",
       "priority": "low",
       "created_at": "2025-11-06T09:00:00Z",
       "updated_at": "2025-11-06T12:30:00Z",
       "resolved_at": "2025-11-06T12:30:00Z",
-      "assigned_to": 12,
+      "assigned_to": 18,
+      "assigned_at": "2025-11-06T09:30:00Z",
       "escalation_level": 0,
       "escalated_to": null,
       "escalated_at": null,
+      "escalation_reason": "",
       "auto_escalation_enabled": true,
       "next_escalation_due": null,
-      "escalation_threshold_hours": 48,
-      "escalation_reason": ""
+      "escalation_threshold_hours": 48
     }
   },
   {
     "model": "tickets.ticket",
     "pk": 30,
     "fields": {
-      "ticket_no": "MSA-L&D-00006",
-      "title": "Door Lock Malfunction",
-      "description": "Training room door lock not engaging properly",
+      "ticket_no": "MSA-LND-00006",
+      "title": "Training Room Door Lock Malfunction",
+      "description": "Training Room 3 door lock not engaging properly. Door swings open during sessions.",
       "section": 5,
       "facility": 10,
-      "raised_by": 2,
+      "raised_by": 17,
       "status": "closed",
       "priority": "low",
       "created_at": "2025-11-07T11:00:00Z",
-      "updated_at": "2025-11-07T14:00:00Z",
+      "updated_at": "2025-11-07T14:30:00Z",
       "resolved_at": "2025-11-07T14:00:00Z",
+      "closed_at": "2025-11-07T14:30:00Z",
       "assigned_to": null,
+      "assigned_at": null,
       "escalation_level": 0,
       "escalated_to": null,
       "escalated_at": null,
+      "escalation_reason": "",
       "auto_escalation_enabled": true,
       "next_escalation_due": null,
-      "escalation_threshold_hours": 48,
-      "escalation_reason": ""
+      "escalation_threshold_hours": 48
     }
   },
   {
@@ -1505,23 +1808,24 @@
     "fields": {
       "ticket_no": "MTG-HR-00003",
       "title": "Interview Room Booking System Down",
-      "description": "Interview room scheduling system not accessible",
+      "description": "Interview room scheduling system inaccessible from intranet. Manual booking in place as workaround.",
       "section": 6,
       "facility": 11,
-      "raised_by": 1,
+      "raised_by": 2,
       "status": "open",
       "priority": "low",
       "created_at": "2025-11-08T08:00:00Z",
       "updated_at": "2025-11-08T08:00:00Z",
       "resolved_at": null,
       "assigned_to": null,
+      "assigned_at": null,
       "escalation_level": 0,
       "escalated_to": null,
       "escalated_at": null,
+      "escalation_reason": "",
       "auto_escalation_enabled": true,
-      "next_escalation_due": "2025-11-10T08:00:00Z",
-      "escalation_threshold_hours": 48,
-      "escalation_reason": ""
+      "next_escalation_due": null,
+      "escalation_threshold_hours": 48
     }
   },
   {
@@ -1530,7 +1834,7 @@
     "fields": {
       "ticket_no": "MTG-HR-00004",
       "title": "Office Furniture Delivery",
-      "description": "New office furniture delivery needs to be scheduled and set up",
+      "description": "New ergonomic office furniture delivery and setup required. Staff awaiting chairs and standing desks.",
       "section": 6,
       "facility": 11,
       "raised_by": 2,
@@ -1540,14 +1844,16 @@
       "updated_at": "2025-11-09T11:00:00Z",
       "resolved_at": null,
       "assigned_to": null,
+      "assigned_at": null,
       "escalation_level": 0,
       "escalated_to": null,
       "escalated_at": null,
-      "auto_escalation_enabled": true,
-      "next_escalation_due": "2025-11-11T10:30:00Z",
-      "escalation_threshold_hours": 48,
       "escalation_reason": "",
-      "pending_reason": "Awaiting delivery confirmation from vendor"
+      "auto_escalation_enabled": true,
+      "next_escalation_due": null,
+      "escalation_threshold_hours": 48,
+      "pending_reason": "vendor_dependency",
+      "pending_comment": "Furniture vendor has confirmed order dispatch but awaiting final delivery schedule confirmation. Installation team on standby once delivery date confirmed."
     }
   },
   {
@@ -1556,23 +1862,24 @@
     "fields": {
       "ticket_no": "MTG-HR-00005",
       "title": "Office Supply Cabinet Key Lost",
-      "description": "Key to office supply cabinet has been lost",
+      "description": "Key to main office supply cabinet has been misplaced. Cabinet is locked and contents inaccessible.",
       "section": 6,
       "facility": 11,
       "raised_by": 1,
-      "status": "assigned",
+      "status": "open",
       "priority": "low",
       "created_at": "2025-11-10T13:00:00Z",
-      "updated_at": "2025-11-10T13:30:00Z",
+      "updated_at": "2025-11-10T13:00:00Z",
       "resolved_at": null,
-      "assigned_to": 12,
+      "assigned_to": null,
+      "assigned_at": null,
       "escalation_level": 0,
       "escalated_to": null,
       "escalated_at": null,
+      "escalation_reason": "",
       "auto_escalation_enabled": true,
-      "next_escalation_due": "2025-11-12T13:00:00Z",
-      "escalation_threshold_hours": 48,
-      "escalation_reason": ""
+      "next_escalation_due": null,
+      "escalation_threshold_hours": 48
     }
   },
   {
@@ -1581,7 +1888,7 @@
     "fields": {
       "ticket_no": "MTG-HR-00006",
       "title": "Printer Refill Required",
-      "description": "Printer ink and paper refills needed for HR office",
+      "description": "HR office printer out of ink and paper. Printing for recruitment documentation halted.",
       "section": 6,
       "facility": 11,
       "raised_by": 2,
@@ -1591,265 +1898,239 @@
       "updated_at": "2025-11-11T10:00:00Z",
       "resolved_at": "2025-11-11T10:00:00Z",
       "assigned_to": null,
+      "assigned_at": null,
       "escalation_level": 0,
       "escalated_to": null,
       "escalated_at": null,
-      "auto_escalation_enabled": true,
-      "next_escalation_due": null,
-      "escalation_threshold_hours": 48,
-      "escalation_reason": ""
-    }
-  },
-  {
-    "model": "tickets.ticket",
-    "pk": 35,
-    "fields": {
-      "ticket_no": "EMB-FAC-00001",
-      "title": "Roof Leak in East Wing",
-      "description": "Water leaking through roof during rainfall",
-      "section": 7,
-      "facility": 12,
-      "raised_by": 1,
-      "status": "open",
-      "priority": "medium",
-      "created_at": "2025-11-12T07:00:00Z",
-      "updated_at": "2025-11-12T07:00:00Z",
-      "resolved_at": null,
-      "assigned_to": null,
-      "escalation_level": 1,
-      "escalated_to": null,
-      "escalated_at": "2025-11-13T07:00:00Z",
-      "auto_escalation_enabled": true,
-      "next_escalation_due": "2025-11-14T07:00:00Z",
-      "escalation_threshold_hours": 48,
-      "escalation_reason": "Structural damage risk escalated to section head"
-    }
-  },
-  {
-    "model": "tickets.ticket",
-    "pk": 36,
-    "fields": {
-      "ticket_no": "EMB-FAC-00002",
-      "title": "Broken Window Glass",
-      "description": "Main entrance window glass shattered from impact",
-      "section": 7,
-      "facility": 12,
-      "raised_by": 2,
-      "status": "assigned",
-      "priority": "low",
-      "created_at": "2025-11-13T08:30:00Z",
-      "updated_at": "2025-11-13T09:00:00Z",
-      "resolved_at": null,
-      "assigned_to": 15,
-      "escalation_level": 0,
-      "escalated_to": null,
-      "escalated_at": null,
-      "auto_escalation_enabled": true,
-      "next_escalation_due": "2025-11-15T08:30:00Z",
-      "escalation_threshold_hours": 48,
-      "escalation_reason": ""
-    }
-  },
-  {
-    "model": "tickets.ticket",
-    "pk": 37,
-    "fields": {
-      "ticket_no": "EMB-FAC-00003",
-      "title": "Cracked Floor Tiles",
-      "description": "Multiple floor tiles cracked in corridor",
-      "section": 7,
-      "facility": 12,
-      "raised_by": 1,
-      "status": "in_progress",
-      "priority": "low",
-      "created_at": "2025-11-14T10:00:00Z",
-      "updated_at": "2025-11-14T10:30:00Z",
-      "resolved_at": null,
-      "assigned_to": 15,
-      "escalation_level": 0,
-      "escalated_to": null,
-      "escalated_at": null,
-      "auto_escalation_enabled": true,
-      "next_escalation_due": "2025-11-16T10:00:00Z",
-      "escalation_threshold_hours": 48,
-      "escalation_reason": ""
-    }
-  },
-  {
-    "model": "tickets.ticket",
-    "pk": 38,
-    "fields": {
-      "ticket_no": "EMB-FAC-00004",
-      "title": "Door Hinge Damage",
-      "description": "Classroom door hinge bent and door misaligned",
-      "section": 7,
-      "facility": 12,
-      "raised_by": 2,
-      "status": "pending",
-      "priority": "low",
-      "created_at": "2025-11-15T11:00:00Z",
-      "updated_at": "2025-11-15T12:00:00Z",
-      "resolved_at": null,
-      "assigned_to": null,
-      "escalation_level": 0,
-      "escalated_to": null,
-      "escalated_at": null,
-      "auto_escalation_enabled": true,
-      "next_escalation_due": "2025-11-17T11:00:00Z",
-      "escalation_threshold_hours": 48,
       "escalation_reason": "",
-      "pending_reason": "Waiting for replacement hinges"
-    }
-  },
-  {
-    "model": "tickets.ticket",
-    "pk": 39,
-    "fields": {
-      "ticket_no": "EMB-FAC-00005",
-      "title": "Paint Peeling in Lab",
-      "description": "Interior ceiling paint peeling in chemistry lab",
-      "section": 7,
-      "facility": 12,
-      "raised_by": 1,
-      "status": "resolved",
-      "priority": "low",
-      "created_at": "2025-11-16T09:00:00Z",
-      "updated_at": "2025-11-16T16:00:00Z",
-      "resolved_at": "2025-11-16T16:00:00Z",
-      "assigned_to": 15,
-      "escalation_level": 0,
-      "escalated_to": null,
-      "escalated_at": null,
       "auto_escalation_enabled": true,
       "next_escalation_due": null,
-      "escalation_threshold_hours": 48,
-      "escalation_reason": ""
+      "escalation_threshold_hours": 48
     }
   },
   {
-    "model": "tickets.ticket",
-    "pk": 40,
+    "model": "tickets.comment",
+    "pk": 1,
     "fields": {
-      "ticket_no": "BAR-OPS-00001",
-      "title": "Campus Gate Motor Failure",
-      "description": "Automatic campus gate motor not responding to controller",
-      "section": 8,
-      "facility": 13,
-      "raised_by": 2,
-      "status": "open",
-      "priority": "medium",
-      "created_at": "2025-11-17T06:00:00Z",
-      "updated_at": "2025-11-17T06:00:00Z",
-      "resolved_at": null,
-      "assigned_to": null,
-      "escalation_level": 1,
-      "escalated_to": null,
-      "escalated_at": "2025-11-18T06:00:00Z",
-      "auto_escalation_enabled": true,
-      "next_escalation_due": "2025-11-19T06:00:00Z",
-      "escalation_threshold_hours": 48,
-      "escalation_reason": "Security risk escalated to section head"
+      "ticket": 1,
+      "author": 6,
+      "text": "Reviewed cabling in server room. Main switch unresponsive — rebooting and monitoring for re-occurrence.",
+      "created_at": "2025-10-10T09:00:00Z"
     }
   },
   {
-    "model": "tickets.ticket",
-    "pk": 41,
+    "model": "tickets.comment",
+    "pk": 2,
     "fields": {
-      "ticket_no": "BAR-OPS-00002",
-      "title": "Parking Lot Maintenance",
-      "description": "Potholes in parking lot need repair and repainting",
-      "section": 8,
-      "facility": 13,
-      "raised_by": 1,
-      "status": "assigned",
-      "priority": "low",
-      "created_at": "2025-11-18T08:00:00Z",
-      "updated_at": "2025-11-18T09:00:00Z",
-      "resolved_at": null,
-      "assigned_to": 16,
-      "escalation_level": 0,
-      "escalated_to": null,
-      "escalated_at": null,
-      "auto_escalation_enabled": true,
-      "next_escalation_due": "2025-11-20T08:00:00Z",
-      "escalation_threshold_hours": 48,
-      "escalation_reason": ""
+      "ticket": 1,
+      "author": 12,
+      "text": "Switch came back online but dropped again after 2 hours. Suspect faulty SFP module in the core switch. Ordered replacement.",
+      "created_at": "2025-10-10T11:30:00Z"
     }
   },
   {
-    "model": "tickets.ticket",
-    "pk": 42,
+    "model": "tickets.comment",
+    "pk": 3,
     "fields": {
-      "ticket_no": "BAR-OPS-00003",
-      "title": "Landscaping Overgrowth",
-      "description": "Hedges and grass overgrown in front entrance",
-      "section": 8,
-      "facility": 13,
-      "raised_by": 2,
-      "status": "in_progress",
-      "priority": "low",
-      "created_at": "2025-11-19T07:00:00Z",
-      "updated_at": "2025-11-19T08:00:00Z",
-      "resolved_at": null,
-      "assigned_to": 16,
-      "escalation_level": 0,
-      "escalated_to": null,
-      "escalated_at": null,
-      "auto_escalation_enabled": true,
-      "next_escalation_due": "2025-11-21T07:00:00Z",
-      "escalation_threshold_hours": 48,
-      "escalation_reason": ""
+      "ticket": 2,
+      "author": 12,
+      "text": "Portable cooling unit deployed. Server room temperature now at 22°C. Monitoring every 30 minutes until HVAC vendor arrives.",
+      "created_at": "2025-10-11T16:30:00Z"
     }
   },
   {
-    "model": "tickets.ticket",
-    "pk": 43,
+    "model": "tickets.comment",
+    "pk": 4,
     "fields": {
-      "ticket_no": "BAR-OPS-00004",
-      "title": "Street Light Outage",
-      "description": "Campus perimeter street lights not turning on at night",
-      "section": 8,
-      "facility": 13,
-      "raised_by": 1,
-      "status": "pending",
-      "priority": "low",
-      "created_at": "2025-11-20T17:00:00Z",
-      "updated_at": "2025-11-20T18:00:00Z",
-      "resolved_at": null,
-      "assigned_to": null,
-      "escalation_level": 0,
-      "escalated_to": null,
-      "escalated_at": null,
-      "auto_escalation_enabled": true,
-      "next_escalation_due": "2025-11-22T17:00:00Z",
-      "escalation_threshold_hours": 48,
-      "escalation_reason": "",
-      "pending_reason": "Electrical technician consultation required"
+      "ticket": 3,
+      "author": 2,
+      "text": "The faucet is still dripping badly. Water pooling on the floor. Please prioritise.",
+      "created_at": "2025-10-12T10:15:00Z"
     }
   },
   {
-    "model": "tickets.ticket",
-    "pk": 44,
+    "model": "tickets.comment",
+    "pk": 5,
     "fields": {
-      "ticket_no": "BAR-OPS-00005",
-      "title": "Trash Collection Schedule",
-      "description": "Dumpster collection schedule needs adjustment for new season",
-      "section": 8,
-      "facility": 13,
-      "raised_by": 2,
-      "status": "resolved",
-      "priority": "low",
-      "created_at": "2025-11-21T10:00:00Z",
-      "updated_at": "2025-11-21T11:30:00Z",
-      "resolved_at": "2025-11-21T11:30:00Z",
-      "assigned_to": 16,
-      "escalation_level": 0,
-      "escalated_to": null,
-      "escalated_at": null,
-      "auto_escalation_enabled": true,
-      "next_escalation_due": null,
-      "escalation_threshold_hours": 48,
-      "escalation_reason": ""
+      "ticket": 3,
+      "author": 13,
+      "text": "Disassembled tap, replaced worn washer and O-ring. Faucet tested for 30 minutes — no further dripping.",
+      "created_at": "2025-10-12T14:00:00Z"
+    }
+  },
+  {
+    "model": "tickets.comment",
+    "pk": 6,
+    "fields": {
+      "ticket": 8,
+      "author": 7,
+      "text": "Used drain snake — partial clearance achieved. Blockage is deep in the main pipe. Will need drain jetting equipment.",
+      "created_at": "2025-10-18T10:00:00Z"
+    }
+  },
+  {
+    "model": "tickets.comment",
+    "pk": 7,
+    "fields": {
+      "ticket": 16,
+      "author": 14,
+      "text": "Identified faulty ionisation smoke detector on Floor 2 East. Replaced sensor unit and recalibrated panel. False triggers eliminated.",
+      "created_at": "2025-10-24T09:30:00Z"
+    }
+  },
+  {
+    "model": "tickets.feedback",
+    "pk": 1,
+    "fields": {
+      "ticket": 3,
+      "rated_by": 2,
+      "rating": 4.5,
+      "comment": "Faucet fixed properly and quickly. John was very professional.",
+      "created_at": "2025-10-12T15:30:00Z"
+    }
+  },
+  {
+    "model": "tickets.feedback",
+    "pk": 2,
+    "fields": {
+      "ticket": 7,
+      "rated_by": 1,
+      "rating": 5.0,
+      "comment": "Internet speed back to full capacity. Root cause identified and fixed cleanly.",
+      "created_at": "2025-10-16T17:30:00Z"
+    }
+  },
+  {
+    "model": "tickets.feedback",
+    "pk": 3,
+    "fields": {
+      "ticket": 11,
+      "rated_by": 2,
+      "rating": 4.0,
+      "comment": "Lock is working now. Took slightly longer than expected but job was done properly.",
+      "created_at": "2025-10-20T12:00:00Z"
+    }
+  },
+  {
+    "model": "tickets.feedback",
+    "pk": 4,
+    "fields": {
+      "ticket": 16,
+      "rated_by": 1,
+      "rating": 5.0,
+      "comment": "Excellent response to a safety-critical issue. Resolved same day and verified working.",
+      "created_at": "2025-10-24T10:30:00Z"
+    }
+  },
+  {
+    "model": "tickets.feedback",
+    "pk": 5,
+    "fields": {
+      "ticket": 19,
+      "rated_by": 2,
+      "rating": 5.0,
+      "comment": "Heater fully repaired and tested thoroughly before handover. No further leaks. Very satisfied.",
+      "created_at": "2025-10-27T16:30:00Z"
+    }
+  },
+  {
+    "model": "tickets.ticketlog",
+    "pk": 1,
+    "fields": {
+      "ticket": 1,
+      "action": "Ticket opened: Office Network Outage",
+      "performed_by": 2,
+      "timestamp": "2025-10-10T08:00:00Z"
+    }
+  },
+  {
+    "model": "tickets.ticketlog",
+    "pk": 2,
+    "fields": {
+      "ticket": 1,
+      "action": "Assigned to tech_alex by section_head_ben",
+      "performed_by": 6,
+      "timestamp": "2025-10-10T08:30:00Z"
+    }
+  },
+  {
+    "model": "tickets.ticketlog",
+    "pk": 3,
+    "fields": {
+      "ticket": 1,
+      "action": "Auto-escalated to section head: unresolved after 48h",
+      "performed_by": null,
+      "timestamp": "2025-10-11T08:00:00Z"
+    }
+  },
+  {
+    "model": "tickets.ticketlog",
+    "pk": 4,
+    "fields": {
+      "ticket": 1,
+      "action": "Auto-escalated to HOD: unresolved after escalation threshold",
+      "performed_by": null,
+      "timestamp": "2025-10-12T08:00:00Z"
+    }
+  },
+  {
+    "model": "tickets.ticketlog",
+    "pk": 5,
+    "fields": {
+      "ticket": 3,
+      "action": "Ticket opened: Leaking Faucet",
+      "performed_by": 2,
+      "timestamp": "2025-10-12T10:00:00Z"
+    }
+  },
+  {
+    "model": "tickets.ticketlog",
+    "pk": 6,
+    "fields": {
+      "ticket": 3,
+      "action": "Assigned to tech_john by section_head_mike",
+      "performed_by": 7,
+      "timestamp": "2025-10-12T10:30:00Z"
+    }
+  },
+  {
+    "model": "tickets.ticketlog",
+    "pk": 7,
+    "fields": {
+      "ticket": 3,
+      "action": "Status changed to resolved by tech_john",
+      "performed_by": 13,
+      "timestamp": "2025-10-12T14:30:00Z"
+    }
+  },
+  {
+    "model": "tickets.ticketlog",
+    "pk": 8,
+    "fields": {
+      "ticket": 3,
+      "action": "Ticket closed by user_sarah",
+      "performed_by": 2,
+      "timestamp": "2025-10-12T15:00:00Z"
+    }
+  },
+  {
+    "model": "tickets.ticketlog",
+    "pk": 9,
+    "fields": {
+      "ticket": 8,
+      "action": "Ticket opened: Blocked Drainage",
+      "performed_by": 2,
+      "timestamp": "2025-10-17T09:30:00Z"
+    }
+  },
+  {
+    "model": "tickets.ticketlog",
+    "pk": 10,
+    "fields": {
+      "ticket": 8,
+      "action": "Auto-escalated to section head: safety hazard unresolved after 24h",
+      "performed_by": null,
+      "timestamp": "2025-10-18T09:30:00Z"
     }
   }
 ]

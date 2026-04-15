@@ -1,5 +1,5 @@
 from rest_framework import permissions
-from tickets.models import Ticket
+from tickets.models import Ticket, Campus, Department, Organization
 
 
 # ORGANIZATIONAL HIERARCHY PERMISSIONS
@@ -38,7 +38,15 @@ class IsWithinOrganizationalScope(permissions.BasePermission):
         if isinstance(obj, Ticket):
             return self._check_ticket_access(user, obj)
 
-        # Check if object has organizational context
+        # Direct organizational model checks (object IS the organizational unit)
+        if isinstance(obj, Organization):
+            return self._check_organization_access(user, obj)
+        if isinstance(obj, Campus):
+            return self._check_campus_access(user, obj)
+        if isinstance(obj, Department):
+            return self._check_department_access(user, obj)
+
+        # Check if object has organizational context (FK relationships)
         if hasattr(obj, 'section'):
             return self._check_section_access(user, obj.section)
         elif hasattr(obj, 'department'):
@@ -110,12 +118,35 @@ class IsWithinOrganizationalScope(permissions.BasePermission):
     @staticmethod
     def _check_campus_access(user, campus):
         """Check if user has access to specific campus"""
+        if not user.primary_campus:
+            return False
         if user.role == 'director':
             return campus.organization == user.primary_campus.organization
         elif user.role in ['hod', 'section_head', 'technician', 'user']:
             return campus == user.primary_campus
 
         return False
+
+    @staticmethod
+    def _check_organization_access(user, organization):
+        """Check if user has access to specific organization"""
+        if not user.primary_campus:
+            return False
+        return user.primary_campus.organization == organization
+
+
+class IsAdminOrReadOnly(permissions.BasePermission):
+    """
+    Allow read (GET/HEAD/OPTIONS) access to any authenticated user within
+    organizational scope; restrict write (POST/PUT/PATCH/DELETE) to admin only.
+    """
+
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        return request.user.role == 'admin'
 
 
 class CanAssignTickets(permissions.BasePermission):

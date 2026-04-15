@@ -7,10 +7,12 @@
 @contentType = application/json
 
 ### Variables for tokens (update after login)
-@adminToken = 
-@userToken = 
-@technicianToken = 
-@managerToken = 
+@adminToken = 35736009bb13914443795bc65bc65eed01f6c004
+@userToken =
+@technicianToken =
+@hodToken =
+@directorToken =
+@sectionHeadToken =
 
 ### Test Credentials (from fixtures)
 # Credentials are managed in docs/DEFAULT_CREDENTIALS.md
@@ -93,6 +95,237 @@ Authorization: Token {{adminToken}}
 ### 11. Get Technicians by Section (for assignment)
 GET {{baseUrl}}/api/technicians/?section_id=1
 Authorization: Token {{adminToken}}
+
+################################################################################
+# ORGANIZATION HIERARCHY  (Organizations → Campuses → Departments)
+# All list endpoints are scoped by role — see NOTES for field stripping detail
+################################################################################
+
+# ── ORGANIZATIONS ────────────────────────────────────────────────────────────
+
+### 12. List All Organizations (admin sees all)
+GET {{baseUrl}}/api/organizations/
+Authorization: Token {{adminToken}}
+
+### 13. List Organizations (director — scoped to own org)
+GET {{baseUrl}}/api/organizations/
+Authorization: Token {{directorToken}}
+
+### 14. Get Single Organization
+GET {{baseUrl}}/api/organizations/1/
+Authorization: Token {{adminToken}}
+
+### 15. Create Organization (admin only)
+POST {{baseUrl}}/api/organizations/
+Content-Type: {{contentType}}
+Authorization: Token {{adminToken}}
+
+{
+  "name": "Riverside Technical University",
+  "code": "RTU",
+  "organization_type": "education",
+  "headquarters": "Riverside Campus, Block A"
+}
+
+### 16. Update Organization (admin only)
+PATCH {{baseUrl}}/api/organizations/1/
+Content-Type: {{contentType}}
+Authorization: Token {{adminToken}}
+
+{
+  "headquarters": "Riverside Campus, Block B"
+}
+
+### 17. Delete Organization (admin only — cascades to campuses/depts/sections)
+DELETE {{baseUrl}}/api/organizations/1/
+Authorization: Token {{adminToken}}
+
+### ERROR: Non-admin tries to create organization (expect 403)
+POST {{baseUrl}}/api/organizations/
+Content-Type: {{contentType}}
+Authorization: Token {{hodToken}}
+
+{
+  "name": "Rogue Org",
+  "code": "RGO",
+  "organization_type": "other",
+  "headquarters": "Somewhere"
+}
+
+# ── CAMPUSES ──────────────────────────────────────────────────────────────────
+
+### 18. List All Campuses (admin sees all)
+GET {{baseUrl}}/api/campuses/
+Authorization: Token {{adminToken}}
+
+### 19. List Campuses (director — all campuses in their org)
+GET {{baseUrl}}/api/campuses/
+Authorization: Token {{directorToken}}
+
+### 20. List Campuses (HOD/section_head/user — returns only their own campus)
+GET {{baseUrl}}/api/campuses/
+Authorization: Token {{hodToken}}
+
+### 21. Get Single Campus
+GET {{baseUrl}}/api/campuses/1/
+Authorization: Token {{adminToken}}
+
+### 22. Create Campus (admin only)
+POST {{baseUrl}}/api/campuses/
+Content-Type: {{contentType}}
+Authorization: Token {{adminToken}}
+
+{
+  "name": "West Campus",
+  "code": "WEST",
+  "location": "West End, Building 3",
+  "organization_id": 1
+}
+
+### 23. Update Campus (admin only)
+PATCH {{baseUrl}}/api/campuses/1/
+Content-Type: {{contentType}}
+Authorization: Token {{adminToken}}
+
+{
+  "location": "Main Gate, Building 1"
+}
+
+### 24. Delete Campus (admin only — cascades to departments/sections)
+DELETE {{baseUrl}}/api/campuses/1/
+Authorization: Token {{adminToken}}
+
+### ERROR: Non-admin tries to create campus (expect 403)
+POST {{baseUrl}}/api/campuses/
+Content-Type: {{contentType}}
+Authorization: Token {{sectionHeadToken}}
+
+{
+  "name": "Rogue Campus",
+  "code": "RGC",
+  "location": "Nowhere",
+  "organization_id": 1
+}
+
+### ERROR: Non-admin tries to update campus (expect 403)
+PATCH {{baseUrl}}/api/campuses/1/
+Content-Type: {{contentType}}
+Authorization: Token {{hodToken}}
+
+{
+  "location": "Should not work"
+}
+
+# ── DEPARTMENTS ───────────────────────────────────────────────────────────────
+
+### 25. List All Departments (admin sees all)
+GET {{baseUrl}}/api/departments/
+Authorization: Token {{adminToken}}
+
+### 26. List Departments (director — all depts across their org's campuses)
+GET {{baseUrl}}/api/departments/
+Authorization: Token {{directorToken}}
+
+### 27. List Departments (HOD — all depts on their campus)
+GET {{baseUrl}}/api/departments/
+Authorization: Token {{hodToken}}
+
+### 28. List Departments (section_head/technician/user — only their own department)
+GET {{baseUrl}}/api/departments/
+Authorization: Token {{sectionHeadToken}}
+
+### 29. Get Single Department
+GET {{baseUrl}}/api/departments/1/
+Authorization: Token {{adminToken}}
+
+### 30. Create Department (admin only)
+POST {{baseUrl}}/api/departments/
+Content-Type: {{contentType}}
+Authorization: Token {{adminToken}}
+
+{
+  "name": "Information Technology",
+  "code": "ICT",
+  "campus_id": 1,
+  "is_active": true
+}
+
+### 31. Update Department — assign a Head of Department (admin only)
+# head_of_department must be a user with role "hod" and matching campus
+PATCH {{baseUrl}}/api/departments/1/
+Content-Type: {{contentType}}
+Authorization: Token {{adminToken}}
+
+{
+  "head_of_department": 3
+}
+
+### 32. Deactivate Department (admin only)
+PATCH {{baseUrl}}/api/departments/1/
+Content-Type: {{contentType}}
+Authorization: Token {{adminToken}}
+
+{
+  "is_active": false
+}
+
+### 33. Delete Department (admin only — cascades to sections)
+DELETE {{baseUrl}}/api/departments/1/
+Authorization: Token {{adminToken}}
+
+### ERROR: Non-admin tries to create department (expect 403)
+POST {{baseUrl}}/api/departments/
+Content-Type: {{contentType}}
+Authorization: Token {{hodToken}}
+
+{
+  "name": "Shadow Dept",
+  "code": "SHD",
+  "campus_id": 1
+}
+
+### ERROR: Non-admin tries to delete department (expect 403)
+DELETE {{baseUrl}}/api/departments/1/
+Authorization: Token {{directorToken}}
+
+# ── ROLE-BASED FIELD STRIPPING VERIFICATION ───────────────────────────────────
+# These requests let you confirm the get_fields() overrides are working.
+
+### Facility as admin (should include purchase_date, warranty_expiry, asset_value)
+GET {{baseUrl}}/api/facilities/1/
+Authorization: Token {{adminToken}}
+
+### Facility as HOD (should include purchase_date, warranty_expiry, asset_value)
+GET {{baseUrl}}/api/facilities/1/
+Authorization: Token {{hodToken}}
+
+### Facility as section_head (financial fields stripped)
+GET {{baseUrl}}/api/facilities/1/
+Authorization: Token {{sectionHeadToken}}
+
+### Section as admin (should include technicians list)
+GET {{baseUrl}}/api/sections/1/
+Authorization: Token {{adminToken}}
+
+### Section as section_head (should include technicians list)
+GET {{baseUrl}}/api/sections/1/
+Authorization: Token {{sectionHeadToken}}
+
+### Section as user/technician (technicians field stripped)
+GET {{baseUrl}}/api/sections/1/
+Authorization: Token {{userToken}}
+
+### Ticket as section_head (full: available_technicians, escalation detail, org path)
+GET {{baseUrl}}/api/tickets/1/
+Authorization: Token {{sectionHeadToken}}
+
+### Ticket as technician (no available_technicians, no org path)
+GET {{baseUrl}}/api/tickets/1/
+Authorization: Token {{technicianToken}}
+
+### Ticket as user (no available_technicians, no escalation detail, no org path)
+GET {{baseUrl}}/api/tickets/1/
+Authorization: Token {{userToken}}
 
 ################################################################################
 # ESCALATION PRIORITY TESTS (Feature: Priority based on escalation level)
@@ -585,10 +818,29 @@ Authorization: Token {{adminToken}}
 # Before running these tests:
 # 1. Start the Django development server: python manage.py runserver
 # 2. Load fixture data: python manage.py loaddata tickets/fixtures/tickets_initial_data_org.json
-# 3. Get an admin token: Use "Login as Admin Example" test first, copy token to @adminToken variable
-# 4. Update @userToken, @technicianToken, @managerToken by logging in with their credentials
-# 5. Replace {ticket_id}, {user_id}, etc. with actual IDs from responses
-# 6. Install REST Client extension in VS Code
+# 3. Get tokens by posting to /api/auth/login/ for each role and copying the token here:
+#      @adminToken       — role: admin
+#      @userToken        — role: user
+#      @technicianToken  — role: technician
+#      @hodToken         — role: hod
+#      @directorToken    — role: director
+#      @sectionHeadToken — role: section_head
+# 4. Replace {ticket_id}, {user_id}, etc. with actual IDs from responses
+# 5. Install REST Client extension in VS Code
+#
+# ORGANIZATION HIERARCHY ENDPOINTS:
+#   GET/POST  /api/organizations/         — list + create (create: admin only)
+#   GET/PATCH/DELETE  /api/organizations/{id}/   — read (scoped) + write (admin only)
+#   GET/POST  /api/campuses/              — list (scoped by role) + create (admin only)
+#   GET/PATCH/DELETE  /api/campuses/{id}/        — read (scoped) + write (admin only)
+#   GET/POST  /api/departments/           — list (scoped by role) + create (admin only)
+#   GET/PATCH/DELETE  /api/departments/{id}/     — read (scoped) + write (admin only)
+#
+# Scope by role (list endpoints):
+#   admin       → all records
+#   director    → all records within their organization
+#   hod         → all departments on their campus; only their own campus
+#   section_head/technician/user → only their own campus / department
 
 # Using REST Client Extension:
 # - Click "Send Request" link above each request to execute
@@ -601,6 +853,21 @@ Authorization: Token {{adminToken}}
 # - DRF Token Auth format: Authorization: Token your_token_here
 # - All endpoints require a valid token in the Authorization header
 # - Get token from /api/auth/login/ endpoint by posting username + password
+
+# ROLE-BASED FIELD STRIPPING:
+# Serializers automatically strip fields the requesting role doesn't need:
+#
+#   FacilitySerializer
+#     purchase_date, warranty_expiry, asset_value  →  hod / director / admin only
+#
+#   SectionSerializer
+#     technicians                                  →  section_head / hod / admin only
+#
+#   TicketSerializer
+#     available_technicians                        →  section_head / hod / admin only
+#     escalated_to, escalated_at,
+#     escalation_reason, next_escalation_due       →  all roles except: user (stripped)
+#     organizational_path                          →  section_head / hod / director / admin only
 
 # ESCALATION PRIORITY FEATURE:
 # The new feature automatically sets ticket priority based on escalation level:

@@ -33,9 +33,10 @@ from datetime import timedelta
 from tickets.api.permissions import (
     IsAdminOrManagerOrReadOnly, IsOwnerOrTechnicianOrAdmin,
     IsTechnicianOrAdmin, CanManageUsers, IsWithinOrganizationalScope,
-    CanAssignTickets, CanEscalateTickets, CanViewAnalytics
+    CanAssignTickets, CanEscalateTickets, CanViewAnalytics, IsAdminOrReadOnly
 )
 from tickets.serializers import (
+    OrganizationSerializer, CampusSerializer, DepartmentSerializer,
     SectionSerializer, FacilitySerializer, TicketSerializer, TicketListSerializer,
     CommentSerializer, FeedbackSerializer, UserSerializer
 )
@@ -59,56 +60,71 @@ from tickets.pagination import TicketPagination
 # ============================================================================
 
 class OrganizationListCreateView(ListCreateAPIView):
-    """Organization CRUD endpoints"""
+    """Organization list and create endpoint. Create is admin-only."""
     queryset = Organization.objects.all()
-    serializer_class = serializers.Serializer  # TODO: Create OrganizationSerializer
+    serializer_class = OrganizationSerializer
     permission_classes = [IsWithinOrganizationalScope]
+
+    def create(self, request, *args, **kwargs):
+        if request.user.role != 'admin':
+            raise PermissionDenied("Only administrators can create organizations")
+        return super().create(request, *args, **kwargs)
 
 
 class OrganizationDetailView(RetrieveUpdateDestroyAPIView):
-    """Organization detail endpoints"""
+    """Organization retrieve/update/delete. Reads are scoped; writes are admin-only."""
     queryset = Organization.objects.all()
-    serializer_class = serializers.Serializer  # TODO: Create OrganizationSerializer
-    permission_classes = [IsWithinOrganizationalScope]
+    serializer_class = OrganizationSerializer
+    permission_classes = [IsWithinOrganizationalScope, IsAdminOrReadOnly]
 
 
 class CampusListCreateView(ListCreateAPIView):
-    """Campus CRUD endpoints"""
+    """Campus list and create endpoint. Create is admin-only."""
     queryset = Campus.objects.all()
-    serializer_class = serializers.Serializer  # TODO: Create CampusSerializer
+    serializer_class = CampusSerializer
     permission_classes = [IsWithinOrganizationalScope]
+
+    def create(self, request, *args, **kwargs):
+        if request.user.role != 'admin':
+            raise PermissionDenied("Only administrators can create campuses")
+        return super().create(request, *args, **kwargs)
 
     def get_queryset(self):
         """Filter campuses based on user's organizational scope"""
-        queryset = Campus.objects.all()
+        queryset = Campus.objects.select_related('organization').all()
         user = self.request.user
 
         if user.role == 'admin':
             return queryset
         elif user.role == 'director' and user.primary_campus:
             return queryset.filter(organization=user.primary_campus.organization)
-        elif user.role in ['hod', 'section_head', 'technician'] and user.primary_campus:
+        elif user.role in ['hod', 'section_head', 'technician', 'user'] and user.primary_campus:
             return queryset.filter(id=user.primary_campus.id)
         return queryset.none()
 
 
 class CampusDetailView(RetrieveUpdateDestroyAPIView):
-    """Campus detail endpoints"""
-    queryset = Campus.objects.all()
-    serializer_class = serializers.Serializer  # TODO: Create CampusSerializer
-    permission_classes = [IsWithinOrganizationalScope]
+    """Campus retrieve/update/delete. Reads are scoped; writes are admin-only."""
+    queryset = Campus.objects.select_related('organization').all()
+    serializer_class = CampusSerializer
+    permission_classes = [IsWithinOrganizationalScope, IsAdminOrReadOnly]
 
 
 class DepartmentListCreateView(ListCreateAPIView):
-    """Department CRUD endpoints"""
+    """Department list and create endpoint. Create is admin-only."""
     queryset = Department.objects.all()
-    serializer_class = serializers.Serializer  # TODO: Create DepartmentSerializer
+    serializer_class = DepartmentSerializer
     permission_classes = [IsWithinOrganizationalScope]
+
+    def create(self, request, *args, **kwargs):
+        if request.user.role != 'admin':
+            raise PermissionDenied("Only administrators can create departments")
+        return super().create(request, *args, **kwargs)
 
     def get_queryset(self):
         """Filter departments based on user's organizational scope"""
         queryset = Department.objects.select_related(
-            'campus', 'head_of_department').all()
+            'campus', 'campus__organization', 'head_of_department').all()
         user = self.request.user
 
         if user.role == 'admin':
@@ -117,16 +133,17 @@ class DepartmentListCreateView(ListCreateAPIView):
             return queryset.filter(campus__organization=user.primary_campus.organization)
         elif user.role == 'hod' and user.primary_campus:
             return queryset.filter(campus=user.primary_campus)
-        elif user.role == 'section_head' and user.primary_department:
+        elif user.role in ['section_head', 'technician', 'user'] and user.primary_department:
             return queryset.filter(id=user.primary_department.id)
         return queryset.none()
 
 
 class DepartmentDetailView(RetrieveUpdateDestroyAPIView):
-    """Department detail endpoints"""
-    queryset = Department.objects.all()
-    serializer_class = serializers.Serializer  # TODO: Create DepartmentSerializer
-    permission_classes = [IsWithinOrganizationalScope]
+    """Department retrieve/update/delete. Reads are scoped; writes are admin-only."""
+    queryset = Department.objects.select_related(
+        'campus', 'campus__organization', 'head_of_department').all()
+    serializer_class = DepartmentSerializer
+    permission_classes = [IsWithinOrganizationalScope, IsAdminOrReadOnly]
 
 
 # ============================================================================
@@ -187,7 +204,7 @@ class FacilityListCreateView(ListCreateAPIView):
     serializer_class = FacilitySerializer
     permission_classes = [IsWithinOrganizationalScope]
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['campus', 'department', 'type']
+    filterset_fields = ['campus', 'type']
 
     def create(self, request, *args, **kwargs):
         """Restrict facility creation to admins only"""
@@ -197,23 +214,14 @@ class FacilityListCreateView(ListCreateAPIView):
 
     def get_queryset(self):
         """Filter facilities based on user's organizational scope"""
-        queryset = Facility.objects.select_related(
-            'campus', 'department').all()
+        queryset = Facility.objects.select_related('campus').all()
         user = self.request.user
 
         if user.role == 'admin':
             return queryset
         elif user.role == 'director':
-            # Director sees facilities in their organization
             return queryset.filter(campus__organization=user.primary_campus.organization)
-        elif user.role == 'hod':
-            # HOD sees facilities in their campus
-            return queryset.filter(campus=user.primary_campus)
-        elif user.role == 'section_head':
-            # Section head sees facilities in their department
-            return queryset.filter(department=user.primary_department)
-        elif user.role in ['technician', 'user']:
-            # Technicians/users see facilities in their primary campus/department
+        elif user.role in ['hod', 'section_head', 'technician', 'user']:
             return queryset.filter(campus=user.primary_campus)
 
         return queryset.none()

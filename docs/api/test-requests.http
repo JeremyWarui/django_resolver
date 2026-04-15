@@ -13,10 +13,8 @@
 @managerToken = 
 
 ### Test Credentials (from fixtures)
-# Admin: admin_user / adminuser123
-# Technician: tech_alex / alexsmith123
-# User: jane_user / janedoe123
-# Manager: manager_ben / benclark123
+# Credentials are managed in docs/DEFAULT_CREDENTIALS.md
+# DO NOT commit real tokens or passwords to this file
 
 ################################################################################
 # AUTHENTICATION & USER MANAGEMENT

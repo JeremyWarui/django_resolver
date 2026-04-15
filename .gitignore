@@ -44,6 +44,7 @@ docs/DEFAULT_CREDENTIALS.md
 tickets/fixtures/tickets_initial_data.json
 tickets/fixtures/tickets_additional_data.json
 tickets/fixtures/tickets_initial_data_org.json
+tickets/fixtures/*
 
 # Environment
 venv/

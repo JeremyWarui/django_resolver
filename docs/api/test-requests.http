@@ -7,7 +7,7 @@
 @contentType = application/json
 
 ### Variables for tokens (update after login)
-@adminToken = 091f78201d634c688abdb59bdded0008ce82abe2
+@adminToken = 
 @userToken = 
 @technicianToken = 
 @managerToken = 
@@ -22,49 +22,34 @@
 # AUTHENTICATION & USER MANAGEMENT
 ################################################################################
 
-### 1. Login as User (regular user who creates tickets)
-# Fixture data: username: testuser, password: testpass123
+### 1. Login as User
 POST {{baseUrl}}/api/auth/login/
 Content-Type: {{contentType}}
 
 {
-  "username": "testuser",
-  "password": "testpass123"
+  "username": "user_sarah",
+  "password": "adminuser123"
 }
 
-### 2. Login as Technician (can be assigned tickets, update status)
-# Get technician credentials from fixture data
+### 2. Login as Technician
 POST {{baseUrl}}/api/auth/login/
 Content-Type: {{contentType}}
 
 {
-  "username": "technician_username",
-  "password": "tech_password"
+  "username": "tech_alex",
+  "password": "adminuser123"
 }
 
-### 3. Login as Manager (full access except some admin tasks)
+### 3. Login as Section Head
 POST {{baseUrl}}/api/auth/login/
 Content-Type: {{contentType}}
 
 {
-  "username": "manager_username",
-  "password": "manager_password"
+  "username": "section_head_ben",
+  "password": "adminuser123"
 }
 
-### 4. Login as Admin (full system access)
-POST {{baseUrl}}/api/auth/login/
-Content-Type: {{contentType}}
-
-{
-  "username": "admin_username",
-  "password": "admin_password"
-}
-
-################################################################################
-# USER MANAGEMENT
-################################################################################
-
-### 5. Login as Admin Example
+### 4. Login as Admin
 POST {{baseUrl}}/api/auth/login/
 Content-Type: {{contentType}}
 

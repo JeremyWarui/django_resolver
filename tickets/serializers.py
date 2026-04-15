@@ -9,55 +9,68 @@ class UsernameField(serializers.RelatedField):
         return value.username
 
 
+class NestedCampusSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Campus
+        fields = ["id", "code", "name"]
+
+
+class NestedDepartmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Department
+        fields = ["id", "code", "name"]
+
+
+class NestedSectionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Section
+        fields = ["id", "code", "name"]
+
+
+class NestedFacilitySerializer(serializers.ModelSerializer):
+    code = serializers.CharField(source="facility_code", read_only=True)
+
+    class Meta:
+        model = Facility
+        fields = ["id", "code", "name"]
+
+
 class FacilitySerializer(serializers.ModelSerializer):
-    campus_display = serializers.CharField(
-        source='campus', read_only=True, allow_null=True)
-    department_display = serializers.CharField(
-        source='department', read_only=True, allow_null=True)
-    campus_id = serializers.IntegerField(
-        source='campus.id', read_only=True, allow_null=True)
-    department_id = serializers.IntegerField(
-        source='department.id', read_only=True, allow_null=True)
+    campus = NestedCampusSerializer(read_only=True)
+    department = NestedDepartmentSerializer(read_only=True)
 
     class Meta:
         model = Facility
         fields = [
-            "id", "name", "facility_type", "status", "location",
-            "campus_id", "campus_display",
-            "department_id", "department_display",
+            "id", "name", "type", "status", "location",
+            "campus", "department",
             "purchase_date", "warranty_expiry", "asset_value"
         ]
 
 
 class SectionSerializer(serializers.ModelSerializer):
+    campus = NestedCampusSerializer(source='department.campus', read_only=True)
+    department = NestedDepartmentSerializer(read_only=True)
+    section_head = serializers.SerializerMethodField()
     technicians = serializers.StringRelatedField(many=True, read_only=True)
-    department_id = serializers.IntegerField(
-        source='department.id', read_only=True, allow_null=True)
-    department_display = serializers.CharField(
-        source='department', read_only=True, allow_null=True)
-    section_head_display = serializers.CharField(
-        source='section_head', read_only=True, allow_null=True)
-    section_head_id = serializers.IntegerField(
-        source='section_head.id', read_only=True, allow_null=True)
-    # Campus context - NEW
-    campus_id = serializers.IntegerField(
-        source='department.campus.id', read_only=True, allow_null=True)
-    campus_display = serializers.CharField(
-        source='department.campus', read_only=True, allow_null=True)
-    # Organization context - NEW
-    organization_id = serializers.IntegerField(
-        source='department.campus.organization.id', read_only=True, allow_null=True)
 
     class Meta:
         model = Section
         fields = [
             "id", "name", "description", "code",
-            "organization_id",
-            "campus_id", "campus_display",
-            "department_id", "department_display",
-            "section_head_id", "section_head_display",
-            "technicians", "is_active"
+            "campus", "department",
+            "section_head", "technicians", "is_active"
         ]
+
+    def get_section_head(self, obj):
+        if not obj.section_head:
+            return None
+        u = obj.section_head
+        return {
+            "id": u.id,
+            "username": u.username,
+            "name": f"{u.first_name} {u.last_name}".strip() or u.username
+        }
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -162,20 +175,16 @@ class TicketListSerializer(serializers.ModelSerializer):
     - NO available_technicians (frontend fetches dynamically)
     - NO comments (loaded separately if needed)
     - NO feedback (loaded separately if needed)
-    - Simple string for assigned_to_name (matches Nov 2025 optimization)
-    - Escalation status included for list filtering/display
+    - Nested section/facility objects with id, code, name
+    - Nested assigned_to with id and name
+    - Escalation status as {code, label} object
     """
 
-    assigned_to_name = serializers.SerializerMethodField(read_only=True)
-    section_id_value = serializers.IntegerField(
-        source="section.id", read_only=True)
-    facility_id_value = serializers.IntegerField(
-        source="facility.id", read_only=True)
-    escalation_status = serializers.SerializerMethodField(read_only=True)
-
-    section = serializers.StringRelatedField(read_only=True)
-    facility = serializers.StringRelatedField(read_only=True)
+    section = NestedSectionSerializer(read_only=True)
+    facility = NestedFacilitySerializer(read_only=True)
     raised_by = UsernameField(read_only=True)
+    assigned_to = serializers.SerializerMethodField(read_only=True)
+    escalation_status = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Ticket
@@ -187,11 +196,9 @@ class TicketListSerializer(serializers.ModelSerializer):
             "status",
             "priority",
             "section",
-            "section_id_value",
             "facility",
-            "facility_id_value",
             "raised_by",
-            "assigned_to_name",
+            "assigned_to",
             "created_at",
             "updated_at",
             "pending_reason",
@@ -201,21 +208,19 @@ class TicketListSerializer(serializers.ModelSerializer):
             "is_due_for_escalation",
         ]
 
-    def get_assigned_to_name(self, obj):
-        """Return assigned technician name as simple string (no extra query)."""
-        if obj.assigned_to:
-            return f"{obj.assigned_to.first_name} {obj.assigned_to.last_name}"
-        return None
+    def get_assigned_to(self, obj):
+        if not obj.assigned_to:
+            return None
+        name = f"{obj.assigned_to.first_name} {obj.assigned_to.last_name}".strip()
+        return {"id": obj.assigned_to.id, "name": name or obj.assigned_to.username}
 
     def get_escalation_status(self, obj):
-        """Return human-readable escalation status"""
-        if obj.escalation_level == 0:
-            return "Not escalated"
-        elif obj.escalation_level == 1:
-            return "Escalated to Section Head"
-        elif obj.escalation_level == 2:
-            return "Escalated to HOD (Maximum Level)"
-        return "Unknown"
+        mapping = {
+            0: {"code": "none", "label": "Not escalated"},
+            1: {"code": "section_head", "label": "Escalated to Section Head"},
+            2: {"code": "hod", "label": "Escalated to HOD (Maximum Level)"},
+        }
+        return mapping.get(obj.escalation_level, {"code": "unknown", "label": "Unknown"})
 
 
 class TicketSerializer(serializers.ModelSerializer):
@@ -240,10 +245,6 @@ class TicketSerializer(serializers.ModelSerializer):
         label="Section ID",
     )
 
-    # Read-only section_id for frontend consumption
-    section_id_value = serializers.IntegerField(
-        source="section.id", read_only=True)
-
     facility_id = serializers.PrimaryKeyRelatedField(
         queryset=Facility.objects.all(),
         source="facility",
@@ -251,15 +252,11 @@ class TicketSerializer(serializers.ModelSerializer):
         label="Facility ID",
     )
 
-    # Read-only facility_id for frontend consumption
-    facility_id_value = serializers.IntegerField(
-        source="facility.id", read_only=True)
-
-    section = serializers.StringRelatedField(read_only=True)
-    facility = serializers.StringRelatedField(read_only=True)
+    section = NestedSectionSerializer(read_only=True)
+    facility = NestedFacilitySerializer(read_only=True)
     raised_by = UsernameField(read_only=True)
-    assigned_to = UserSerializer(read_only=True)
-    escalated_to = serializers.StringRelatedField(read_only=True)
+    assigned_to = serializers.SerializerMethodField(read_only=True)
+    escalated_to = serializers.SerializerMethodField(read_only=True)
     comments = CommentSerializer(many=True, read_only=True)
     feedback = FeedbackSerializer(read_only=True)
 
@@ -278,10 +275,8 @@ class TicketSerializer(serializers.ModelSerializer):
             "priority",
             "section_id",
             "section",
-            "section_id_value",
             "facility_id",
             "facility",
-            "facility_id_value",
             "raised_by",
             "assigned_to_id",
             "assigned_to",
@@ -297,15 +292,37 @@ class TicketSerializer(serializers.ModelSerializer):
             "escalated_at",
             "escalation_reason",
             "escalation_status",
-            "auto_escalation_enabled",
+            # auto_escalation_enabled — omitted from response (internal system setting)
+            # escalation_threshold_hours — TODO: move to Section model as per-section SLA
             "next_escalation_due",
-            "escalation_threshold_hours",
             "is_due_for_escalation",
             "organizational_path",
             # Relationships
             "comments",
             "feedback",
         ]
+
+    def get_assigned_to(self, obj):
+        u = obj.assigned_to if not isinstance(obj, dict) else obj.get('assigned_to')
+        if not u:
+            return None
+        return {
+            "id": u.id,
+            "username": u.username,
+            "name": f"{u.first_name} {u.last_name}".strip() or u.username,
+            "role": u.role,
+        }
+
+    def get_escalated_to(self, obj):
+        u = obj.escalated_to if not isinstance(obj, dict) else obj.get('escalated_to')
+        if not u:
+            return None
+        return {
+            "id": u.id,
+            "username": u.username,
+            "name": f"{u.first_name} {u.last_name}".strip() or u.username,
+            "role": u.role,
+        }
 
     def get_available_technicians(self, obj):
         """Return list of technicians who can be assigned to this ticket."""
@@ -324,56 +341,32 @@ class TicketSerializer(serializers.ModelSerializer):
         return []
 
     def get_escalation_status(self, obj):
-        """Return human-readable escalation status"""
-        # Handle both dict (validated_data) and Ticket instance cases
-        escalation_level = None
-        if isinstance(obj, dict):
-            escalation_level = obj.get('escalation_level', 0)
-        else:
-            escalation_level = obj.escalation_level if hasattr(
-                obj, 'escalation_level') else 0
-
-        if escalation_level == 0:
-            return "Not escalated"
-        elif escalation_level == 1:
-            return "Escalated to Section Head"
-        elif escalation_level == 2:
-            return "Escalated to HOD (Maximum Level)"
-        return "Unknown"
+        """Return escalation status as {code, label} object"""
+        escalation_level = obj.get('escalation_level', 0) if isinstance(obj, dict) else getattr(obj, 'escalation_level', 0)
+        mapping = {
+            0: {"code": "none", "label": "Not escalated"},
+            1: {"code": "section_head", "label": "Escalated to Section Head"},
+            2: {"code": "hod", "label": "Escalated to HOD (Maximum Level)"},
+        }
+        return mapping.get(escalation_level, {"code": "unknown", "label": "Unknown"})
 
     def get_organizational_path(self, obj):
-        """Return full organizational hierarchy path for the ticket"""
-        # Handle both dict (validated_data) and Ticket instance cases
-        if isinstance(obj, dict):
-            section = obj.get('section')
-            if not section:
-                return None
-            try:
-                if section.department:
-                    campus = section.department.campus
-                    org = campus.organization if campus else None
-                    return {
-                        'organization': str(org) if org else None,
-                        'campus': str(campus) if campus else None,
-                        'department': str(section.department) if section.department else None,
-                        'section': str(section) if section else None,
-                    }
-            except (AttributeError, TypeError):
-                pass
-        else:
-            try:
-                if obj.section and obj.section.department:
-                    campus = obj.section.department.campus
-                    org = campus.organization if campus else None
-                    return {
-                        'organization': str(org) if org else None,
-                        'campus': str(campus) if campus else None,
-                        'department': str(obj.section.department) if obj.section.department else None,
-                        'section': str(obj.section) if obj.section else None,
-                    }
-            except (AttributeError, TypeError):
-                pass
-        return None
+        """Return full organizational hierarchy as nested {id, code, name} objects."""
+        section = obj.get('section') if isinstance(obj, dict) else getattr(obj, 'section', None)
+        if not section:
+            return None
+        try:
+            dept = section.department
+            campus = dept.campus if dept else None
+            org = campus.organization if campus else None
+            return {
+                'organization': {'id': org.id, 'code': org.code, 'name': org.name} if org else None,
+                'campus': {'id': campus.id, 'code': campus.code, 'name': campus.name} if campus else None,
+                'department': {'id': dept.id, 'code': dept.code, 'name': dept.name} if dept else None,
+                'section': {'id': section.id, 'code': section.code, 'name': section.name},
+            }
+        except (AttributeError, TypeError):
+            return None
 
     def update(self, instance, validated_data):
         """Use default ModelSerializer update then let services call

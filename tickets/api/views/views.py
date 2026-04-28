@@ -167,7 +167,10 @@ class SectionListCreateView(ListCreateAPIView):
     def get_queryset(self):
         """Filter sections based on user's organizational scope"""
         queryset = Section.objects.select_related(
-            'department', 'section_head').all()
+            'department__campus', 'section_head'
+        ).prefetch_related(
+            Prefetch('technicians', queryset=CustomUser.objects.select_related('primary_campus'))
+        ).all()
         user = self.request.user
 
         if user.role == 'admin':
@@ -588,7 +591,10 @@ class FeedbackListCreateView(ListCreateAPIView):
 # ============================================================================
 
 class UserListCreateView(ListCreateAPIView):
-    queryset = CustomUser.objects.all().order_by('username')
+    queryset = CustomUser.objects.select_related(
+        'primary_campus__organization',
+        'primary_department__campus__organization',
+    ).prefetch_related('sections').order_by('username')
     serializer_class = UserSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['role', 'sections']

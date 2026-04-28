@@ -400,20 +400,26 @@ class TicketSerializer(serializers.ModelSerializer):
         }
 
     def get_available_technicians(self, obj):
-        """Return list of technicians who can be assigned to this ticket."""
-        # Handle both dict (validated_data) and Ticket instance cases
-        section = None
-        if isinstance(obj, dict):
-            section = obj.get('section')
-        else:
-            section = obj.section if hasattr(obj, 'section') else None
+        """Return technicians assignable to this ticket's section.
 
-        if section:
-            technicians = CustomUser.objects.filter(
-                role="technician", sections=section
-            ).values("id", "username", "first_name", "last_name")
-            return list(technicians)
-        return []
+        Uses prefetched data from TicketDetailView (available_technicians_prefetch)
+        to avoid a per-ticket DB query. Falls back to a direct query when the
+        prefetch isn't present (e.g. in the create response path).
+        """
+        section = obj.get('section') if isinstance(obj, dict) else getattr(obj, 'section', None)
+        if not section:
+            return []
+
+        if hasattr(section, 'available_technicians_prefetch'):
+            return [
+                {"id": t.id, "username": t.username, "first_name": t.first_name, "last_name": t.last_name}
+                for t in section.available_technicians_prefetch
+            ]
+
+        return list(
+            CustomUser.objects.filter(role="technician", sections=section)
+            .values("id", "username", "first_name", "last_name")
+        )
 
     def get_escalation_status(self, obj):
         """Return escalation status as {code, label} object"""

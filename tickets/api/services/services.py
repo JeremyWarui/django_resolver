@@ -260,7 +260,7 @@ class TicketService:
             )
 
         # Check technician belongs to ticket's section
-        if ticket.section not in technician.sections.all():
+        if not technician.sections.filter(pk=ticket.section_id).exists():
             raise InvalidAssignmentException(
                 f"Technician {technician.username} is not part of section {ticket.section.name}"
             )
@@ -432,18 +432,9 @@ class TicketService:
         reason: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Update status for multiple tickets in a single operation.
-
-        Args:
-            ticket_ids: List of ticket IDs to update
-            new_status: New status for all tickets
-            updated_by: User making the bulk update
-            reason: Optional reason for bulk update
-
-        Returns:
-            Dictionary with success/failure counts and details
+        Update status for multiple tickets in two DB round-trips: one bulk UPDATE
+        and one bulk INSERT for logs, instead of one transaction per ticket.
         """
-        # Ensure ticket_ids is a list
         if not isinstance(ticket_ids, list):
             ticket_ids = [ticket_ids]
 
@@ -455,15 +446,12 @@ class TicketService:
             'errors': []
         }
 
-        # Get all tickets
-        tickets = Ticket.objects.filter(id__in=ticket_ids)
+        tickets = list(
+            Ticket.objects.filter(id__in=ticket_ids).only('id', 'ticket_no', 'status')
+        )
 
-        # Track which ticket IDs were found
-        found_ids = set(tickets.values_list('id', flat=True))
-        missing_ids = set(ticket_ids) - found_ids
-
-        # Add errors for missing tickets
-        for missing_id in missing_ids:
+        found_ids = {t.id for t in tickets}
+        for missing_id in set(ticket_ids) - found_ids:
             results['failed'] += 1
             results['success'] = False
             results['errors'].append({
@@ -471,38 +459,46 @@ class TicketService:
                 'error': f'Ticket with ID {missing_id} not found'
             })
 
+        valid_tickets = []
         for ticket in tickets:
-            try:
-                # Validate and update status
-                is_valid, error_msg = validate_status_transition(
-                    ticket.status, new_status, updated_by.role)
-                if not is_valid:
-                    results['failed'] += 1
-                    results['success'] = False
-                    results['errors'].append({
-                        'ticket_id': ticket.id,
-                        'ticket_no': ticket.ticket_no,
-                        'error': error_msg
-                    })
-                    continue
-
-                # Perform status change
-                TicketService.update_ticket_status(
-                    ticket=ticket,
-                    new_status=new_status,
-                    updated_by=updated_by,
-                    notes=reason
-                )
+            if ticket.status == new_status:
                 results['updated'] += 1
-
-            except Exception as e:
+                continue
+            is_valid, error_msg = validate_status_transition(
+                ticket.status, new_status, updated_by.role)
+            if is_valid:
+                valid_tickets.append(ticket)
+            else:
                 results['failed'] += 1
                 results['success'] = False
                 results['errors'].append({
                     'ticket_id': ticket.id,
                     'ticket_no': ticket.ticket_no,
-                    'error': str(e)
+                    'error': error_msg
                 })
+
+        if valid_tickets:
+            valid_ids = [t.id for t in valid_tickets]
+            now = timezone.now()
+
+            update_kwargs = {'status': new_status, 'updated_at': now}
+            if new_status in ['resolved', 'closed']:
+                update_kwargs['resolved_at'] = now
+            if new_status == 'closed':
+                update_kwargs['closed_at'] = now
+
+            action = f"Bulk status update to '{new_status}'"
+            if reason:
+                action += f": {reason}"
+
+            with transaction.atomic():
+                Ticket.objects.filter(id__in=valid_ids).update(**update_kwargs)
+                TicketLog.objects.bulk_create([
+                    TicketLog(ticket_id=t.id, action=action, performed_by=updated_by)
+                    for t in valid_tickets
+                ])
+
+            results['updated'] += len(valid_tickets)
 
         return results
 
@@ -703,7 +699,7 @@ class TicketService:
 
         return queryset.select_related(
             'section', 'facility', 'raised_by', 'assigned_to', 'escalated_to'
-        ).order_by('-created_at')
+        ).distinct().order_by('-created_at')
 
     # ========================================================================
     # COMMENTS

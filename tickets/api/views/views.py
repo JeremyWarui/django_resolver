@@ -27,6 +27,7 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import OrderingFilter
 from django.db import models
+from django.db.models import Prefetch
 from django.utils import timezone
 from datetime import timedelta
 
@@ -346,7 +347,18 @@ class TicketDetailView(RetrieveUpdateDestroyAPIView):
     """Retrieve, update, and delete tickets with escalation support"""
     queryset = Ticket.objects.select_related(
         'section', 'facility', 'raised_by', 'assigned_to', 'escalated_to'
-    ).prefetch_related('comments', 'comments__author', 'feedback').all()
+    ).prefetch_related(
+        'comments',
+        'comments__author',
+        'feedback',
+        Prefetch(
+            'section__technicians',
+            queryset=CustomUser.objects.filter(role='technician').only(
+                'id', 'username', 'first_name', 'last_name'
+            ),
+            to_attr='available_technicians_prefetch'
+        )
+    ).all()
     serializer_class = TicketSerializer
     permission_classes = [IsWithinOrganizationalScope, IsAuthenticated]
 

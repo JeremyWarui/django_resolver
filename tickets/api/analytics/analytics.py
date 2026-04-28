@@ -18,11 +18,14 @@ Metrics Provided:
 
 from datetime import datetime, timedelta
 from django.utils import timezone
+from django.core.cache import cache
 from django.db.models import Count, Avg, Q, F, ExpressionWrapper, fields, FloatField, DurationField
 from django.db.models.functions import TruncDay, TruncWeek, TruncMonth
 from typing import Dict, List, Optional, Tuple
 
 from tickets.models import Ticket, CustomUser, Feedback, Facility, Section, Organization, Campus, Department, TicketLog
+
+ANALYTICS_CACHE_TTL = 300  # 5 minutes
 
 
 class TicketAnalytics:
@@ -33,129 +36,92 @@ class TicketAnalytics:
 
     @staticmethod
     def get_ticket_counts_by_timeframe(days=1, facility_id=None, section_id=None):
-        """
-        Get ticket counts for a specific timeframe (default: today).
-        Can be filtered by facility or section.
+        cache_key = f"analytics_timeframe_{days}_{facility_id}_{section_id}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
 
-        Args:
-            days (int): Number of days back to analyze
-            facility_id (int, optional): ID of facility to filter by
-            section_id (int, optional): ID of section to filter by
-
-        Returns:
-            dict: Count of tickets created in the specified timeframe
-        """
         time_threshold = timezone.now() - timedelta(days=days)
-
-        # Base queryset
         queryset = Ticket.objects.filter(created_at__gte=time_threshold)
-
-        # Apply optional filters
         if facility_id:
             queryset = queryset.filter(facility_id=facility_id)
         if section_id:
             queryset = queryset.filter(section_id=section_id)
 
-        # Get the count
-        count = queryset.count()
-
-        return {
+        result = {
             'period': f"Last {days} day{'s' if days > 1 else ''}",
-            'count': count
+            'count': queryset.count()
         }
+        cache.set(cache_key, result, ANALYTICS_CACHE_TTL)
+        return result
 
     @staticmethod
     def get_ticket_counts_by_status(facility_id=None, section_id=None):
-        """
-        Get ticket counts grouped by status.
-        Can be filtered by facility or section.
+        cache_key = f"analytics_status_{facility_id}_{section_id}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
 
-        Args:
-            facility_id (int, optional): ID of facility to filter by
-            section_id (int, optional): ID of section to filter by
-
-        Returns:
-            list: List of dictionaries with status and count
-        """
-        # Base queryset
         queryset = Ticket.objects.all()
-
-        # Apply optional filters
         if facility_id:
             queryset = queryset.filter(facility_id=facility_id)
         if section_id:
             queryset = queryset.filter(section_id=section_id)
 
-        # Group by status and count
-        status_counts = queryset.values('status').annotate(
-            count=Count('id')).order_by('status')
-
-        return list(status_counts)
+        result = list(queryset.values('status').annotate(count=Count('id')).order_by('status'))
+        cache.set(cache_key, result, ANALYTICS_CACHE_TTL)
+        return result
 
     @staticmethod
     def get_ticket_trend_data(days=30, group_by='day'):
-        """
-        Get ticket creation trend data for visualization.
+        cache_key = f"analytics_trend_{days}_{group_by}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
 
-        Args:
-            days (int): Number of days back to analyze
-            group_by (str): Grouping period - 'day', 'week', or 'month'
-
-        Returns:
-            list: Trend data for charting
-        """
         time_threshold = timezone.now() - timedelta(days=days)
+        trunc_map = {'week': TruncWeek('created_at'), 'month': TruncMonth('created_at')}
+        trunc_func = trunc_map.get(group_by, TruncDay('created_at'))
 
-        # Select appropriate truncation function
-        if group_by == 'week':
-            trunc_func = TruncWeek('created_at')
-        elif group_by == 'month':
-            trunc_func = TruncMonth('created_at')
-        else:  # default to day
-            trunc_func = TruncDay('created_at')
-
-        # Get trend data
-        trend_data = (
+        result = list(
             Ticket.objects.filter(created_at__gte=time_threshold)
             .annotate(period=trunc_func)
             .values('period')
             .annotate(count=Count('id'))
             .order_by('period')
         )
-
-        return list(trend_data)
+        cache.set(cache_key, result, ANALYTICS_CACHE_TTL)
+        return result
 
     @staticmethod
     def get_tickets_by_facility():
-        """
-        Get distribution of tickets by facility.
+        cache_key = "analytics_by_facility"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
 
-        Returns:
-            list: List of dictionaries with facility name and ticket count
-        """
-        facility_data = (
+        result = list(
             Facility.objects.annotate(ticket_count=Count('tickets'))
             .values('name', 'ticket_count')
             .order_by('-ticket_count')
         )
-
-        return list(facility_data)
+        cache.set(cache_key, result, ANALYTICS_CACHE_TTL)
+        return result
 
     @staticmethod
     def get_tickets_by_section():
-        """
-        Get distribution of tickets by section.
+        cache_key = "analytics_by_section"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
 
-        Returns:
-            list: List of dictionaries with section name and ticket count
-        """
-        section_data = (
+        result = list(
             Section.objects.annotate(ticket_count=Count('tickets'))
             .values('name', 'ticket_count')
             .order_by('-ticket_count')
         )
-
-        return list(section_data)
+        cache.set(cache_key, result, ANALYTICS_CACHE_TTL)
+        return result
 
 
 class TechnicianAnalytics:
@@ -167,117 +133,101 @@ class TechnicianAnalytics:
     @staticmethod
     def get_technician_performance(technician_id=None):
         """
-        Get performance metrics for technicians.
-
-        Args:
-            technician_id (int, optional): ID of specific technician to analyze
-
-        Returns:
-            list: List of technician performance metrics
+        Performance metrics for technicians via DB aggregation — single query instead
+        of multiple queries per technician.
         """
-        # Base queryset for technicians
-        queryset = CustomUser.objects.filter(role='technician')
+        cache_key = f"analytics_tech_performance_{technician_id}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
 
-        # Filter for specific technician if requested
+        overdue_threshold = timezone.now() - timedelta(hours=24)
+
+        queryset = CustomUser.objects.filter(role='technician')
         if technician_id:
             queryset = queryset.filter(id=technician_id)
 
-        # Calculate performance metrics for each technician
+        techs = queryset.annotate(
+            total_tickets=Count('assigned_tickets', distinct=True),
+            resolved_tickets=Count(
+                'assigned_tickets',
+                filter=Q(assigned_tickets__status__in=['resolved', 'closed']),
+                distinct=True
+            ),
+            pending_tickets=Count(
+                'assigned_tickets',
+                filter=Q(assigned_tickets__status__in=['assigned', 'in_progress', 'pending']),
+                distinct=True
+            ),
+            overdue_tickets=Count(
+                'assigned_tickets',
+                filter=Q(
+                    assigned_tickets__status__in=['assigned', 'in_progress', 'pending'],
+                    assigned_tickets__created_at__lt=overdue_threshold
+                ),
+                distinct=True
+            ),
+            avg_rating=Avg('assigned_tickets__feedback__rating'),
+            avg_resolution_hours=Avg(
+                ExpressionWrapper(
+                    F('assigned_tickets__updated_at') - F('assigned_tickets__created_at'),
+                    output_field=DurationField()
+                ),
+                filter=Q(assigned_tickets__status__in=['resolved', 'closed'])
+            ),
+        )
+
         performance_data = []
-
-        for tech in queryset:
-            # Tickets assigned to this technician
-            assigned_tickets = Ticket.objects.filter(assigned_to=tech)
-
-            # Resolved tickets
-            resolved_tickets = assigned_tickets.filter(
-                status__in=['resolved', 'closed'])
-
-            # Pending tickets
-            pending_tickets = assigned_tickets.filter(
-                status__in=['assigned', 'in_progress', 'pending']
-            )
-
-            # Overdue tickets (>24 hours old and not resolved)
-            overdue_threshold = timezone.now() - timedelta(hours=24)
-            overdue_tickets = pending_tickets.filter(
-                created_at__lt=overdue_threshold)
-
-            # Average rating from feedback
-            avg_rating = Feedback.objects.filter(
-                ticket__assigned_to=tech
-            ).aggregate(avg_rating=Avg('rating'))['avg_rating'] or 0
-
-            # Calculate resolution time for resolved tickets
-            resolution_times = []
-            for ticket in resolved_tickets:
-                # Using a simple heuristic for resolution time (created to updated time)
-                # In a real system, you might track state changes precisely
-                resolution_time = (
-                    # hours
-                    ticket.updated_at - ticket.created_at).total_seconds() / 3600
-                resolution_times.append(resolution_time)
-
-            avg_resolution_time = sum(
-                resolution_times) / len(resolution_times) if resolution_times else 0
-
-            # Get tickets by status breakdown
-            tickets_by_status = assigned_tickets.values('status').annotate(
-                count=Count('id')
-            ).values_list('status', 'count')
-            tickets_by_status_dict = {
-                status: count for status, count in tickets_by_status}
-
+        for tech in techs:
+            avg_res = (tech.avg_resolution_hours.total_seconds() / 3600) if tech.avg_resolution_hours else 0
             performance_data.append({
                 'id': tech.id,
                 'username': tech.username,
                 'full_name': f"{tech.first_name} {tech.last_name}",
-                'total_tickets': assigned_tickets.count(),
-                'resolved_tickets': resolved_tickets.count(),
-                'pending_tickets': pending_tickets.count(),
-                'overdue_tickets': overdue_tickets.count(),
-                'avg_rating': round(avg_rating, 2),
-                # in hours
-                'avg_resolution_time': round(avg_resolution_time, 2),
+                'total_tickets': tech.total_tickets,
+                'resolved_tickets': tech.resolved_tickets,
+                'pending_tickets': tech.pending_tickets,
+                'overdue_tickets': tech.overdue_tickets,
+                'avg_rating': round(tech.avg_rating or 0, 2),
+                'avg_resolution_time': round(avg_res, 2),
                 'resolution_percentage': round(
-                    (resolved_tickets.count() / assigned_tickets.count() * 100)
-                    if assigned_tickets.count() > 0 else 0, 2
+                    (tech.resolved_tickets / tech.total_tickets * 100)
+                    if tech.total_tickets > 0 else 0, 2
                 ),
-                'tickets_by_status': tickets_by_status_dict
             })
 
+        cache.set(cache_key, performance_data, ANALYTICS_CACHE_TTL)
         return performance_data
 
     @staticmethod
     def get_technician_ratings_by_section():
-        """
-        Get average technician ratings grouped by section.
-        Useful for identifying which sections have the best performing techs.
+        """Ratings grouped by section via a single aggregation query."""
+        cache_key = "analytics_tech_ratings_by_section"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
 
-        Returns:
-            list: List of sections with average tech ratings
-        """
-        section_ratings = []
+        rows = (
+            Section.objects.annotate(
+                technician_count=Count('technicians', distinct=True),
+                avg_rating=Avg('technicians__assigned_tickets__feedback__rating'),
+            ).values('name', 'technician_count', 'avg_rating')
+        )
 
-        for section in Section.objects.all():
-            # Get technicians in this section
-            techs_in_section = CustomUser.objects.filter(
-                sections=section,
-                role='technician'
-            )
-
-            # Get average rating across all these technicians
-            avg_section_rating = Feedback.objects.filter(
-                ticket__assigned_to__in=techs_in_section
-            ).aggregate(avg_rating=Avg('rating'))['avg_rating'] or 0
-
-            section_ratings.append({
-                'section_name': section.name,
-                'technician_count': techs_in_section.count(),
-                'avg_rating': round(avg_section_rating, 2)
-            })
-
-        return sorted(section_ratings, key=lambda x: x['avg_rating'], reverse=True)
+        result = sorted(
+            [
+                {
+                    'section_name': r['name'],
+                    'technician_count': r['technician_count'],
+                    'avg_rating': round(r['avg_rating'] or 0, 2),
+                }
+                for r in rows
+            ],
+            key=lambda x: x['avg_rating'],
+            reverse=True,
+        )
+        cache.set(cache_key, result, ANALYTICS_CACHE_TTL)
+        return result
 
 
 class OrganizationalAnalytics:
@@ -312,14 +262,17 @@ class OrganizationalAnalytics:
 
     @staticmethod
     def _calculate_sla_compliance(tickets_queryset) -> float:
-        """Calculate SLA compliance percentage"""
+        """Calculate SLA compliance percentage using a DB count instead of Python iteration."""
         total = tickets_queryset.count()
         if total == 0:
             return 0.0
 
-        # For now, count tickets that are not overdue as SLA-compliant
-        compliant = sum(1 for t in tickets_queryset if not t.is_overdue)
-        return (compliant / total * 100) if total > 0 else 0.0
+        sla_cutoff = timezone.now() - timedelta(days=7)
+        overdue_count = tickets_queryset.filter(
+            created_at__lt=sla_cutoff,
+            status__in=['open', 'assigned', 'in_progress', 'pending', 'escalated']
+        ).count()
+        return round(((total - overdue_count) / total) * 100, 2)
 
     @staticmethod
     def _get_escalation_trends(tickets_queryset, days: int = 30) -> Dict:
@@ -351,6 +304,11 @@ class OrganizationalAnalytics:
         """
         if user.role != 'director' or not user.primary_campus:
             return {}
+
+        cache_key = f"analytics_director_{user.primary_campus.organization_id}_{days}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
 
         org = user.primary_campus.organization
         time_threshold = timezone.now() - timedelta(days=days)
@@ -384,9 +342,10 @@ class OrganizationalAnalytics:
                 },
                 'total_tickets': campus_tickets.count(),
                 'open_tickets': campus_tickets.filter(status__in=['open', 'assigned']).count(),
-                'overdue_tickets': sum(
-                    1 for t in campus_tickets if t.is_overdue
-                ),
+                'overdue_tickets': campus_tickets.filter(
+                    created_at__lt=timezone.now() - timedelta(days=7),
+                    status__in=['open', 'assigned', 'in_progress', 'pending', 'escalated']
+                ).count(),
                 'escalated_tickets': campus_tickets.filter(escalation_level__gt=0).count(),
                 'avg_resolution_hours': OrganizationalAnalytics._calculate_avg_resolution_time(
                     campus_tickets
@@ -508,7 +467,7 @@ class OrganizationalAnalytics:
             count=Count('id')
         ).order_by('-count')
 
-        return {
+        result = {
             'organization': {
                 'name': org.name,
                 'code': org.code,
@@ -531,6 +490,8 @@ class OrganizationalAnalytics:
             'top_technicians': top_technicians,
             'period_days': days
         }
+        cache.set(cache_key, result, ANALYTICS_CACHE_TTL)
+        return result
 
     @staticmethod
     def hod_dashboard(user: CustomUser, days: int = 30) -> Dict:
@@ -548,6 +509,11 @@ class OrganizationalAnalytics:
         if user.role != 'hod' or not user.primary_campus:
             return {}
 
+        cache_key = f"analytics_hod_{user.primary_campus_id}_{days}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+
         campus = user.primary_campus
         time_threshold = timezone.now() - timedelta(days=days)
 
@@ -557,9 +523,11 @@ class OrganizationalAnalytics:
 
         # Campus overview
         total_tickets = all_tickets.count()
-        total_open = all_tickets.filter(
-            status__in=['open', 'assigned']).count()
-        overdue_count = sum(1 for t in all_tickets if t.is_overdue)
+        total_open = all_tickets.filter(status__in=['open', 'assigned']).count()
+        overdue_count = all_tickets.filter(
+            created_at__lt=timezone.now() - timedelta(days=7),
+            status__in=['open', 'assigned', 'in_progress', 'pending', 'escalated']
+        ).count()
         escalated_count = all_tickets.filter(escalation_level__gt=0).count()
 
         # Department breakdown
@@ -647,7 +615,7 @@ class OrganizationalAnalytics:
             count=Count('id')
         ).order_by('escalation_level')
 
-        return {
+        result = {
             'campus': {
                 'name': campus.name,
                 'code': campus.code,
@@ -671,6 +639,8 @@ class OrganizationalAnalytics:
             'escalation_by_level': list(escalation_by_level),
             'period_days': days
         }
+        cache.set(cache_key, result, ANALYTICS_CACHE_TTL)
+        return result
 
     @staticmethod
     def section_head_dashboard(user: CustomUser, days: int = 30) -> Dict:
@@ -688,6 +658,11 @@ class OrganizationalAnalytics:
         if user.role != 'section_head' or not user.primary_department:
             return {}
 
+        cache_key = f"analytics_section_head_{user.primary_department_id}_{days}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+
         department = user.primary_department
         time_threshold = timezone.now() - timedelta(days=days)
 
@@ -697,9 +672,11 @@ class OrganizationalAnalytics:
 
         # Department overview
         total_tickets = all_tickets.count()
-        total_open = all_tickets.filter(
-            status__in=['open', 'assigned']).count()
-        overdue_count = sum(1 for t in all_tickets if t.is_overdue)
+        total_open = all_tickets.filter(status__in=['open', 'assigned']).count()
+        overdue_count = all_tickets.filter(
+            created_at__lt=timezone.now() - timedelta(days=7),
+            status__in=['open', 'assigned', 'in_progress', 'pending', 'escalated']
+        ).count()
         escalated_count = all_tickets.filter(escalation_level__gt=0).count()
 
         # Section breakdown
@@ -773,7 +750,7 @@ class OrganizationalAnalytics:
             count=Count('id')
         ).order_by('-count')
 
-        return {
+        result = {
             'department': {
                 'name': department.name,
                 'code': department.code,
@@ -797,6 +774,8 @@ class OrganizationalAnalytics:
             'escalation_trends': escalation_trends,
             'period_days': days
         }
+        cache.set(cache_key, result, ANALYTICS_CACHE_TTL)
+        return result
 
 
 class AdminAnalytics:

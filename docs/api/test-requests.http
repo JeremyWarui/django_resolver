@@ -93,7 +93,7 @@ GET {{baseUrl}}/api/facilities/
 Authorization: Token {{adminToken}}
 
 ### 11. Get Technicians by Section (for assignment)
-GET {{baseUrl}}/api/technicians/?section_id=1
+GET {{baseUrl}}/api/technicians/?section_id=2
 Authorization: Token {{adminToken}}
 
 ################################################################################
@@ -510,7 +510,7 @@ Authorization: Token {{adminToken}}
 }
 
 ### 30. Get All Comments for a Ticket
-GET {{baseUrl}}/api/comments/?ticket=1
+GET {{baseUrl}}/api/comments/?ticket=2
 Authorization: Token {{adminToken}}
 
 ### 31. Update Comment

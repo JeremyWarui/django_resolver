@@ -786,80 +786,56 @@ class AdminAnalytics:
 
     @staticmethod
     def get_system_overview():
-        """
-        Get system-wide overview metrics.
+        cached = cache.get("analytics_admin_overview")
+        if cached is not None:
+            return cached
 
-        Returns:
-            dict: System overview statistics
-        """
-        total_tickets = Ticket.objects.count()
-        open_tickets = Ticket.objects.filter(status='open').count()
-        # Use only 'resolved' and 'closed' tickets with a valid resolved_at timestamp
-        resolved_tickets = Ticket.objects.filter(
-            status__in=['resolved', 'closed'],
-            resolved_at__isnull=False
-        ).count()
-        # print(Ticket.objects.filter(status__in=["closed", "resolved"],))
-        print(resolved_tickets)
-        # resolved_tickets = Ticket.objects.filter(
-        #     status__in=['resolved', 'closed']).count()
-
-        # Calculate tickets by age
         now = timezone.now()
-        day_ago = now - timedelta(days=1)
-        week_ago = now - timedelta(days=7)
-        month_ago = now - timedelta(days=30)
-
-        new_tickets = Ticket.objects.filter(created_at__gte=day_ago).count()
-        tickets_past_week = Ticket.objects.filter(
-            created_at__gte=week_ago).count()
-        tickets_past_month = Ticket.objects.filter(
-            created_at__gte=month_ago).count()
-
-        # -----------------------------------------------------------
-        # Calculate average resolution time (created_at to resolved_at)
-        # -----------------------------------------------------------
-        resolution_time_expr = ExpressionWrapper(
-            F('resolved_at') - F('created_at'),
-            output_field=DurationField()
+        resolved_qs = Ticket.objects.filter(
+            status__in=['resolved', 'closed'], resolved_at__isnull=False
         )
 
-        avg_resolution_time = (
-            Ticket.objects.filter(
-                status__in=['resolved', 'closed'],
-                resolved_at__isnull=False  # Only include tickets that have been truly resolved
+        counts = Ticket.objects.aggregate(
+            total=Count('id'),
+            open=Count('id', filter=Q(status='open')),
+            resolved=Count('id', filter=Q(status__in=['resolved', 'closed'], resolved_at__isnull=False)),
+            new_24h=Count('id', filter=Q(created_at__gte=now - timedelta(days=1))),
+            past_week=Count('id', filter=Q(created_at__gte=now - timedelta(days=7))),
+            past_month=Count('id', filter=Q(created_at__gte=now - timedelta(days=30))),
+        )
+
+        avg_resolution_time = resolved_qs.annotate(
+            resolution_time=ExpressionWrapper(
+                F('resolved_at') - F('created_at'), output_field=DurationField()
             )
-            .annotate(resolution_time=resolution_time_expr)
-            .aggregate(avg=Avg('resolution_time'))['avg']
+        ).aggregate(avg=Avg('resolution_time'))['avg']
+
+        avg_resolution_hours = (
+            round(avg_resolution_time.total_seconds() / 3600, 2)
+            if avg_resolution_time else None
         )
+        total = counts['total'] or 0
+        resolved = counts['resolved'] or 0
 
-        # print(avg_resolution_time)
-
-        # Convert to hours if not None
-        avg_resolution_hours = None
-        if avg_resolution_time:
-            avg_resolution_hours = avg_resolution_time.total_seconds() / 3600
-            # print(avg_resolution_hours)
-
-        return {
-            'total_tickets': total_tickets,
-            'open_tickets': open_tickets,
-            'resolved_tickets': resolved_tickets,
-            'resolution_rate': round((resolved_tickets / total_tickets * 100) if total_tickets else 0, 2),
-            'new_tickets_24h': new_tickets,
-            'tickets_past_week': tickets_past_week,
-            'tickets_past_month': tickets_past_month,
-            'avg_resolution_time_hours': round(avg_resolution_hours, 2) if avg_resolution_hours else None,
+        result = {
+            'total_tickets': total,
+            'open_tickets': counts['open'] or 0,
+            'resolved_tickets': resolved,
+            'resolution_rate': round((resolved / total * 100) if total else 0, 2),
+            'new_tickets_24h': counts['new_24h'] or 0,
+            'tickets_past_week': counts['past_week'] or 0,
+            'tickets_past_month': counts['past_month'] or 0,
+            'avg_resolution_time_hours': avg_resolution_hours,
         }
+        cache.set("analytics_admin_overview", result, ANALYTICS_CACHE_TTL)
+        return result
 
     @staticmethod
     def get_overdue_tickets():
-        """
-        Get list of overdue tickets (>24 hours old and not resolved).
+        cached = cache.get("analytics_admin_overdue")
+        if cached is not None:
+            return cached
 
-        Returns:
-            list: List of overdue ticket information
-        """
         overdue_threshold = timezone.now() - timedelta(hours=24)
 
         overdue_tickets = (
@@ -876,21 +852,23 @@ class AdminAnalytics:
             )
         )
 
-        result = []
-        for ticket in overdue_tickets:
-            age_hours = ticket.age_hours.total_seconds(
-            ) / 3600 if hasattr(ticket, 'age_hours') else 0
-
-            result.append({
-                'id': ticket.id,
-                'ticket_no': ticket.ticket_no,
-                'title': ticket.title,
-                'status': ticket.status,
-                'section': ticket.section.name,
-                'facility': ticket.facility.name,
-                'assigned_to': ticket.assigned_to.username if ticket.assigned_to else None,
-                'age_hours': round(age_hours, 2),
-                'created_at': ticket.created_at,
-            })
-
-        return sorted(result, key=lambda x: x['age_hours'], reverse=True)
+        result = sorted(
+            [
+                {
+                    'id': t.id,
+                    'ticket_no': t.ticket_no,
+                    'title': t.title,
+                    'status': t.status,
+                    'section': t.section.name,
+                    'facility': t.facility.name,
+                    'assigned_to': t.assigned_to.username if t.assigned_to else None,
+                    'age_hours': round(t.age_hours.total_seconds() / 3600, 2),
+                    'created_at': t.created_at,
+                }
+                for t in overdue_tickets
+            ],
+            key=lambda x: x['age_hours'],
+            reverse=True,
+        )
+        cache.set("analytics_admin_overdue", result, ANALYTICS_CACHE_TTL)
+        return result

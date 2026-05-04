@@ -119,6 +119,12 @@ class FacilitySerializer(serializers.ModelSerializer):
 class SectionSerializer(serializers.ModelSerializer):
     campus = NestedCampusSerializer(source='department.campus', read_only=True)
     department = NestedDepartmentSerializer(read_only=True)
+    department_id = serializers.PrimaryKeyRelatedField(
+        queryset=Department.objects.all(),
+        source='department',
+        write_only=True,
+        required=True,
+    )
     section_head = serializers.SerializerMethodField()
     technicians = serializers.StringRelatedField(many=True, read_only=True)
 
@@ -126,7 +132,7 @@ class SectionSerializer(serializers.ModelSerializer):
         model = Section
         fields = [
             "id", "name", "description", "code",
-            "campus", "department",
+            "campus", "department", "department_id",
             "section_head", "technicians", "is_active"
         ]
 

@@ -13,8 +13,14 @@ from tickets.models import CustomUser, Section, Facility, Ticket, Comment, Feedb
 
 class CustomUserAdmin(ModelAdmin):
     model = CustomUser
-    list_display = ("username", "email", "role_badge",
-                    "is_staff", "is_active", "sections_count")
+    list_display = (
+        "username",
+        "email",
+        "role_badge",
+        "is_staff",
+        "is_active",
+        "sections_count",
+    )
     list_filter = ("role", "is_staff", "is_active", "sections")
     form = UserChangeForm
     add_form = UserCreationForm
@@ -25,29 +31,48 @@ class CustomUserAdmin(ModelAdmin):
             "user": "#3b82f6",
             "technician": "#10b981",
             "manager": "#f59e0b",
-            "admin": "#ef4444"
+            "admin": "#ef4444",
         }
         color = role_colors.get(obj.role, "#6b7280")
         return format_html(
             '<span style="background: {}; color: white; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 500;">{}</span>',
-            color, obj.role.title()
+            color,
+            obj.role.title(),
         )
 
     @display(description="Sections")
     def sections_count(self, obj):
         count = obj.sections.count()
-        return format_html('<span style="color: #6b7280; font-weight: 500;">{} sections</span>', count)
+        return format_html(
+            '<span style="color: #6b7280; font-weight: 500;">{} sections</span>', count
+        )
+
     fieldsets = (
         (None, {"fields": ("username", "password")}),
         ("Personal Info", {"fields": ("first_name", "last_name", "email")}),
-        ("Permissions", {"fields": ("is_active", "is_staff",
-         "is_superuser", "groups", "user_permissions")}),
+        (
+            "Permissions",
+            {
+                "fields": (
+                    "is_active",
+                    "is_staff",
+                    "is_superuser",
+                    "groups",
+                    "user_permissions",
+                )
+            },
+        ),
         ("Role and Sections", {"fields": ("role", "sections")}),
         ("Important Dates", {"fields": ("last_login", "date_joined")}),
     )
     add_fieldsets = (
-        (None, {"classes": ("wide",), "fields": (
-            "username", "password1", "password2", "email")}),
+        (
+            None,
+            {
+                "classes": ("wide",),
+                "fields": ("username", "password1", "password2", "email"),
+            },
+        ),
         ("Role and Sections", {"fields": ("role", "sections")}),
     )
     search_fields = ("username", "email", "first_name", "last_name")
@@ -69,25 +94,26 @@ class CustomUserAdmin(ModelAdmin):
 
 
 class SectionAdmin(ModelAdmin):
-    list_display = ("name", "description",
-                    "technicians_count", "tickets_count")
+    list_display = ("name", "description", "technicians_count", "tickets_count")
     search_fields = ("name", "description")
 
     @display(description="Technicians")
     def technicians_count(self, obj):
-        count = obj.technicians.filter(role='technician').count()
-        return format_html('<span style="color: #059669; font-weight: 500;">{}</span>', count)
+        count = obj.technicians.filter(role="technician").count()
+        return format_html(
+            '<span style="color: #059669; font-weight: 500;">{}</span>', count
+        )
 
     @display(description="Active Tickets")
     def tickets_count(self, obj):
-        count = obj.ticket_set.exclude(
-            status__in=['resolved', 'closed']).count()
-        return format_html('<span style="color: #dc2626; font-weight: 500;">{}</span>', count)
+        count = obj.ticket_set.exclude(status__in=["resolved", "closed"]).count()
+        return format_html(
+            '<span style="color: #dc2626; font-weight: 500;">{}</span>', count
+        )
 
 
 class FacilityAdmin(ModelAdmin):
-    list_display = ("name", "type_badge", "status_badge",
-                    "location", "tickets_count")
+    list_display = ("name", "type_badge", "status_badge", "location", "tickets_count")
     list_filter = ("type", "status")
     search_fields = ("name", "location")
 
@@ -97,12 +123,13 @@ class FacilityAdmin(ModelAdmin):
             "building": "#3b82f6",
             "equipment": "#10b981",
             "vehicle": "#f59e0b",
-            "infrastructure": "#8b5cf6"
+            "infrastructure": "#8b5cf6",
         }
         color = type_colors.get(obj.type, "#6b7280")
         return format_html(
             '<span style="background: {}; color: white; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 500;">{}</span>',
-            color, obj.type.title()
+            color,
+            obj.type.title(),
         )
 
     @display(description="Status", ordering="status")
@@ -110,28 +137,50 @@ class FacilityAdmin(ModelAdmin):
         status_colors = {
             "active": "#10b981",
             "inactive": "#ef4444",
-            "maintenance": "#f59e0b"
+            "maintenance": "#f59e0b",
         }
         color = status_colors.get(obj.status, "#6b7280")
         return format_html(
             '<span style="background: {}; color: white; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 500;">{}</span>',
-            color, obj.status.title()
+            color,
+            obj.status.title(),
         )
 
     @display(description="Open Tickets")
     def tickets_count(self, obj):
-        count = obj.ticket_set.exclude(
-            status__in=['resolved', 'closed']).count()
-        return format_html('<span style="color: #dc2626; font-weight: 500;">{}</span>', count)
+        count = obj.ticket_set.exclude(status__in=["resolved", "closed"]).count()
+        return format_html(
+            '<span style="color: #dc2626; font-weight: 500;">{}</span>', count
+        )
 
 
 class TicketAdmin(ModelAdmin):
-    list_display = ("ticket_no", "title", "section", "facility",
-                    "status_colored", "assigned_to", "created_at")
-    list_filter = ("section", "facility", "status",
-                   ("created_at", RangeDateFilter), "raised_by", "assigned_to")
-    search_fields = ("ticket_no", "title", "description", "facility__name",
-                     "status", "assigned_to__username", "raised_by__username")
+    list_display = (
+        "ticket_no",
+        "title",
+        "section",
+        "facility",
+        "status_colored",
+        "assigned_to",
+        "created_at",
+    )
+    list_filter = (
+        "section",
+        "facility",
+        "status",
+        ("created_at", RangeDateFilter),
+        "raised_by",
+        "assigned_to",
+    )
+    search_fields = (
+        "ticket_no",
+        "title",
+        "description",
+        "facility__name",
+        "status",
+        "assigned_to__username",
+        "raised_by__username",
+    )
     readonly_fields = ("ticket_no", "created_at", "updated_at", "resolved_at")
     list_per_page = 25
 
@@ -145,7 +194,12 @@ class TicketAdmin(ModelAdmin):
             "closed": "#6b7280",
         }
         color = status_colors.get(obj.status, "#374151")
-        return format_html('<span style="color: {}; font-weight: bold;">{}</span>', color, obj.status.replace("_", " ").title())
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">{}</span>',
+            color,
+            obj.status.replace("_", " ").title(),
+        )
+
     status_colored.short_description = "Status"
 
 
@@ -188,55 +242,76 @@ def dashboard_callback(request, context):
     # Get ticket statistics
     total_tickets = Ticket.objects.count()
     open_tickets = Ticket.objects.filter(
-        status__in=['open', 'assigned', 'in_progress']).count()
-    pending_tickets = Ticket.objects.filter(status='pending').count()
-    resolved_tickets = Ticket.objects.filter(status='resolved').count()
+        status__in=["open", "assigned", "in_progress"]
+    ).count()
+    pending_tickets = Ticket.objects.filter(status="pending").count()
+    resolved_tickets = Ticket.objects.filter(status="resolved").count()
 
     # Get user statistics
     total_users = CustomUser.objects.count()
     active_technicians = CustomUser.objects.filter(
-        role='technician', is_active=True).count()
+        role="technician", is_active=True
+    ).count()
 
     # Get facility statistics
     total_facilities = Facility.objects.count()
-    active_facilities = Facility.objects.filter(status='active').count()
+    active_facilities = Facility.objects.filter(status="active").count()
 
     # Dashboard cards data
-    context.update({
-        "kpi": [
-            {
-                "title": "Total Tickets",
-                "metric": total_tickets,
-                "footer": f"{open_tickets} active tickets",
-                "chart": 85,
-            },
-            {
-                "title": "Pending Tickets",
-                "metric": pending_tickets,
-                "footer": "Awaiting response",
-                "chart": (pending_tickets / total_tickets * 100) if total_tickets > 0 else 0,
-            },
-            {
-                "title": "Resolution Rate",
-                "metric": f"{(resolved_tickets / total_tickets * 100):.1f}%" if total_tickets > 0 else "0%",
-                "footer": f"{resolved_tickets} resolved",
-                "chart": (resolved_tickets / total_tickets * 100) if total_tickets > 0 else 0,
-            },
-            {
-                "title": "Active Technicians",
-                "metric": active_technicians,
-                "footer": f"{total_users} total users",
-                "chart": (active_technicians / total_users * 100) if total_users > 0 else 0,
-            },
-        ]
-    })
+    context.update(
+        {
+            "kpi": [
+                {
+                    "title": "Total Tickets",
+                    "metric": total_tickets,
+                    "footer": f"{open_tickets} active tickets",
+                    "chart": 85,
+                },
+                {
+                    "title": "Pending Tickets",
+                    "metric": pending_tickets,
+                    "footer": "Awaiting response",
+                    "chart": (
+                        (pending_tickets / total_tickets * 100)
+                        if total_tickets > 0
+                        else 0
+                    ),
+                },
+                {
+                    "title": "Resolution Rate",
+                    "metric": (
+                        f"{(resolved_tickets / total_tickets * 100):.1f}%"
+                        if total_tickets > 0
+                        else "0%"
+                    ),
+                    "footer": f"{resolved_tickets} resolved",
+                    "chart": (
+                        (resolved_tickets / total_tickets * 100)
+                        if total_tickets > 0
+                        else 0
+                    ),
+                },
+                {
+                    "title": "Active Technicians",
+                    "metric": active_technicians,
+                    "footer": f"{total_users} total users",
+                    "chart": (
+                        (active_technicians / total_users * 100)
+                        if total_users > 0
+                        else 0
+                    ),
+                },
+            ]
+        }
+    )
     return context
 
 
 def ticket_count_badge(request):
     """Display count of active tickets in sidebar"""
     count = Ticket.objects.filter(
-        status__in=['open', 'assigned', 'in_progress']).count()
+        status__in=["open", "assigned", "in_progress"]
+    ).count()
     return count if count > 0 else None
 
 
@@ -248,5 +323,5 @@ def user_count_badge(request):
 
 def facility_count_badge(request):
     """Display count of active facilities in sidebar"""
-    count = Facility.objects.filter(status='active').count()
+    count = Facility.objects.filter(status="active").count()
     return count if count > 0 else None

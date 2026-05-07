@@ -57,28 +57,22 @@ class BaseTicketTestCase(TestCase):
         """
         # Create organizational hierarchy
         cls.organization = Organization.objects.create(
-            name="Test Organization",
-            code="TEST",
-            organization_type="corporate"
+            name="Test Organization", code="TEST", organization_type="corporate"
         )
 
         cls.campus = Campus.objects.create(
             name="Main Campus",
             code="MAIN",
             organization=cls.organization,
-            location="123 Main St"
+            location="123 Main St",
         )
 
         cls.department = Department.objects.create(
-            name="IT Department",
-            code="IT",
-            campus=cls.campus
+            name="IT Department", code="IT", campus=cls.campus
         )
 
         cls.department_hvac = Department.objects.create(
-            name="Facilities Department",
-            code="FAC",
-            campus=cls.campus
+            name="Facilities Department", code="FAC", campus=cls.campus
         )
 
         # Create sections with department relationships
@@ -86,14 +80,14 @@ class BaseTicketTestCase(TestCase):
             name="IT",
             code="IT",
             description="Information Technology",
-            department=cls.department
+            department=cls.department,
         )
 
         cls.section_hvac = Section.objects.create(
             name="HVAC",
             code="HVAC",
             description="Heating and cooling",
-            department=cls.department_hvac
+            department=cls.department_hvac,
         )
 
         # Create facility with organizational context
@@ -103,7 +97,7 @@ class BaseTicketTestCase(TestCase):
             status="active",
             location="123 Main St",
             campus=cls.campus,
-            department=cls.department
+            department=cls.department,
         )
 
         # Create regular user
@@ -164,8 +158,7 @@ class BaseTicketTestCase(TestCase):
                 self.reset_ticket_sequence()
         """
         with connection.cursor() as cursor:
-            cursor.execute(
-                "ALTER SEQUENCE tickets_ticket_id_seq RESTART WITH 1;")
+            cursor.execute("ALTER SEQUENCE tickets_ticket_id_seq RESTART WITH 1;")
 
     def create_ticket(self, **kwargs):
         """

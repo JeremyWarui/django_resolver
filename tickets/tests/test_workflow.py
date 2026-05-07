@@ -24,28 +24,22 @@ def api_client():
 def setup_data(db):
     # Create organizational hierarchy
     organization = Organization.objects.create(
-        name="Test Organization",
-        code="TEST",
-        organization_type="corporate"
+        name="Test Organization", code="TEST", organization_type="corporate"
     )
 
     campus = Campus.objects.create(
         name="Main Campus",
         code="MAIN",
         organization=organization,
-        location="123 Main St"
+        location="123 Main St",
     )
 
     it_department = Department.objects.create(
-        name="IT Department",
-        code="IT",
-        campus=campus
+        name="IT Department", code="IT", campus=campus
     )
 
     facilities_department = Department.objects.create(
-        name="Facilities Department",
-        code="FAC",
-        campus=campus
+        name="Facilities Department", code="FAC", campus=campus
     )
 
     # Create sections with department relationships
@@ -53,21 +47,21 @@ def setup_data(db):
         name="IT",
         code="IT",
         description="Information Technology",
-        department=it_department
+        department=it_department,
     )
 
     hvac = Section.objects.create(
         name="HVAC",
         code="HVAC",
         description="Air Conditioning systems.",
-        department=facilities_department
+        department=facilities_department,
     )
 
     electrical = Section.objects.create(
         name="Electrical",
         code="ELEC",
         description="Electricity installations and fixtures.",
-        department=facilities_department
+        department=facilities_department,
     )
 
     # Create facility with organizational context
@@ -77,7 +71,7 @@ def setup_data(db):
         status="active",
         location="123 Main St",
         campus=campus,
-        department=it_department
+        department=it_department,
     )
 
     # Create users with different roles
@@ -86,7 +80,7 @@ def setup_data(db):
         email="testuser@example.com",
         password="testpass",
         role="user",
-        primary_campus=campus
+        primary_campus=campus,
     )
     user.sections.add(section, hvac, electrical)  # Add user to all sections
 
@@ -95,7 +89,7 @@ def setup_data(db):
         email="techuser@example.com",
         password="techpass",
         role="technician",
-        primary_campus=campus
+        primary_campus=campus,
     )
 
     hvac_technician = CustomUser.objects.create_user(
@@ -103,7 +97,7 @@ def setup_data(db):
         email="hvactech@example.com",
         password="hvac123",
         role="technician",
-        primary_campus=campus
+        primary_campus=campus,
     )
 
     electrician = CustomUser.objects.create_user(
@@ -111,7 +105,7 @@ def setup_data(db):
         email="electricaltech@example.com",
         password="electrician123",
         role="technician",
-        primary_campus=campus
+        primary_campus=campus,
     )
 
     admin = CustomUser.objects.create_user(
@@ -126,7 +120,7 @@ def setup_data(db):
         email="manager@example.com",
         password="managerpass",
         role="manager",
-        primary_campus=campus
+        primary_campus=campus,
     )
 
     # Assign technicians to their respective sections
@@ -187,8 +181,7 @@ def test_admin_can_assign_ticket(api_client, setup_data):
         status="open",
     )
 
-    payload = {
-        "assigned_to_id": setup_data["technician"].id, "status": "assigned"}
+    payload = {"assigned_to_id": setup_data["technician"].id, "status": "assigned"}
 
     print(ticket, payload)
     # ✅ authenticate as admin
@@ -489,8 +482,7 @@ def test_complete_ticket_lifecycle(api_client, setup_data):
     # Step 6: User adds feedback
     api_client.force_authenticate(user=setup_data["user"])
 
-    feedback_payload = {"rating": 5,
-                        "comment": "Excellent service, thank you!"}
+    feedback_payload = {"rating": 5, "comment": "Excellent service, thank you!"}
 
     feedback_response = api_client.post(
         reverse("ticket-feedback", args=[ticket_id]), feedback_payload, format="json"
@@ -525,8 +517,7 @@ def test_complete_ticket_lifecycle(api_client, setup_data):
     assert modified_response.status_code == 400
     assert "Closed tickets cannot be modified" in str(modified_response.data)
     # Step 9: Verify ticket history through logs
-    ticket_logs = TicketLog.objects.filter(
-        ticket_id=ticket_id).order_by("timestamp")
+    ticket_logs = TicketLog.objects.filter(ticket_id=ticket_id).order_by("timestamp")
 
     # Should have at least 5 log entries: created, assigned, in_progress, resolved, closed
     assert ticket_logs.count() >= 5
@@ -701,8 +692,7 @@ def test_admin_workflow_vs_technician_workflow(api_client, setup_data):
     )
     assert tech_closed_response.status_code == 400
     assert (
-        "cannot set ticket status to 'closed'" in str(
-            tech_closed_response.data).lower()
+        "cannot set ticket status to 'closed'" in str(tech_closed_response.data).lower()
     )
 
     # 5. Admin CAN close a resolved ticket

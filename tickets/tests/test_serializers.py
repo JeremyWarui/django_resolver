@@ -20,10 +20,7 @@ def test_ticket_serializer(ticket_factory, user_factory, technician_factory):
     user = user_factory()
     technician = technician_factory()
     ticket = ticket_factory(
-        title="Test Ticket",
-        status="assigned",
-        raised_by=user,
-        assigned_to=technician
+        title="Test Ticket", status="assigned", raised_by=user, assigned_to=technician
     )
 
     serializer = TicketSerializer(instance=ticket)
@@ -39,11 +36,7 @@ def test_comment_serializer(db, comment_factory, ticket_factory, user_factory):
     """Test comment serializer"""
     user = user_factory()
     ticket = ticket_factory(raised_by=user)
-    comment = comment_factory(
-        text="This is a comment.",
-        ticket=ticket,
-        author=user
-    )
+    comment = comment_factory(text="This is a comment.", ticket=ticket, author=user)
 
     serializer = CommentSerializer(instance=comment)
     data = serializer.data
@@ -104,7 +97,7 @@ def test_ticket_serializer_create(db, org_aware_user_factory, section, facility)
         created_by=user,
         section=section,
         facility=facility,
-        enable_auto_escalation=True
+        enable_auto_escalation=True,
     )
 
     assert ticket.title == "New Ticket"
@@ -113,7 +106,9 @@ def test_ticket_serializer_create(db, org_aware_user_factory, section, facility)
     assert ticket.assigned_to is None
 
 
-def test_comment_serializer_create(db, comment_factory, ticket_factory, user_factory, technician_factory):
+def test_comment_serializer_create(
+    db, comment_factory, ticket_factory, user_factory, technician_factory
+):
     """Test comment serializer create method"""
     user = user_factory()
     technician = technician_factory()
@@ -128,9 +123,7 @@ def test_comment_serializer_create(db, comment_factory, ticket_factory, user_fac
     serializer = CommentSerializer(data=data)
     assert serializer.is_valid(), serializer.errors
 
-    comment = TicketService.create_comment(
-        serializer, technician, ticket.id
-    )
+    comment = TicketService.create_comment(serializer, technician, ticket.id)
 
     assert comment.text == "This is another comment."
     assert comment.author == technician
@@ -152,9 +145,7 @@ def test_feedback_serializer_create(db, feedback_factory, ticket_factory, user_f
     serializer = FeedbackSerializer(data=data)
     assert serializer.is_valid(), serializer.errors
 
-    feedback = TicketService.create_feedback(
-        serializer, user, ticket_id=ticket.id
-    )
+    feedback = TicketService.create_feedback(serializer, user, ticket_id=ticket.id)
 
     assert feedback.ticket == ticket
     assert feedback.rated_by == user
@@ -172,19 +163,10 @@ def test_section_serializer_includes_campus_context(db, section, campus, organiz
     assert data["name"] == section.name
     assert data["code"] == section.code
 
-    # Verify department context
-    assert data["department_id"] == section.department.id
-    assert "department_display" in data
+    # Verify department context (returned as nested object)
+    assert "department" in data
+    assert data["department"]["id"] == section.department.id
 
-    # Verify campus context fields
-    assert "campus_id" in data
-    assert "campus_display" in data
-    assert "organization_id" in data
-
-    # Verify values are correct
-    assert data["campus_id"] == section.department.campus.id
-    assert data["organization_id"] == section.department.campus.organization.id
-
-    # Verify display fields contain string representations
-    assert data["campus_display"] is not None
-    assert data["organization_id"] is not None
+    # Verify campus context (nested inside department)
+    assert "campus" in data
+    assert data["campus"]["id"] == section.department.campus.id

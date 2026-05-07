@@ -13,7 +13,16 @@ from tickets.api.analytics.analytics import (
     AdminAnalytics,
     OrganizationalAnalytics,
 )
-from tickets.models import Ticket, CustomUser, Feedback, Section, Facility, Organization, Campus, Department
+from tickets.models import (
+    Ticket,
+    CustomUser,
+    Feedback,
+    Section,
+    Facility,
+    Organization,
+    Campus,
+    Department,
+)
 
 # Import analytics classes for testing
 from tickets.api.analytics.analytics import TechnicianAnalytics
@@ -25,7 +34,8 @@ def analytics_setup(db, user_factory, technician_factory):
     # Create sections
     section1 = Section.objects.create(name="IT", description="IT Department")
     section2 = Section.objects.create(
-        name="Plumbing", description="Plumbing Department")
+        name="Plumbing", description="Plumbing Department"
+    )
 
     # Create facilities
     facility1 = Facility.objects.create(
@@ -44,16 +54,13 @@ def analytics_setup(db, user_factory, technician_factory):
         last_name="User",
     )
 
-    tech1 = technician_factory(
-        username="tech1", first_name="Tech", last_name="One")
+    tech1 = technician_factory(username="tech1", first_name="Tech", last_name="One")
     tech1.sections.add(section1)
 
-    tech2 = technician_factory(
-        username="tech2", first_name="Tech", last_name="Two")
+    tech2 = technician_factory(username="tech2", first_name="Tech", last_name="Two")
     tech2.sections.add(section2)
 
-    user = user_factory(
-        username="user", first_name="Regular", last_name="User")
+    user = user_factory(username="user", first_name="Regular", last_name="User")
 
     return {
         "section1": section1,
@@ -68,45 +75,34 @@ def analytics_setup(db, user_factory, technician_factory):
 
 
 @pytest.fixture
-def organizational_analytics_setup(db, org_aware_user_factory, technician_factory, hod_factory, director_factory, section_head_factory):
+def organizational_analytics_setup(
+    db,
+    org_aware_user_factory,
+    technician_factory,
+    hod_factory,
+    director_factory,
+    section_head_factory,
+):
     """Create test data for organizational role-based analytics"""
     # Create organizational hierarchy
     org = Organization.objects.create(
-        name="Test Corp",
-        code="TCORP",
-        organization_type="corporate"
+        name="Test Corp", code="TCORP", organization_type="corporate"
     )
     campus1 = Campus.objects.create(
-        name="Main Campus",
-        code="MAIN",
-        organization=org,
-        location="Downtown"
+        name="Main Campus", code="MAIN", organization=org, location="Downtown"
     )
     campus2 = Campus.objects.create(
-        name="West Campus",
-        code="WEST",
-        organization=org,
-        location="West Side"
+        name="West Campus", code="WEST", organization=org, location="West Side"
     )
-    dept_it = Department.objects.create(
-        name="IT Department",
-        code="IT",
-        campus=campus1
-    )
+    dept_it = Department.objects.create(name="IT Department", code="IT", campus=campus1)
     dept_facilities = Department.objects.create(
-        name="Facilities",
-        code="FAC",
-        campus=campus1
+        name="Facilities", code="FAC", campus=campus1
     )
     section_network = Section.objects.create(
-        name="Network",
-        code="NET",
-        department=dept_it
+        name="Network", code="NET", department=dept_it
     )
     section_electrical = Section.objects.create(
-        name="Electrical",
-        code="ELEC",
-        department=dept_facilities
+        name="Electrical", code="ELEC", department=dept_facilities
     )
 
     # Create facilities
@@ -116,7 +112,7 @@ def organizational_analytics_setup(db, org_aware_user_factory, technician_factor
         status="active",
         location="Main Campus",
         campus=campus1,
-        department=dept_it
+        department=dept_it,
     )
 
     # Create roles
@@ -125,7 +121,7 @@ def organizational_analytics_setup(db, org_aware_user_factory, technician_factor
         username="director",
         first_name="Director",
         last_name="User",
-        primary_campus=campus1
+        primary_campus=campus1,
     )
 
     # HOD - campus level
@@ -134,7 +130,7 @@ def organizational_analytics_setup(db, org_aware_user_factory, technician_factor
         first_name="HOD",
         last_name="User",
         primary_campus=campus1,
-        primary_department=dept_it
+        primary_department=dept_it,
     )
     hod.sections.add(section_network)
 
@@ -144,7 +140,7 @@ def organizational_analytics_setup(db, org_aware_user_factory, technician_factor
         first_name="Section",
         last_name="Head",
         primary_campus=campus1,
-        primary_department=dept_facilities
+        primary_department=dept_facilities,
     )
     section_head.sections.add(section_electrical)
 
@@ -154,7 +150,7 @@ def organizational_analytics_setup(db, org_aware_user_factory, technician_factor
         first_name="IT",
         last_name="Tech",
         primary_campus=campus1,
-        primary_department=dept_it
+        primary_department=dept_it,
     )
     tech1.sections.add(section_network)
 
@@ -163,16 +159,13 @@ def organizational_analytics_setup(db, org_aware_user_factory, technician_factor
         first_name="Facilities",
         last_name="Tech",
         primary_campus=campus1,
-        primary_department=dept_facilities
+        primary_department=dept_facilities,
     )
     tech2.sections.add(section_electrical)
 
     # Regular user
     user = org_aware_user_factory(
-        username="user",
-        first_name="Regular",
-        last_name="User",
-        role="user"
+        username="user", first_name="Regular", last_name="User", role="user"
     )
 
     return {
@@ -202,10 +195,7 @@ def test_ticket_analytics_total_count(db, analytics_setup, ticket_factory):
     # Create tickets
     for i in range(5):
         ticket_factory(
-            title=f"Ticket {i}",
-            section=section1,
-            facility=facility1,
-            raised_by=user
+            title=f"Ticket {i}", section=section1, facility=facility1, raised_by=user
         )
 
     # Get all tickets created in last 30 days
@@ -223,14 +213,25 @@ def test_ticket_analytics_by_status(db, analytics_setup, ticket_factory):
 
     # Create tickets with different statuses
     open_tickets = [
-        ticket_factory(title=f"Open {i}", section=section1, facility=facility1,
-                       raised_by=user, status="open")
+        ticket_factory(
+            title=f"Open {i}",
+            section=section1,
+            facility=facility1,
+            raised_by=user,
+            status="open",
+        )
         for i in range(3)
     ]
 
     assigned_tickets = [
-        ticket_factory(title=f"Assigned {i}", section=section1, facility=facility1,
-                       raised_by=user, assigned_to=tech1, status="assigned")
+        ticket_factory(
+            title=f"Assigned {i}",
+            section=section1,
+            facility=facility1,
+            raised_by=user,
+            assigned_to=tech1,
+            status="assigned",
+        )
         for i in range(2)
     ]
 
@@ -238,9 +239,9 @@ def test_ticket_analytics_by_status(db, analytics_setup, ticket_factory):
     counts = TicketAnalytics.get_ticket_counts_by_status()
 
     # Should have at least open and assigned statuses
-    statuses = {item['status']: item['count'] for item in counts}
-    assert statuses.get('open', 0) >= 3
-    assert statuses.get('assigned', 0) >= 2
+    statuses = {item["status"]: item["count"] for item in counts}
+    assert statuses.get("open", 0) >= 3
+    assert statuses.get("assigned", 0) >= 2
 
 
 def test_technician_analytics_workload(db, analytics_setup, ticket_factory):
@@ -257,14 +258,13 @@ def test_technician_analytics_workload(db, analytics_setup, ticket_factory):
             assigned_to=tech1,
             section=section1,
             facility=facility1,
-            raised_by=user
+            raised_by=user,
         )
         for i in range(5)
     ]
 
     # Get technician performance
-    performance = TechnicianAnalytics.get_technician_performance(
-        technician_id=tech1.id)
+    performance = TechnicianAnalytics.get_technician_performance(technician_id=tech1.id)
 
     assert len(performance) > 0
     assert performance[0]["total_tickets"] >= 5
@@ -272,7 +272,7 @@ def test_technician_analytics_workload(db, analytics_setup, ticket_factory):
 
 def test_admin_analytics_access(db, authenticated_admin_client):
     """Test admin can access analytics endpoints"""
-    client = authenticated_admin_client['client']
+    client = authenticated_admin_client["client"]
     response = client.get(reverse("analytics-admin"))
     assert response.status_code == 200
 
@@ -292,7 +292,7 @@ def test_ticket_analytics_trends(db, analytics_setup, ticket_factory):
             raised_by=user,
             section=section1,
             facility=facility1,
-            created_at=now - timedelta(days=i)
+            created_at=now - timedelta(days=i),
         )
 
     # Get trend data for last 7 days
@@ -315,13 +315,12 @@ def test_technician_performance_metrics(db, analytics_setup, ticket_factory):
             assigned_to=tech1,
             section=section1,
             facility=facility1,
-            raised_by=user
+            raised_by=user,
         )
         ticket.change_status("resolved", performed_by=tech1)
 
     # Get technician performance
-    performance = TechnicianAnalytics.get_technician_performance(
-        technician_id=tech1.id)
+    performance = TechnicianAnalytics.get_technician_performance(technician_id=tech1.id)
 
     assert len(performance) > 0
     assert performance[0]["resolved_tickets"] >= 3
@@ -351,8 +350,7 @@ def test_technician_analytics_no_assignments(db, technician_factory):
     """Test technician analytics with no ticket assignments"""
     tech = technician_factory()
 
-    performance = TechnicianAnalytics.get_technician_performance(
-        technician_id=tech.id)
+    performance = TechnicianAnalytics.get_technician_performance(technician_id=tech.id)
 
     assert len(performance) > 0
     assert performance[0]["total_tickets"] == 0
@@ -368,15 +366,22 @@ def test_analytics_ticket_filtering_by_section(db, analytics_setup, ticket_facto
     # Create tickets in both sections
     for i in range(3):
         ticket_factory(
-            title=f"IT Ticket {i}", section=section1, facility=facility1, raised_by=user)
+            title=f"IT Ticket {i}", section=section1, facility=facility1, raised_by=user
+        )
         ticket_factory(
-            title=f"Plumb Ticket {i}", section=section2, facility=facility1, raised_by=user)
+            title=f"Plumb Ticket {i}",
+            section=section2,
+            facility=facility1,
+            raised_by=user,
+        )
 
     # Analytics should handle section filtering
     section1_counts = TicketAnalytics.get_ticket_counts_by_timeframe(
-        days=30, section_id=section1.id)
+        days=30, section_id=section1.id
+    )
     section2_counts = TicketAnalytics.get_ticket_counts_by_timeframe(
-        days=30, section_id=section2.id)
+        days=30, section_id=section2.id
+    )
 
     assert section1_counts["count"] >= 3
     assert section2_counts["count"] >= 3
@@ -397,7 +402,7 @@ def test_analytics_date_range(db, analytics_setup, ticket_factory):
             raised_by=user,
             section=section1,
             facility=facility1,
-            created_at=now - timedelta(days=i)
+            created_at=now - timedelta(days=i),
         )
 
     # Get tickets created in last 30 days
@@ -409,6 +414,7 @@ def test_analytics_date_range(db, analytics_setup, ticket_factory):
 # ============================================================================
 # ORGANIZATIONAL ROLE-BASED ANALYTICS TESTS
 # ============================================================================
+
 
 def test_director_dashboard(db, organizational_analytics_setup, ticket_factory):
     """Test director dashboard showing organization-wide metrics"""
@@ -425,7 +431,7 @@ def test_director_dashboard(db, organizational_analytics_setup, ticket_factory):
             assigned_to=tech1,
             section=section_network,
             facility=facility_main,
-            raised_by=user
+            raised_by=user,
         )
 
     # Get director dashboard
@@ -455,7 +461,7 @@ def test_hod_dashboard(db, organizational_analytics_setup, ticket_factory):
             assigned_to=tech1,
             section=section_network,
             facility=facility_main,
-            raised_by=user
+            raised_by=user,
         )
 
     # Get HOD dashboard
@@ -485,12 +491,11 @@ def test_section_head_dashboard(db, organizational_analytics_setup, ticket_facto
             assigned_to=tech2,
             section=section_electrical,
             facility=facility_main,
-            raised_by=user
+            raised_by=user,
         )
 
     # Get section head dashboard
-    dashboard = OrganizationalAnalytics.section_head_dashboard(
-        section_head, days=30)
+    dashboard = OrganizationalAnalytics.section_head_dashboard(section_head, days=30)
 
     # Should have department-level metrics
     assert "department" in dashboard
@@ -500,7 +505,9 @@ def test_section_head_dashboard(db, organizational_analytics_setup, ticket_facto
     assert "technicians" in dashboard  # Technician list
 
 
-def test_director_dashboard_escalation_trends(db, organizational_analytics_setup, ticket_factory):
+def test_director_dashboard_escalation_trends(
+    db, organizational_analytics_setup, ticket_factory
+):
     """Test director dashboard includes escalation trends"""
     director = organizational_analytics_setup["director"]
     tech1 = organizational_analytics_setup["tech1"]
@@ -515,7 +522,7 @@ def test_director_dashboard_escalation_trends(db, organizational_analytics_setup
             assigned_to=tech1,
             section=section_network,
             facility=facility_main,
-            raised_by=user
+            raised_by=user,
         )
 
     dashboard = OrganizationalAnalytics.director_dashboard(director, days=30)
@@ -525,7 +532,9 @@ def test_director_dashboard_escalation_trends(db, organizational_analytics_setup
     assert isinstance(dashboard["escalation_trends"], dict)
 
 
-def test_director_dashboard_top_technicians(db, organizational_analytics_setup, ticket_factory):
+def test_director_dashboard_top_technicians(
+    db, organizational_analytics_setup, ticket_factory
+):
     """Test director dashboard shows top technicians"""
     director = organizational_analytics_setup["director"]
     tech1 = organizational_analytics_setup["tech1"]
@@ -540,7 +549,7 @@ def test_director_dashboard_top_technicians(db, organizational_analytics_setup, 
             assigned_to=tech1,
             section=section_network,
             facility=facility_main,
-            raised_by=user
+            raised_by=user,
         )
         ticket.change_status("resolved", performed_by=tech1)
 
@@ -551,7 +560,9 @@ def test_director_dashboard_top_technicians(db, organizational_analytics_setup, 
     assert len(dashboard["top_technicians"]) > 0
 
 
-def test_hod_dashboard_department_performance(db, organizational_analytics_setup, ticket_factory):
+def test_hod_dashboard_department_performance(
+    db, organizational_analytics_setup, ticket_factory
+):
     """Test HOD dashboard shows department performance"""
     hod = organizational_analytics_setup["hod"]
     tech1 = organizational_analytics_setup["tech1"]
@@ -567,7 +578,7 @@ def test_hod_dashboard_department_performance(db, organizational_analytics_setup
             section=section_network,
             facility=facility_main,
             raised_by=user,
-            status="open"
+            status="open",
         )
 
     dashboard = OrganizationalAnalytics.hod_dashboard(hod, days=30)
@@ -582,7 +593,10 @@ def test_hod_dashboard_department_performance(db, organizational_analytics_setup
 # NEW TESTS - Analytics Gap Fixes
 # ============================================================================
 
-def test_director_dashboard_facility_metrics(db, organizational_analytics_setup, ticket_factory):
+
+def test_director_dashboard_facility_metrics(
+    db, organizational_analytics_setup, ticket_factory
+):
     """Test director dashboard includes facility-level metrics"""
     director = organizational_analytics_setup["director"]
     tech1 = organizational_analytics_setup["tech1"]
@@ -598,7 +612,7 @@ def test_director_dashboard_facility_metrics(db, organizational_analytics_setup,
             section=section_network,
             facility=facility_main,
             raised_by=user,
-            status="open"
+            status="open",
         )
 
     dashboard = OrganizationalAnalytics.director_dashboard(director, days=30)
@@ -626,13 +640,16 @@ def test_director_dashboard_facility_metrics(db, organizational_analytics_setup,
     assert "avg_resolution_hours" in facility
 
     # Verify facility has tickets
-    facility_found = [f for f in dashboard["facilities"]
-                      if f["facility"]["id"] == facility_main.id]
+    facility_found = [
+        f for f in dashboard["facilities"] if f["facility"]["id"] == facility_main.id
+    ]
     assert len(facility_found) == 1
     assert facility_found[0]["total_tickets"] >= 3
 
 
-def test_director_dashboard_section_metrics(db, organizational_analytics_setup, ticket_factory):
+def test_director_dashboard_section_metrics(
+    db, organizational_analytics_setup, ticket_factory
+):
     """Test director dashboard includes organization-wide section metrics"""
     director = organizational_analytics_setup["director"]
     tech1 = organizational_analytics_setup["tech1"]
@@ -648,7 +665,7 @@ def test_director_dashboard_section_metrics(db, organizational_analytics_setup, 
             section=section_network,
             facility=facility_main,
             raised_by=user,
-            status="open" if i % 2 == 0 else "resolved"
+            status="open" if i % 2 == 0 else "resolved",
         )
 
     dashboard = OrganizationalAnalytics.director_dashboard(director, days=30)
@@ -677,8 +694,9 @@ def test_director_dashboard_section_metrics(db, organizational_analytics_setup, 
     assert "technician_count" in section
 
     # Verify section has tickets
-    section_found = [s for s in dashboard["sections"]
-                     if s["section"]["id"] == section_network.id]
+    section_found = [
+        s for s in dashboard["sections"] if s["section"]["id"] == section_network.id
+    ]
     assert len(section_found) == 1
     assert section_found[0]["total_tickets"] >= 4
 
@@ -691,8 +709,7 @@ def test_technician_performance_status_breakdown(db, analytics_setup, ticket_fac
     facility1 = analytics_setup["facility1"]
 
     # Create tickets with various statuses
-    statuses = ["open", "assigned", "in_progress",
-                "pending", "resolved", "closed"]
+    statuses = ["open", "assigned", "in_progress", "pending", "resolved", "closed"]
     for status in statuses:
         ticket_factory(
             title=f"Status {status}",
@@ -700,12 +717,11 @@ def test_technician_performance_status_breakdown(db, analytics_setup, ticket_fac
             section=section1,
             facility=facility1,
             raised_by=user,
-            status=status
+            status=status,
         )
 
     # Get technician performance
-    performance = TechnicianAnalytics.get_technician_performance(
-        technician_id=tech1.id)
+    performance = TechnicianAnalytics.get_technician_performance(technician_id=tech1.id)
 
     assert len(performance) > 0
     tech_perf = performance[0]
@@ -733,8 +749,7 @@ def test_technician_performance_status_breakdown_empty(db, technician_factory):
     """Test technician performance status breakdown with no assignments"""
     tech = technician_factory()
 
-    performance = TechnicianAnalytics.get_technician_performance(
-        technician_id=tech.id)
+    performance = TechnicianAnalytics.get_technician_performance(technician_id=tech.id)
 
     assert len(performance) > 0
     tech_perf = performance[0]
@@ -745,7 +760,9 @@ def test_technician_performance_status_breakdown_empty(db, technician_factory):
     assert len(tech_perf["tickets_by_status"]) == 0
 
 
-def test_director_dashboard_facilities_sorted(db, organizational_analytics_setup, ticket_factory):
+def test_director_dashboard_facilities_sorted(
+    db, organizational_analytics_setup, ticket_factory
+):
     """Test director dashboard facilities are sorted by ticket count descending"""
     director = organizational_analytics_setup["director"]
     tech1 = organizational_analytics_setup["tech1"]
@@ -760,7 +777,7 @@ def test_director_dashboard_facilities_sorted(db, organizational_analytics_setup
         status="active",
         location="Downtown",
         campus=campus1,
-        department=section_network.department
+        department=section_network.department,
     )
 
     # Create more tickets for facility_main
@@ -772,7 +789,7 @@ def test_director_dashboard_facilities_sorted(db, organizational_analytics_setup
             section=section_network,
             facility=facility_main,
             raised_by=user,
-            status="open"
+            status="open",
         )
 
     # Create fewer tickets for facility2
@@ -783,7 +800,7 @@ def test_director_dashboard_facilities_sorted(db, organizational_analytics_setup
             section=section_network,
             facility=facility2,
             raised_by=user,
-            status="open"
+            status="open",
         )
 
     dashboard = OrganizationalAnalytics.director_dashboard(director, days=30)
@@ -791,15 +808,16 @@ def test_director_dashboard_facilities_sorted(db, organizational_analytics_setup
     # Verify facilities are sorted by ticket count
     facilities = dashboard["facilities"]
     for i in range(len(facilities) - 1):
-        assert facilities[i]["total_tickets"] >= facilities[i +
-                                                            1]["total_tickets"]
+        assert facilities[i]["total_tickets"] >= facilities[i + 1]["total_tickets"]
 
     # facility_main should be first
     assert facilities[0]["facility"]["id"] == facility_main.id
     assert facilities[0]["total_tickets"] >= 5
 
 
-def test_director_dashboard_sections_sorted(db, organizational_analytics_setup, ticket_factory):
+def test_director_dashboard_sections_sorted(
+    db, organizational_analytics_setup, ticket_factory
+):
     """Test director dashboard sections are sorted by ticket count descending"""
     director = organizational_analytics_setup["director"]
     tech1 = organizational_analytics_setup["tech1"]
@@ -813,9 +831,7 @@ def test_director_dashboard_sections_sorted(db, organizational_analytics_setup, 
     # Create second section in same department
     dept_it = section_network.department
     section_electrical = Section.objects.create(
-        name="Electrical",
-        code="ELEC",
-        department=dept_it
+        name="Electrical", code="ELEC", department=dept_it
     )
 
     # Create more tickets for section_network
@@ -826,7 +842,7 @@ def test_director_dashboard_sections_sorted(db, organizational_analytics_setup, 
             section=section_network,
             facility=facility_main,
             raised_by=user,
-            status="open"
+            status="open",
         )
 
     # Add tech1 to electrical section
@@ -840,7 +856,7 @@ def test_director_dashboard_sections_sorted(db, organizational_analytics_setup, 
             section=section_electrical,
             facility=facility_main,
             raised_by=user,
-            status="open"
+            status="open",
         )
 
     dashboard = OrganizationalAnalytics.director_dashboard(director, days=30)

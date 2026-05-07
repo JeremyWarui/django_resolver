@@ -8,7 +8,7 @@ Usage:
     def test_user_creation(user_factory):
         user = user_factory(username="custom")
         assert user.username == "custom"
-    
+
     def test_ticket_workflow(ticket_factory, admin_user):
         ticket = ticket_factory(raised_by=admin_user)
         assert ticket.raised_by == admin_user
@@ -30,50 +30,47 @@ from tickets.models import (
 )
 from rest_framework.test import APIClient
 
-
 # ============================================================================
 # USER FIXTURES (factories)
 # ============================================================================
 
+
 @pytest.fixture
 def user_factory(db):
     """Factory for creating regular users (role='user')"""
+
     def create_user(username=None, email=None, password="testpass", **kwargs):
         if username is None:
             username = f"testuser_{uuid.uuid4().hex[:8]}"
         if email is None:
             email = f"test_{uuid.uuid4().hex[:8]}@example.com"
         return get_user_model().objects.create_user(
-            username=username,
-            email=email,
-            password=password,
-            role="user",
-            **kwargs
+            username=username, email=email, password=password, role="user", **kwargs
         )
+
     return create_user
 
 
 @pytest.fixture
 def admin_user_factory(db):
     """Factory for creating admin users"""
+
     def create_admin(username=None, email=None, password="admin123", **kwargs):
         if username is None:
             username = f"admin_{uuid.uuid4().hex[:8]}"
         if email is None:
             email = f"admin_{uuid.uuid4().hex[:8]}@example.com"
         return get_user_model().objects.create_user(
-            username=username,
-            email=email,
-            password=password,
-            role="admin",
-            **kwargs
+            username=username, email=email, password=password, role="admin", **kwargs
         )
+
     return create_admin
 
 
 @pytest.fixture
 def technician_factory(db):
     """Factory for creating technician users"""
+
     def create_technician(username=None, email=None, password="techpass", **kwargs):
         if username is None:
             username = f"technician_{uuid.uuid4().hex[:8]}"
@@ -84,14 +81,16 @@ def technician_factory(db):
             email=email,
             password=password,
             role="technician",
-            **kwargs
+            **kwargs,
         )
+
     return create_technician
 
 
 @pytest.fixture
 def section_head_factory(db):
     """Factory for creating section head users"""
+
     def create_section_head(username=None, email=None, password="headpass", **kwargs):
         if username is None:
             username = f"section_head_{uuid.uuid4().hex[:8]}"
@@ -102,44 +101,41 @@ def section_head_factory(db):
             email=email,
             password=password,
             role="section_head",
-            **kwargs
+            **kwargs,
         )
+
     return create_section_head
 
 
 @pytest.fixture
 def hod_factory(db):
     """Factory for creating HOD (Head of Department) users"""
+
     def create_hod(username=None, email=None, password="hodpass", **kwargs):
         if username is None:
             username = f"hod_{uuid.uuid4().hex[:8]}"
         if email is None:
             email = f"hod_{uuid.uuid4().hex[:8]}@example.com"
         return get_user_model().objects.create_user(
-            username=username,
-            email=email,
-            password=password,
-            role="hod",
-            **kwargs
+            username=username, email=email, password=password, role="hod", **kwargs
         )
+
     return create_hod
 
 
 @pytest.fixture
 def director_factory(db):
     """Factory for creating director users"""
+
     def create_director(username=None, email=None, password="dirpass", **kwargs):
         if username is None:
             username = f"director_{uuid.uuid4().hex[:8]}"
         if email is None:
             email = f"director_{uuid.uuid4().hex[:8]}@example.com"
         return get_user_model().objects.create_user(
-            username=username,
-            email=email,
-            password=password,
-            role="director",
-            **kwargs
+            username=username, email=email, password=password, role="director", **kwargs
         )
+
     return create_director
 
 
@@ -147,10 +143,19 @@ def director_factory(db):
 # ORGANIZATIONAL-AWARE USER FIXTURES
 # ============================================================================
 
+
 @pytest.fixture
 def org_aware_user_factory(db, campus, department, section):
     """Factory for creating users with organizational assignments"""
-    def create_user(username=None, email=None, password="testpass", role="user", add_to_section=False, **kwargs):
+
+    def create_user(
+        username=None,
+        email=None,
+        password="testpass",
+        role="user",
+        add_to_section=False,
+        **kwargs,
+    ):
         if username is None:
             username = f"org_user_{uuid.uuid4().hex[:8]}"
         if email is None:
@@ -163,14 +168,15 @@ def org_aware_user_factory(db, campus, department, section):
             role=role,
             primary_campus=campus,
             primary_department=department,
-            **kwargs
+            **kwargs,
         )
 
         # Add to section if requested (useful for technicians)
-        if add_to_section and hasattr(section, 'pk'):
+        if add_to_section and hasattr(section, "pk"):
             user.sections.add(section)
 
         return user
+
     return create_user
 
 
@@ -178,13 +184,12 @@ def org_aware_user_factory(db, campus, department, section):
 # ORGANIZATIONAL HIERARCHY FIXTURES
 # ============================================================================
 
+
 @pytest.fixture
 def organization(db):
     """Create a test organization"""
     return Organization.objects.create(
-        name="Test Organization",
-        code="TEST",
-        organization_type="corporate"
+        name="Test Organization", code="TEST", organization_type="corporate"
     )
 
 
@@ -195,7 +200,7 @@ def campus(db, organization):
         name="Main Campus",
         code="MAIN",
         organization=organization,
-        location="123 Main St"
+        location="123 Main St",
     )
 
 
@@ -207,10 +212,7 @@ def department(db, campus, hod_factory):
     hod.save()
 
     dept = Department.objects.create(
-        name="IT Department",
-        code="IT",
-        campus=campus,
-        head_of_department=hod
+        name="IT Department", code="IT", campus=campus, head_of_department=hod
     )
     return dept
 
@@ -223,10 +225,7 @@ def department_hvac(db, campus, hod_factory):
     hod.save()
 
     dept = Department.objects.create(
-        name="Facilities Department",
-        code="FAC",
-        campus=campus,
-        head_of_department=hod
+        name="Facilities Department", code="FAC", campus=campus, head_of_department=hod
     )
     return dept
 
@@ -243,7 +242,7 @@ def section(db, department, section_head_factory):
         name="Network Section",
         code="NETWORK",
         department=department,
-        section_head=section_head
+        section_head=section_head,
     )
     sec.section_head.sections.add(sec)
     return sec
@@ -261,7 +260,7 @@ def section_hvac(db, department_hvac, section_head_factory):
         name="HVAC Section",
         code="HVAC",
         department=department_hvac,
-        section_head=section_head
+        section_head=section_head,
     )
     sec.section_head.sections.add(sec)
     return sec
@@ -271,8 +270,9 @@ def section_hvac(db, department_hvac, section_head_factory):
 # OTHER MODEL FIXTURES
 # ============================================================================
 
+
 @pytest.fixture
-def facility(db, campus, department):
+def facility(db, campus):
     """Create a test facility"""
     return Facility.objects.create(
         name="Main Building",
@@ -280,7 +280,6 @@ def facility(db, campus, department):
         status="active",
         location="123 Main St",
         campus=campus,
-        department=department
     )
 
 
@@ -288,9 +287,11 @@ def facility(db, campus, department):
 # TICKET FIXTURES (factories)
 # ============================================================================
 
+
 @pytest.fixture
 def ticket_factory(db, section, facility, user_factory, technician_factory):
     """Factory for creating tickets with customizable parameters"""
+
     def create_ticket(
         title="Test Ticket",
         description="Test ticket description",
@@ -300,7 +301,7 @@ def ticket_factory(db, section, facility, user_factory, technician_factory):
         facility=facility,
         raised_by=None,
         assigned_to=None,
-        **kwargs
+        **kwargs,
     ):
         if raised_by is None:
             raised_by = user_factory()
@@ -308,8 +309,8 @@ def ticket_factory(db, section, facility, user_factory, technician_factory):
             assigned_to = technician_factory()
 
         # Extract created_at and assigned_at if provided (since auto_now_add prevents manual setting)
-        created_at = kwargs.pop('created_at', None)
-        assigned_at = kwargs.pop('assigned_at', None)
+        created_at = kwargs.pop("created_at", None)
+        assigned_at = kwargs.pop("assigned_at", None)
 
         ticket = Ticket.objects.create(
             title=title,
@@ -320,7 +321,7 @@ def ticket_factory(db, section, facility, user_factory, technician_factory):
             facility=facility,
             raised_by=raised_by,
             assigned_to=assigned_to,
-            **kwargs
+            **kwargs,
         )
 
         # Manually set created_at if provided
@@ -336,11 +337,12 @@ def ticket_factory(db, section, facility, user_factory, technician_factory):
         elif assigned_to is not None and not assigned_at:
             # Auto-set assigned_at to now if ticket is assigned and assigned_at not explicitly set to None
             from django.utils import timezone
-            Ticket.objects.filter(id=ticket.id).update(
-                assigned_at=timezone.now())
+
+            Ticket.objects.filter(id=ticket.id).update(assigned_at=timezone.now())
             ticket.refresh_from_db()
 
         return ticket
+
     return create_ticket
 
 
@@ -348,26 +350,26 @@ def ticket_factory(db, section, facility, user_factory, technician_factory):
 # COMMENT/FEEDBACK FIXTURES
 # ============================================================================
 
+
 @pytest.fixture
 def comment_factory(db, ticket_factory, user_factory):
     """Factory for creating comments"""
+
     def create_comment(text="Test comment", ticket=None, author=None):
         if ticket is None:
             ticket = ticket_factory()
         if author is None:
             author = user_factory()
 
-        return Comment.objects.create(
-            ticket=ticket,
-            text=text,
-            author=author
-        )
+        return Comment.objects.create(ticket=ticket, text=text, author=author)
+
     return create_comment
 
 
 @pytest.fixture
 def feedback_factory(db, ticket_factory, user_factory):
     """Factory for creating feedback"""
+
     def create_feedback(rating=5, comment="Great service", ticket=None, rated_by=None):
         if ticket is None:
             ticket = ticket_factory()
@@ -375,11 +377,9 @@ def feedback_factory(db, ticket_factory, user_factory):
             rated_by = user_factory()
 
         return Feedback.objects.create(
-            ticket=ticket,
-            rating=rating,
-            comment=comment,
-            rated_by=rated_by
+            ticket=ticket, rating=rating, comment=comment, rated_by=rated_by
         )
+
     return create_feedback
 
 
@@ -387,19 +387,29 @@ def feedback_factory(db, ticket_factory, user_factory):
 # COMMON TEST SETUP FIXTURES
 # ============================================================================
 
+
 @pytest.fixture
-def basic_setup(db, user_factory, admin_user_factory, technician_factory,
-                organization, campus, department, section, facility):
+def basic_setup(
+    db,
+    user_factory,
+    admin_user_factory,
+    technician_factory,
+    organization,
+    campus,
+    department,
+    section,
+    facility,
+):
     """Complete basic setup with all common objects"""
     return {
-        'organization': organization,
-        'campus': campus,
-        'department': department,
-        'section': section,
-        'facility': facility,
-        'user': user_factory(),
-        'admin': admin_user_factory(),
-        'technician': technician_factory(),
+        "organization": organization,
+        "campus": campus,
+        "department": department,
+        "section": section,
+        "facility": facility,
+        "user": user_factory(),
+        "admin": admin_user_factory(),
+        "technician": technician_factory(),
     }
 
 
@@ -413,57 +423,49 @@ def api_client():
 def authenticated_client(api_client, org_aware_user_factory, campus, section):
     """Create an authenticated API client with organizational context"""
     user = org_aware_user_factory(
-        username="authuser", password="authpass", add_to_section=True)
+        username="authuser", password="authpass", add_to_section=True
+    )
     api_client.force_authenticate(user=user)
     return {
-        'client': api_client,
-        'user': user,
-        'token': None  # Token would be set after login if needed
+        "client": api_client,
+        "user": user,
+        "token": None,  # Token would be set after login if needed
     }
 
 
 @pytest.fixture
-def authenticated_admin_client(api_client, admin_user_factory, campus):
+def authenticated_admin_client(admin_user_factory, campus):
     """Create an authenticated admin API client with organizational context"""
     admin = admin_user_factory(username="authadmin", password="adminpass")
     admin.primary_campus = campus
     admin.save()
-    api_client.force_authenticate(user=admin)
-    return {
-        'client': api_client,
-        'user': admin,
-        'token': None
-    }
+    client = APIClient()
+    client.force_authenticate(user=admin)
+    return {"client": client, "user": admin, "token": None}
 
 
 @pytest.fixture
-def authenticated_technician_client(api_client, technician_factory, section, campus, department):
+def authenticated_technician_client(technician_factory, section, campus, department):
     """Create an authenticated technician API client with organizational context"""
     technician = technician_factory(username="authtech", password="techpass")
     technician.sections.add(section)
     technician.primary_campus = campus
     technician.primary_department = department
     technician.save()
-    api_client.force_authenticate(user=technician)
-    return {
-        'client': api_client,
-        'user': technician,
-        'token': None
-    }
+    client = APIClient()
+    client.force_authenticate(user=technician)
+    return {"client": client, "user": technician, "token": None}
 
 
 # ============================================================================
 # PYTEST CONFIGURATION
 # ============================================================================
 
+
 def pytest_configure(config):
     """Register custom markers"""
     config.addinivalue_line(
         "markers", "slow: marks tests as slow (deselect with '-m \"not slow\"')"
     )
-    config.addinivalue_line(
-        "markers", "integration: marks tests as integration tests"
-    )
-    config.addinivalue_line(
-        "markers", "unit: marks tests as unit tests"
-    )
+    config.addinivalue_line("markers", "integration: marks tests as integration tests")
+    config.addinivalue_line("markers", "unit: marks tests as unit tests")

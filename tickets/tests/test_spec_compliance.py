@@ -8,8 +8,14 @@ from django.utils import timezone
 from datetime import timedelta
 from django.core.exceptions import ValidationError
 from tickets.models import (
-    Organization, Campus, Department, Section, Facility,
-    CustomUser, Ticket, TicketLog
+    Organization,
+    Campus,
+    Department,
+    Section,
+    Facility,
+    CustomUser,
+    Ticket,
+    TicketLog,
 )
 from tickets.api.services import TicketService
 
@@ -17,34 +23,38 @@ from tickets.api.services import TicketService
 def test_ticket_created_with_low_priority(ticket_factory, user_factory):
     """Verify new tickets start with LOW priority"""
     user = user_factory()
-    ticket = ticket_factory(raised_by=user, status='open')
+    ticket = ticket_factory(raised_by=user, status="open")
 
-    assert ticket.priority == 'low'
+    assert ticket.priority == "low"
 
 
-def test_priority_escalates_to_medium_on_level_1(db, ticket_factory, user_factory, technician_factory):
+def test_priority_escalates_to_medium_on_level_1(
+    db, ticket_factory, user_factory, technician_factory
+):
     """Verify priority escalates to MEDIUM at escalation level 1"""
     user = user_factory()
     technician = technician_factory()
-    ticket = ticket_factory(raised_by=user, status='open')
+    ticket = ticket_factory(raised_by=user, status="open")
 
     # Escalate to level 1 (section head)
     escalated_ticket = TicketService.escalate_ticket(
         ticket=ticket,
         escalated_by=technician,
         reason="Needs section head review",
-        manual=True
+        manual=True,
     )
 
     assert escalated_ticket.escalation_level == 1
-    assert escalated_ticket.priority == 'medium'
+    assert escalated_ticket.priority == "medium"
 
 
-def test_priority_escalates_to_high_on_level_2(db, ticket_factory, user_factory, technician_factory):
+def test_priority_escalates_to_high_on_level_2(
+    db, ticket_factory, user_factory, technician_factory
+):
     """Verify priority escalates to HIGH at escalation level 2"""
     user = user_factory()
     technician = technician_factory()
-    ticket = ticket_factory(raised_by=user, status='open')
+    ticket = ticket_factory(raised_by=user, status="open")
 
     # Escalate to level 1 first
     ticket.escalation_level = 1
@@ -53,14 +63,11 @@ def test_priority_escalates_to_high_on_level_2(db, ticket_factory, user_factory,
 
     # Escalate to level 2
     escalated_ticket = TicketService.escalate_ticket(
-        ticket=ticket,
-        escalated_by=technician,
-        reason="Needs HOD review",
-        manual=True
+        ticket=ticket, escalated_by=technician, reason="Needs HOD review", manual=True
     )
 
     assert escalated_ticket.escalation_level == 2
-    assert escalated_ticket.priority == 'high'
+    assert escalated_ticket.priority == "high"
 
 
 def test_priority_auto_marks_critical_after_72_hours(db, ticket_factory, user_factory):
@@ -68,77 +75,83 @@ def test_priority_auto_marks_critical_after_72_hours(db, ticket_factory, user_fa
     user = user_factory()
     ticket = ticket_factory(
         raised_by=user,
-        status='open',
-        created_at=timezone.now() - timedelta(hours=73)  # 73 hours ago
+        status="open",
+        created_at=timezone.now() - timedelta(hours=73),  # 73 hours ago
     )
 
     # Call check_and_mark_critical
     ticket.check_and_mark_critical()
 
-    assert ticket.priority == 'critical'
+    assert ticket.priority == "critical"
 
 
-def test_pending_transition_requires_both_reason_and_comment(db, ticket_factory, user_factory, technician_factory):
+def test_pending_transition_requires_both_reason_and_comment(
+    db, ticket_factory, user_factory, technician_factory
+):
     """Verify PENDING status requires both reason and comment"""
     user = user_factory()
     technician = technician_factory()
-    ticket = ticket_factory(raised_by=user, status='open')
+    ticket = ticket_factory(raised_by=user, status="open")
 
     # Try to mark PENDING without comment - should raise error
     with pytest.raises(ValidationError):
         TicketService.update_ticket_status(
             ticket=ticket,
-            new_status='pending',
+            new_status="pending",
             updated_by=technician,
-            pending_reason='material_shortage',
-            pending_comment=None  # Missing comment
+            pending_reason="material_shortage",
+            pending_comment=None,  # Missing comment
         )
 
 
-def test_pending_transition_with_both_fields(db, ticket_factory, user_factory, technician_factory):
+def test_pending_transition_with_both_fields(
+    db, ticket_factory, user_factory, technician_factory
+):
     """Verify PENDING status succeeds with both reason and comment"""
     user = user_factory()
     technician = technician_factory()
-    ticket = ticket_factory(raised_by=user, status='in_progress')
+    ticket = ticket_factory(raised_by=user, status="in_progress")
 
     # Mark as PENDING with both fields
     updated_ticket = TicketService.update_ticket_status(
         ticket=ticket,
-        new_status='pending',
+        new_status="pending",
         updated_by=technician,
-        pending_reason='material_shortage',
-        pending_comment='Waiting for parts to arrive'
+        pending_reason="material_shortage",
+        pending_comment="Waiting for parts to arrive",
     )
 
-    assert updated_ticket.status == 'pending'
-    assert updated_ticket.pending_reason == 'material_shortage'
-    assert updated_ticket.pending_comment == 'Waiting for parts to arrive'
+    assert updated_ticket.status == "pending"
+    assert updated_ticket.pending_reason == "material_shortage"
+    assert updated_ticket.pending_comment == "Waiting for parts to arrive"
 
 
 def test_user_can_close_their_own_ticket(db, ticket_factory, user_factory):
     """Verify users can close their own tickets"""
     user = user_factory()
-    ticket = ticket_factory(raised_by=user, status='resolved')
+    ticket = ticket_factory(raised_by=user, status="resolved")
 
     # User closes their own ticket
-    ticket.change_status('closed', performed_by=user)
+    ticket.change_status("closed", performed_by=user)
     ticket.refresh_from_db()
 
-    assert ticket.status == 'closed'
+    assert ticket.status == "closed"
 
 
 def test_user_cannot_close_others_ticket(db, ticket_factory, user_factory):
     """Verify users cannot close other users' tickets"""
     user1 = user_factory(username="user1")
     user2 = user_factory(username="user2")
-    ticket = ticket_factory(raised_by=user1, status='resolved')
+    ticket = ticket_factory(raised_by=user1, status="resolved")
 
     # User2 tries to close user1's ticket - should be blocked by permissions
     # (actual permission check depends on API/view layer)
     assert ticket.raised_by == user1
 
 
-def test_director_has_analytics_only_access(db, director_factory, ticket_factory, user_factory):
+def test_director_has_analytics_only_access(
+    db, director_factory, ticket_factory, user_factory
+):
     """Verify director role has analytics-only access"""
     director = director_factory()
     user = user_factory()
@@ -146,10 +159,12 @@ def test_director_has_analytics_only_access(db, director_factory, ticket_factory
 
     # Director should not be able to modify tickets
     with pytest.raises((ValidationError, PermissionError)):
-        ticket.change_status('in_progress', performed_by=director)
+        ticket.change_status("in_progress", performed_by=director)
 
 
-def test_pending_status_does_not_pause_escalation(db, ticket_factory, user_factory, technician_factory):
+def test_pending_status_does_not_pause_escalation(
+    db, ticket_factory, user_factory, technician_factory
+):
     """Verify PENDING status does NOT pause escalation timers"""
     user = user_factory()
     technician = technician_factory()
@@ -157,13 +172,13 @@ def test_pending_status_does_not_pause_escalation(db, ticket_factory, user_facto
     # Create ticket that would escalate
     ticket = ticket_factory(
         raised_by=user,
-        status='open',
+        status="open",
         next_escalation_due=timezone.now() - timedelta(hours=1),
-        auto_escalation_enabled=True
+        auto_escalation_enabled=True,
     )
 
     # Mark as PENDING
-    ticket.change_status('pending', performed_by=technician)
+    ticket.change_status("pending", performed_by=technician)
     ticket.refresh_from_db()
 
     # Escalation timer should still be active/overdue
@@ -171,11 +186,13 @@ def test_pending_status_does_not_pause_escalation(db, ticket_factory, user_facto
     assert ticket.auto_escalation_enabled
 
 
-def test_ticket_cannot_escalate_when_closed(db, ticket_factory, user_factory, technician_factory):
+def test_ticket_cannot_escalate_when_closed(
+    db, ticket_factory, user_factory, technician_factory
+):
     """Verify closed tickets cannot be escalated"""
     user = user_factory()
     technician = technician_factory()
-    ticket = ticket_factory(raised_by=user, status='closed')
+    ticket = ticket_factory(raised_by=user, status="closed")
 
     # Try to escalate closed ticket - should fail
     with pytest.raises((ValidationError, PermissionError)):
@@ -183,15 +200,17 @@ def test_ticket_cannot_escalate_when_closed(db, ticket_factory, user_factory, te
             ticket=ticket,
             escalated_by=technician,
             reason="Try to escalate closed ticket",
-            manual=True
+            manual=True,
         )
 
 
-def test_escalation_level_cannot_exceed_2(db, ticket_factory, user_factory, technician_factory):
+def test_escalation_level_cannot_exceed_2(
+    db, ticket_factory, user_factory, technician_factory
+):
     """Verify escalation level cannot exceed 2"""
     user = user_factory()
     technician = technician_factory()
-    ticket = ticket_factory(raised_by=user, status='open')
+    ticket = ticket_factory(raised_by=user, status="open")
 
     # Escalate to max level
     ticket.escalation_level = 2
@@ -202,29 +221,44 @@ def test_escalation_level_cannot_exceed_2(db, ticket_factory, user_factory, tech
         ticket=ticket,
         escalated_by=technician,
         reason="Try to escalate beyond max",
-        manual=True
+        manual=True,
     )
 
     assert escalated.escalation_level <= 2
 
 
 def test_priority_field_validation(db, ticket_factory, user_factory):
-    """Verify priority field only accepts valid values"""
+    """Verify priority tracks escalation level and critical persists through saves"""
     user = user_factory()
     ticket = ticket_factory(raised_by=user)
 
-    valid_priorities = ['low', 'medium', 'high', 'critical']
-    for priority in valid_priorities:
-        ticket.priority = priority
-        ticket.save()
-        assert ticket.priority == priority
+    # Level 0 → low
+    assert ticket.priority == "low"
+
+    # Level 1 → medium
+    ticket.escalation_level = 1
+    ticket.save()
+    assert ticket.priority == "medium"
+
+    # Level 2 → high
+    ticket.escalation_level = 2
+    ticket.save()
+    assert ticket.priority == "high"
+
+    # Critical persists through save (aging override)
+    ticket.priority = "critical"
+    ticket.save()
+    assert ticket.priority == "critical"
 
 
 # ============================================================================
 # ASSIGNED_AT ESCALATION TIMING TESTS
 # ============================================================================
 
-def test_unassigned_ticket_cannot_escalate(db, ticket_factory, user_factory, section, facility):
+
+def test_unassigned_ticket_cannot_escalate(
+    db, ticket_factory, user_factory, section, facility
+):
     """Verify unassigned tickets are excluded from escalation"""
     user = user_factory()
     user.primary_campus = section.department.campus
@@ -240,7 +274,7 @@ def test_unassigned_ticket_cannot_escalate(db, ticket_factory, user_factory, sec
         assigned_to=None,  # Explicitly unassigned
         status="open",
         auto_escalation_enabled=True,
-        escalation_threshold_hours=48
+        escalation_threshold_hours=48,
     )
 
     # For unassigned tickets, _schedule_next_escalation should set next_escalation_due to None
@@ -252,7 +286,9 @@ def test_unassigned_ticket_cannot_escalate(db, ticket_factory, user_factory, sec
     assert ticket.is_due_for_escalation() is False
 
 
-def test_escalation_timer_starts_from_assigned_at(db, ticket_factory, user_factory, section, facility, technician_factory):
+def test_escalation_timer_starts_from_assigned_at(
+    db, ticket_factory, user_factory, section, facility, technician_factory
+):
     """Verify escalation timer is based on assigned_at, not created_at"""
     user = user_factory()
     user.primary_campus = section.department.campus
@@ -274,7 +310,7 @@ def test_escalation_timer_starts_from_assigned_at(db, ticket_factory, user_facto
         assigned_to=None,
         status="open",
         auto_escalation_enabled=True,
-        escalation_threshold_hours=48
+        escalation_threshold_hours=48,
     )
 
     # Manually set created_at
@@ -299,7 +335,9 @@ def test_escalation_timer_starts_from_assigned_at(db, ticket_factory, user_facto
     assert ticket.next_escalation_due > timezone.now()
 
 
-def test_escalation_triggers_after_threshold_from_assigned_at(db, section, facility, user_factory, technician_factory):
+def test_escalation_triggers_after_threshold_from_assigned_at(
+    db, section, facility, user_factory, technician_factory
+):
     """Verify escalation triggers correctly when threshold is exceeded from assigned_at"""
     user = user_factory()
     user.primary_campus = section.department.campus
@@ -326,7 +364,7 @@ def test_escalation_triggers_after_threshold_from_assigned_at(db, section, facil
         assigned_to=technician,
         status="assigned",
         auto_escalation_enabled=True,
-        escalation_threshold_hours=48
+        escalation_threshold_hours=48,
     )
 
     # Set assigned_at to 49 hours ago (exceeds 48-hour threshold)
@@ -342,7 +380,9 @@ def test_escalation_triggers_after_threshold_from_assigned_at(db, section, facil
     assert ticket.next_escalation_due < timezone.now()
 
 
-def test_escalation_does_not_trigger_before_threshold_from_assigned_at(db, section, facility, user_factory, technician_factory):
+def test_escalation_does_not_trigger_before_threshold_from_assigned_at(
+    db, section, facility, user_factory, technician_factory
+):
     """Verify escalation does NOT trigger before threshold expires from assigned_at, even if created long ago"""
     user = user_factory()
     user.primary_campus = section.department.campus
@@ -364,7 +404,7 @@ def test_escalation_does_not_trigger_before_threshold_from_assigned_at(db, secti
         assigned_to=technician,
         status="assigned",
         auto_escalation_enabled=True,
-        escalation_threshold_hours=48
+        escalation_threshold_hours=48,
     )
 
     # Set created_at to 10 hours ago
@@ -384,7 +424,9 @@ def test_escalation_does_not_trigger_before_threshold_from_assigned_at(db, secti
     assert ticket.next_escalation_due > timezone.now()
 
 
-def test_reassignment_resets_escalation_timer(db, section, facility, user_factory, technician_factory):
+def test_reassignment_resets_escalation_timer(
+    db, section, facility, user_factory, technician_factory
+):
     """Verify reassigning a ticket resets the escalation timer from new assigned_at"""
     user = user_factory()
     user.primary_campus = section.department.campus
@@ -411,7 +453,7 @@ def test_reassignment_resets_escalation_timer(db, section, facility, user_factor
         assigned_to=tech1,
         status="assigned",
         auto_escalation_enabled=True,
-        escalation_threshold_hours=48
+        escalation_threshold_hours=48,
     )
 
     Ticket.objects.filter(id=ticket.id).update(assigned_at=assigned_time_1)
@@ -435,7 +477,10 @@ def test_reassignment_resets_escalation_timer(db, section, facility, user_factor
 # AUTO-ESCALATION PROCESS INTEGRATION TESTS
 # ============================================================================
 
-def test_assigned_at_integration_unassigned_not_escalated(db, section, facility, user_factory, technician_factory):
+
+def test_assigned_at_integration_unassigned_not_escalated(
+    db, section, facility, user_factory, technician_factory
+):
     """Verify unassigned tickets skip auto-escalation processing"""
     user = user_factory()
     user.primary_campus = section.department.campus
@@ -451,14 +496,13 @@ def test_assigned_at_integration_unassigned_not_escalated(db, section, facility,
         assigned_to=None,  # Key: unassigned
         status="open",
         auto_escalation_enabled=True,
-        escalation_threshold_hours=48
+        escalation_threshold_hours=48,
     )
 
     # Manually set times to force it to seem overdue if checked
     old_time = timezone.now() - timedelta(days=10)
     Ticket.objects.filter(id=ticket.id).update(
-        created_at=old_time,
-        next_escalation_due=old_time  # Very overdue
+        created_at=old_time, next_escalation_due=old_time  # Very overdue
     )
     ticket.refresh_from_db()
 
@@ -468,14 +512,16 @@ def test_assigned_at_integration_unassigned_not_escalated(db, section, facility,
 
     # Process auto escalations should skip this
     results = TicketService.process_auto_escalations()
-    assert results['processed'] == 0  # Not processed
-    assert results['escalated'] == 0  # Not escalated
+    assert results["processed"] == 0  # Not processed
+    assert results["escalated"] == 0  # Not escalated
 
     ticket.refresh_from_db()
     assert ticket.escalation_level == 0  # Still level 0
 
 
-def test_assigned_at_integration_recently_assigned_not_escalated(db, section, facility, user_factory, technician_factory):
+def test_assigned_at_integration_recently_assigned_not_escalated(
+    db, section, facility, user_factory, technician_factory
+):
     """Verify recently assigned tickets don't escalate before threshold"""
     user = user_factory()
     user.primary_campus = section.department.campus
@@ -497,7 +543,7 @@ def test_assigned_at_integration_recently_assigned_not_escalated(db, section, fa
         assigned_to=technician,
         status="assigned",
         auto_escalation_enabled=True,
-        escalation_threshold_hours=48
+        escalation_threshold_hours=48,
     )
 
     # Manually set assigned_at
@@ -513,14 +559,16 @@ def test_assigned_at_integration_recently_assigned_not_escalated(db, section, fa
 
     # Process auto escalations
     results = TicketService.process_auto_escalations()
-    assert results['processed'] == 0
-    assert results['escalated'] == 0
+    assert results["processed"] == 0
+    assert results["escalated"] == 0
 
     ticket.refresh_from_db()
     assert ticket.escalation_level == 0
 
 
-def test_assigned_at_integration_old_assignment_escalates(db, section, facility, user_factory, technician_factory):
+def test_assigned_at_integration_old_assignment_escalates(
+    db, section, facility, user_factory, technician_factory
+):
     """Verify old assignments get escalated on schedule"""
     user = user_factory()
     user.primary_campus = section.department.campus
@@ -548,7 +596,7 @@ def test_assigned_at_integration_old_assignment_escalates(db, section, facility,
         assigned_to=technician,
         status="assigned",
         auto_escalation_enabled=True,
-        escalation_threshold_hours=48
+        escalation_threshold_hours=48,
     )
 
     Ticket.objects.filter(id=ticket.id).update(assigned_at=assigned_time)
@@ -561,8 +609,8 @@ def test_assigned_at_integration_old_assignment_escalates(db, section, facility,
 
     # Process auto escalations
     results = TicketService.process_auto_escalations()
-    assert results['processed'] >= 1  # At least this one
-    assert results['escalated'] >= 1
+    assert results["processed"] >= 1  # At least this one
+    assert results["escalated"] >= 1
 
     ticket.refresh_from_db()
     assert ticket.escalation_level == 1

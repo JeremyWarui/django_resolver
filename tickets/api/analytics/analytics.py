@@ -19,11 +19,30 @@ Metrics Provided:
 from datetime import datetime, timedelta
 from django.utils import timezone
 from django.core.cache import cache
-from django.db.models import Count, Avg, Q, F, ExpressionWrapper, fields, FloatField, DurationField
+from django.db.models import (
+    Count,
+    Avg,
+    Q,
+    F,
+    ExpressionWrapper,
+    fields,
+    FloatField,
+    DurationField,
+)
 from django.db.models.functions import TruncDay, TruncWeek, TruncMonth
 from typing import Dict, List, Optional, Tuple
 
-from tickets.models import Ticket, CustomUser, Feedback, Facility, Section, Organization, Campus, Department, TicketLog
+from tickets.models import (
+    Ticket,
+    CustomUser,
+    Feedback,
+    Facility,
+    Section,
+    Organization,
+    Campus,
+    Department,
+    TicketLog,
+)
 
 ANALYTICS_CACHE_TTL = 300  # 5 minutes
 
@@ -49,8 +68,8 @@ class TicketAnalytics:
             queryset = queryset.filter(section_id=section_id)
 
         result = {
-            'period': f"Last {days} day{'s' if days > 1 else ''}",
-            'count': queryset.count()
+            "period": f"Last {days} day{'s' if days > 1 else ''}",
+            "count": queryset.count(),
         }
         cache.set(cache_key, result, ANALYTICS_CACHE_TTL)
         return result
@@ -68,27 +87,29 @@ class TicketAnalytics:
         if section_id:
             queryset = queryset.filter(section_id=section_id)
 
-        result = list(queryset.values('status').annotate(count=Count('id')).order_by('status'))
+        result = list(
+            queryset.values("status").annotate(count=Count("id")).order_by("status")
+        )
         cache.set(cache_key, result, ANALYTICS_CACHE_TTL)
         return result
 
     @staticmethod
-    def get_ticket_trend_data(days=30, group_by='day'):
+    def get_ticket_trend_data(days=30, group_by="day"):
         cache_key = f"analytics_trend_{days}_{group_by}"
         cached = cache.get(cache_key)
         if cached is not None:
             return cached
 
         time_threshold = timezone.now() - timedelta(days=days)
-        trunc_map = {'week': TruncWeek('created_at'), 'month': TruncMonth('created_at')}
-        trunc_func = trunc_map.get(group_by, TruncDay('created_at'))
+        trunc_map = {"week": TruncWeek("created_at"), "month": TruncMonth("created_at")}
+        trunc_func = trunc_map.get(group_by, TruncDay("created_at"))
 
         result = list(
             Ticket.objects.filter(created_at__gte=time_threshold)
             .annotate(period=trunc_func)
-            .values('period')
-            .annotate(count=Count('id'))
-            .order_by('period')
+            .values("period")
+            .annotate(count=Count("id"))
+            .order_by("period")
         )
         cache.set(cache_key, result, ANALYTICS_CACHE_TTL)
         return result
@@ -101,9 +122,9 @@ class TicketAnalytics:
             return cached
 
         result = list(
-            Facility.objects.annotate(ticket_count=Count('tickets'))
-            .values('name', 'ticket_count')
-            .order_by('-ticket_count')
+            Facility.objects.annotate(ticket_count=Count("tickets"))
+            .values("name", "ticket_count")
+            .order_by("-ticket_count")
         )
         cache.set(cache_key, result, ANALYTICS_CACHE_TTL)
         return result
@@ -116,9 +137,9 @@ class TicketAnalytics:
             return cached
 
         result = list(
-            Section.objects.annotate(ticket_count=Count('tickets'))
-            .values('name', 'ticket_count')
-            .order_by('-ticket_count')
+            Section.objects.annotate(ticket_count=Count("tickets"))
+            .values("name", "ticket_count")
+            .order_by("-ticket_count")
         )
         cache.set(cache_key, result, ANALYTICS_CACHE_TTL)
         return result
@@ -143,58 +164,71 @@ class TechnicianAnalytics:
 
         overdue_threshold = timezone.now() - timedelta(hours=24)
 
-        queryset = CustomUser.objects.filter(role='technician')
+        queryset = CustomUser.objects.filter(role="technician")
         if technician_id:
             queryset = queryset.filter(id=technician_id)
 
         techs = queryset.annotate(
-            total_tickets=Count('assigned_tickets', distinct=True),
+            total_tickets=Count("assigned_tickets", distinct=True),
             resolved_tickets=Count(
-                'assigned_tickets',
-                filter=Q(assigned_tickets__status__in=['resolved', 'closed']),
-                distinct=True
+                "assigned_tickets",
+                filter=Q(assigned_tickets__status__in=["resolved", "closed"]),
+                distinct=True,
             ),
             pending_tickets=Count(
-                'assigned_tickets',
-                filter=Q(assigned_tickets__status__in=['assigned', 'in_progress', 'pending']),
-                distinct=True
+                "assigned_tickets",
+                filter=Q(
+                    assigned_tickets__status__in=["assigned", "in_progress", "pending"]
+                ),
+                distinct=True,
             ),
             overdue_tickets=Count(
-                'assigned_tickets',
+                "assigned_tickets",
                 filter=Q(
-                    assigned_tickets__status__in=['assigned', 'in_progress', 'pending'],
-                    assigned_tickets__created_at__lt=overdue_threshold
+                    assigned_tickets__status__in=["assigned", "in_progress", "pending"],
+                    assigned_tickets__created_at__lt=overdue_threshold,
                 ),
-                distinct=True
+                distinct=True,
             ),
-            avg_rating=Avg('assigned_tickets__feedback__rating'),
+            avg_rating=Avg("assigned_tickets__feedback__rating"),
             avg_resolution_hours=Avg(
                 ExpressionWrapper(
-                    F('assigned_tickets__updated_at') - F('assigned_tickets__created_at'),
-                    output_field=DurationField()
+                    F("assigned_tickets__updated_at")
+                    - F("assigned_tickets__created_at"),
+                    output_field=DurationField(),
                 ),
-                filter=Q(assigned_tickets__status__in=['resolved', 'closed'])
+                filter=Q(assigned_tickets__status__in=["resolved", "closed"]),
             ),
         )
 
         performance_data = []
         for tech in techs:
-            avg_res = (tech.avg_resolution_hours.total_seconds() / 3600) if tech.avg_resolution_hours else 0
-            performance_data.append({
-                'id': tech.id,
-                'username': tech.username,
-                'full_name': f"{tech.first_name} {tech.last_name}",
-                'total_tickets': tech.total_tickets,
-                'resolved_tickets': tech.resolved_tickets,
-                'pending_tickets': tech.pending_tickets,
-                'overdue_tickets': tech.overdue_tickets,
-                'avg_rating': round(tech.avg_rating or 0, 2),
-                'avg_resolution_time': round(avg_res, 2),
-                'resolution_percentage': round(
-                    (tech.resolved_tickets / tech.total_tickets * 100)
-                    if tech.total_tickets > 0 else 0, 2
-                ),
-            })
+            avg_res = (
+                (tech.avg_resolution_hours.total_seconds() / 3600)
+                if tech.avg_resolution_hours
+                else 0
+            )
+            performance_data.append(
+                {
+                    "id": tech.id,
+                    "username": tech.username,
+                    "full_name": f"{tech.first_name} {tech.last_name}",
+                    "total_tickets": tech.total_tickets,
+                    "resolved_tickets": tech.resolved_tickets,
+                    "pending_tickets": tech.pending_tickets,
+                    "overdue_tickets": tech.overdue_tickets,
+                    "avg_rating": round(tech.avg_rating or 0, 2),
+                    "avg_resolution_time": round(avg_res, 2),
+                    "resolution_percentage": round(
+                        (
+                            (tech.resolved_tickets / tech.total_tickets * 100)
+                            if tech.total_tickets > 0
+                            else 0
+                        ),
+                        2,
+                    ),
+                }
+            )
 
         cache.set(cache_key, performance_data, ANALYTICS_CACHE_TTL)
         return performance_data
@@ -207,23 +241,21 @@ class TechnicianAnalytics:
         if cached is not None:
             return cached
 
-        rows = (
-            Section.objects.annotate(
-                technician_count=Count('technicians', distinct=True),
-                avg_rating=Avg('technicians__assigned_tickets__feedback__rating'),
-            ).values('name', 'technician_count', 'avg_rating')
-        )
+        rows = Section.objects.annotate(
+            technician_count=Count("technicians", distinct=True),
+            avg_rating=Avg("technicians__assigned_tickets__feedback__rating"),
+        ).values("name", "technician_count", "avg_rating")
 
         result = sorted(
             [
                 {
-                    'section_name': r['name'],
-                    'technician_count': r['technician_count'],
-                    'avg_rating': round(r['avg_rating'] or 0, 2),
+                    "section_name": r["name"],
+                    "technician_count": r["technician_count"],
+                    "avg_rating": round(r["avg_rating"] or 0, 2),
                 }
                 for r in rows
             ],
-            key=lambda x: x['avg_rating'],
+            key=lambda x: x["avg_rating"],
             reverse=True,
         )
         cache.set(cache_key, result, ANALYTICS_CACHE_TTL)
@@ -234,30 +266,21 @@ class OrganizationalAnalytics:
     """Analytics service providing role-specific dashboards for organizational hierarchy"""
 
     # SLA thresholds (hours)
-    SLA_LIMITS = {
-        'critical': 4,
-        'urgent': 24,
-        'high': 48,
-        'normal': 72,
-        'low': 120
-    }
+    SLA_LIMITS = {"critical": 4, "urgent": 24, "high": 48, "normal": 72, "low": 120}
 
     @staticmethod
     def _calculate_avg_resolution_time(tickets_queryset) -> float:
         """Calculate average resolution time in hours"""
-        resolved_tickets = tickets_queryset.filter(
-            status__in=['resolved', 'closed'])
+        resolved_tickets = tickets_queryset.filter(status__in=["resolved", "closed"])
         if not resolved_tickets.exists():
             return 0.0
 
         duration_annotations = resolved_tickets.annotate(
             resolution_time=ExpressionWrapper(
-                F('resolved_at') - F('created_at'),
-                output_field=DurationField()
+                F("resolved_at") - F("created_at"), output_field=DurationField()
             )
         )
-        avg_duration = duration_annotations.aggregate(
-            avg=Avg('resolution_time'))['avg']
+        avg_duration = duration_annotations.aggregate(avg=Avg("resolution_time"))["avg"]
         return (avg_duration.total_seconds() / 3600) if avg_duration else 0.0
 
     @staticmethod
@@ -270,7 +293,7 @@ class OrganizationalAnalytics:
         sla_cutoff = timezone.now() - timedelta(days=7)
         overdue_count = tickets_queryset.filter(
             created_at__lt=sla_cutoff,
-            status__in=['open', 'assigned', 'in_progress', 'pending', 'escalated']
+            status__in=["open", "assigned", "in_progress", "pending", "escalated"],
         ).count()
         return round(((total - overdue_count) / total) * 100, 2)
 
@@ -281,12 +304,13 @@ class OrganizationalAnalytics:
         recent = tickets_queryset.filter(escalated_at__gte=time_threshold)
 
         return {
-            'total_escalations': recent.count(),
-            'by_level': dict(
-                recent.values('escalation_level').annotate(
-                    count=Count('id')).values_list('escalation_level', 'count')
+            "total_escalations": recent.count(),
+            "by_level": dict(
+                recent.values("escalation_level")
+                .annotate(count=Count("id"))
+                .values_list("escalation_level", "count")
             ),
-            'avg_levels': recent.aggregate(avg=Avg('escalation_level'))['avg'] or 0
+            "avg_levels": recent.aggregate(avg=Avg("escalation_level"))["avg"] or 0,
         }
 
     @staticmethod
@@ -302,7 +326,7 @@ class OrganizationalAnalytics:
         Returns:
             Dictionary with dashboard metrics
         """
-        if user.role != 'director' or not user.primary_campus:
+        if user.role != "director" or not user.primary_campus:
             return {}
 
         cache_key = f"analytics_director_{user.primary_campus.organization_id}_{days}"
@@ -321,8 +345,7 @@ class OrganizationalAnalytics:
 
         # Overall metrics
         total_tickets = all_tickets.count()
-        total_open = all_tickets.filter(
-            status__in=['open', 'assigned']).count()
+        total_open = all_tickets.filter(status__in=["open", "assigned"]).count()
         total_escalated = all_tickets.filter(escalation_level__gt=0).count()
         avg_resolution_time = OrganizationalAnalytics._calculate_avg_resolution_time(
             all_tickets
@@ -331,59 +354,85 @@ class OrganizationalAnalytics:
         # Campus breakdown
         campus_stats = []
         for campus in org.campuses.all():
-            campus_tickets = all_tickets.filter(
-                section__department__campus=campus)
-            campus_stats.append({
-                'campus': {
-                    'id': campus.id,
-                    'name': campus.name,
-                    'code': campus.code,
-                    'location': campus.location
-                },
-                'total_tickets': campus_tickets.count(),
-                'open_tickets': campus_tickets.filter(status__in=['open', 'assigned']).count(),
-                'overdue_tickets': campus_tickets.filter(
-                    created_at__lt=timezone.now() - timedelta(days=7),
-                    status__in=['open', 'assigned', 'in_progress', 'pending', 'escalated']
-                ).count(),
-                'escalated_tickets': campus_tickets.filter(escalation_level__gt=0).count(),
-                'avg_resolution_hours': OrganizationalAnalytics._calculate_avg_resolution_time(
-                    campus_tickets
-                ),
-                'sla_compliance': OrganizationalAnalytics._calculate_sla_compliance(
-                    campus_tickets
-                )
-            })
+            campus_tickets = all_tickets.filter(section__department__campus=campus)
+            campus_stats.append(
+                {
+                    "campus": {
+                        "id": campus.id,
+                        "name": campus.name,
+                        "code": campus.code,
+                        "location": campus.location,
+                    },
+                    "total_tickets": campus_tickets.count(),
+                    "open_tickets": campus_tickets.filter(
+                        status__in=["open", "assigned"]
+                    ).count(),
+                    "overdue_tickets": campus_tickets.filter(
+                        created_at__lt=timezone.now() - timedelta(days=7),
+                        status__in=[
+                            "open",
+                            "assigned",
+                            "in_progress",
+                            "pending",
+                            "escalated",
+                        ],
+                    ).count(),
+                    "escalated_tickets": campus_tickets.filter(
+                        escalation_level__gt=0
+                    ).count(),
+                    "avg_resolution_hours": OrganizationalAnalytics._calculate_avg_resolution_time(
+                        campus_tickets
+                    ),
+                    "sla_compliance": OrganizationalAnalytics._calculate_sla_compliance(
+                        campus_tickets
+                    ),
+                }
+            )
 
         # Department performance across campuses
         dept_performance = []
         for campus in org.campuses.all():
             for dept in campus.departments.filter(is_active=True):
                 dept_tickets = all_tickets.filter(section__department=dept)
-                dept_performance.append({
-                    'department': {
-                        'id': dept.id,
-                        'name': dept.name,
-                        'code': dept.code,
-                        'campus': campus.name,
-                        'hod': dept.head_of_department.username if dept.head_of_department else None
-                    },
-                    'ticket_count': dept_tickets.count(),
-                    'open_count': dept_tickets.filter(status__in=['open', 'assigned']).count(),
-                    'resolved_count': dept_tickets.filter(status__in=['resolved', 'closed']).count(),
-                    'escalation_count': dept_tickets.filter(escalation_level__gt=0).count(),
-                    'avg_resolution_hours': OrganizationalAnalytics._calculate_avg_resolution_time(
-                        dept_tickets
-                    ),
-                    'avg_escalations': dept_tickets.aggregate(
-                        avg=Avg('escalation_level')
-                    )['avg'] or 0
-                })
+                dept_performance.append(
+                    {
+                        "department": {
+                            "id": dept.id,
+                            "name": dept.name,
+                            "code": dept.code,
+                            "campus": campus.name,
+                            "hod": (
+                                dept.head_of_department.username
+                                if dept.head_of_department
+                                else None
+                            ),
+                        },
+                        "ticket_count": dept_tickets.count(),
+                        "open_count": dept_tickets.filter(
+                            status__in=["open", "assigned"]
+                        ).count(),
+                        "resolved_count": dept_tickets.filter(
+                            status__in=["resolved", "closed"]
+                        ).count(),
+                        "escalation_count": dept_tickets.filter(
+                            escalation_level__gt=0
+                        ).count(),
+                        "avg_resolution_hours": OrganizationalAnalytics._calculate_avg_resolution_time(
+                            dept_tickets
+                        ),
+                        "avg_escalations": dept_tickets.aggregate(
+                            avg=Avg("escalation_level")
+                        )["avg"]
+                        or 0,
+                    }
+                )
 
         # Status distribution
-        status_dist = recent_tickets.values('status').annotate(
-            count=Count('id')
-        ).order_by('-count')
+        status_dist = (
+            recent_tickets.values("status")
+            .annotate(count=Count("id"))
+            .order_by("-count")
+        )
 
         # Escalation trends
         escalation_trends = OrganizationalAnalytics._get_escalation_trends(
@@ -393,102 +442,137 @@ class OrganizationalAnalytics:
         # Top technicians by resolution count
         top_technicians = []
         technicians = CustomUser.objects.filter(
-            role='technician',
-            sections__department__campus__organization=org
+            role="technician", sections__department__campus__organization=org
         ).distinct()
         for tech in technicians[:10]:
             tech_tickets = all_tickets.filter(assigned_to=tech)
-            top_technicians.append({
-                'technician': {
-                    'id': tech.id,
-                    'name': f"{tech.first_name} {tech.last_name}",
-                    'username': tech.username
-                },
-                'total_assigned': tech_tickets.count(),
-                'resolved': tech_tickets.filter(status__in=['resolved', 'closed']).count(),
-                'avg_resolution_hours': OrganizationalAnalytics._calculate_avg_resolution_time(
-                    tech_tickets
-                )
-            })
+            top_technicians.append(
+                {
+                    "technician": {
+                        "id": tech.id,
+                        "name": f"{tech.first_name} {tech.last_name}",
+                        "username": tech.username,
+                    },
+                    "total_assigned": tech_tickets.count(),
+                    "resolved": tech_tickets.filter(
+                        status__in=["resolved", "closed"]
+                    ).count(),
+                    "avg_resolution_hours": OrganizationalAnalytics._calculate_avg_resolution_time(
+                        tech_tickets
+                    ),
+                }
+            )
 
         # Facility-level metrics across organization
         facility_stats = []
-        org_facilities = Facility.objects.filter(
-            campus__organization=org
-        )
+        org_facilities = Facility.objects.filter(campus__organization=org)
         for facility in org_facilities:
             facility_tickets = all_tickets.filter(facility=facility)
-            facility_stats.append({
-                'facility': {
-                    'id': facility.id,
-                    'name': facility.name,
-                    'type': facility.type,
-                    'status': facility.status,
-                    'campus': facility.campus.name if facility.campus else None,
-                    'department': facility.department.name if facility.department else None
-                },
-                'total_tickets': facility_tickets.count(),
-                'open_tickets': facility_tickets.filter(status__in=['open', 'assigned']).count(),
-                'resolved_tickets': facility_tickets.filter(status__in=['resolved', 'closed']).count(),
-                'overdue_tickets': sum(1 for t in facility_tickets if t.is_overdue),
-                'avg_resolution_hours': OrganizationalAnalytics._calculate_avg_resolution_time(
-                    facility_tickets
-                )
-            })
+            facility_stats.append(
+                {
+                    "facility": {
+                        "id": facility.id,
+                        "name": facility.name,
+                        "type": facility.type,
+                        "status": facility.status,
+                        "campus": facility.campus.name if facility.campus else None,
+                        "department": (
+                            facility.department.name if facility.department else None
+                        ),
+                    },
+                    "total_tickets": facility_tickets.count(),
+                    "open_tickets": facility_tickets.filter(
+                        status__in=["open", "assigned"]
+                    ).count(),
+                    "resolved_tickets": facility_tickets.filter(
+                        status__in=["resolved", "closed"]
+                    ).count(),
+                    "overdue_tickets": sum(1 for t in facility_tickets if t.is_overdue),
+                    "avg_resolution_hours": OrganizationalAnalytics._calculate_avg_resolution_time(
+                        facility_tickets
+                    ),
+                }
+            )
 
         # Organization-wide section metrics
         section_stats = []
-        org_sections = Section.objects.filter(
-            department__campus__organization=org
-        )
+        org_sections = Section.objects.filter(department__campus__organization=org)
         for section in org_sections:
             section_tickets = all_tickets.filter(section=section)
-            section_stats.append({
-                'section': {
-                    'id': section.id,
-                    'name': section.name,
-                    'code': section.code,
-                    'department': section.department.name if section.department else None,
-                    'campus': section.department.campus.name if section.department and section.department.campus else None,
-                    'section_head': section.section_head.username if section.section_head else None
-                },
-                'total_tickets': section_tickets.count(),
-                'open_tickets': section_tickets.filter(status__in=['open', 'assigned']).count(),
-                'resolved_tickets': section_tickets.filter(status__in=['resolved', 'closed']).count(),
-                'escalated_tickets': section_tickets.filter(escalation_level__gt=0).count(),
-                'avg_resolution_hours': OrganizationalAnalytics._calculate_avg_resolution_time(
-                    section_tickets
-                ),
-                'technician_count': section.technicians.count()
-            })
+            section_stats.append(
+                {
+                    "section": {
+                        "id": section.id,
+                        "name": section.name,
+                        "code": section.code,
+                        "department": (
+                            section.department.name if section.department else None
+                        ),
+                        "campus": (
+                            section.department.campus.name
+                            if section.department and section.department.campus
+                            else None
+                        ),
+                        "section_head": (
+                            section.section_head.username
+                            if section.section_head
+                            else None
+                        ),
+                    },
+                    "total_tickets": section_tickets.count(),
+                    "open_tickets": section_tickets.filter(
+                        status__in=["open", "assigned"]
+                    ).count(),
+                    "resolved_tickets": section_tickets.filter(
+                        status__in=["resolved", "closed"]
+                    ).count(),
+                    "escalated_tickets": section_tickets.filter(
+                        escalation_level__gt=0
+                    ).count(),
+                    "avg_resolution_hours": OrganizationalAnalytics._calculate_avg_resolution_time(
+                        section_tickets
+                    ),
+                    "technician_count": section.technicians.count(),
+                }
+            )
 
         # Status distribution
-        status_dist = recent_tickets.values('status').annotate(
-            count=Count('id')
-        ).order_by('-count')
+        status_dist = (
+            recent_tickets.values("status")
+            .annotate(count=Count("id"))
+            .order_by("-count")
+        )
 
         result = {
-            'organization': {
-                'name': org.name,
-                'code': org.code,
-                'type': org.organization_type,
-                'campuses_count': org.campuses.count()
+            "organization": {
+                "name": org.name,
+                "code": org.code,
+                "type": org.organization_type,
+                "campuses_count": org.campuses.count(),
             },
-            'overview': {
-                'total_tickets': total_tickets,
-                'total_open': total_open,
-                'total_escalated': total_escalated,
-                'avg_resolution_hours': avg_resolution_time,
-                'sla_compliance': OrganizationalAnalytics._calculate_sla_compliance(all_tickets)
+            "overview": {
+                "total_tickets": total_tickets,
+                "total_open": total_open,
+                "total_escalated": total_escalated,
+                "avg_resolution_hours": avg_resolution_time,
+                "sla_compliance": OrganizationalAnalytics._calculate_sla_compliance(
+                    all_tickets
+                ),
             },
-            'campuses': campus_stats,
-            'departments': sorted(dept_performance, key=lambda x: x['ticket_count'], reverse=True),
-            'facilities': sorted(facility_stats, key=lambda x: x['total_tickets'], reverse=True),
-            'sections': sorted(section_stats, key=lambda x: x['total_tickets'], reverse=True),
-            'status_distribution': list(status_dist),
-            'escalation_trends': escalation_trends,
-            'top_technicians': top_technicians,
-            'period_days': days
+            "campuses": campus_stats,
+            "departments": sorted(
+                dept_performance, key=lambda x: x["ticket_count"], reverse=True
+            ),
+            "facilities": sorted(
+                facility_stats, key=lambda x: x["total_tickets"], reverse=True
+            ),
+            "sections": sorted(
+                section_stats, key=lambda x: x["total_tickets"], reverse=True
+            ),
+            "status_distribution": list(status_dist),
+            "escalation_trends": escalation_trends,
+            "top_technicians": top_technicians,
+            "period_days": days,
         }
         cache.set(cache_key, result, ANALYTICS_CACHE_TTL)
         return result
@@ -506,7 +590,7 @@ class OrganizationalAnalytics:
         Returns:
             Dictionary with dashboard metrics
         """
-        if user.role != 'hod' or not user.primary_campus:
+        if user.role != "hod" or not user.primary_campus:
             return {}
 
         cache_key = f"analytics_hod_{user.primary_campus_id}_{days}"
@@ -523,10 +607,10 @@ class OrganizationalAnalytics:
 
         # Campus overview
         total_tickets = all_tickets.count()
-        total_open = all_tickets.filter(status__in=['open', 'assigned']).count()
+        total_open = all_tickets.filter(status__in=["open", "assigned"]).count()
         overdue_count = all_tickets.filter(
             created_at__lt=timezone.now() - timedelta(days=7),
-            status__in=['open', 'assigned', 'in_progress', 'pending', 'escalated']
+            status__in=["open", "assigned", "in_progress", "pending", "escalated"],
         ).count()
         escalated_count = all_tickets.filter(escalation_level__gt=0).count()
 
@@ -534,110 +618,141 @@ class OrganizationalAnalytics:
         dept_stats = []
         for dept in campus.departments.filter(is_active=True):
             dept_tickets = all_tickets.filter(section__department=dept)
-            dept_stats.append({
-                'department': {
-                    'id': dept.id,
-                    'name': dept.name,
-                    'code': dept.code,
-                    'hod': dept.head_of_department.username if dept.head_of_department else None
-                },
-                'total_tickets': dept_tickets.count(),
-                'open_tickets': dept_tickets.filter(status__in=['open', 'assigned']).count(),
-                'escalated_tickets': dept_tickets.filter(escalation_level__gt=0).count(),
-                'avg_resolution_hours': OrganizationalAnalytics._calculate_avg_resolution_time(
-                    dept_tickets
-                ),
-                'sla_compliance': OrganizationalAnalytics._calculate_sla_compliance(
-                    dept_tickets
-                )
-            })
+            dept_stats.append(
+                {
+                    "department": {
+                        "id": dept.id,
+                        "name": dept.name,
+                        "code": dept.code,
+                        "hod": (
+                            dept.head_of_department.username
+                            if dept.head_of_department
+                            else None
+                        ),
+                    },
+                    "total_tickets": dept_tickets.count(),
+                    "open_tickets": dept_tickets.filter(
+                        status__in=["open", "assigned"]
+                    ).count(),
+                    "escalated_tickets": dept_tickets.filter(
+                        escalation_level__gt=0
+                    ).count(),
+                    "avg_resolution_hours": OrganizationalAnalytics._calculate_avg_resolution_time(
+                        dept_tickets
+                    ),
+                    "sla_compliance": OrganizationalAnalytics._calculate_sla_compliance(
+                        dept_tickets
+                    ),
+                }
+            )
 
         # Section performance within departments
         section_performance = []
         for dept in campus.departments.filter(is_active=True):
             for section in dept.sections.filter(is_active=True):
                 section_tickets = all_tickets.filter(section=section)
-                section_performance.append({
-                    'section': {
-                        'id': section.id,
-                        'name': section.name,
-                        'code': section.code,
-                        'department': dept.name,
-                        'section_head': section.section_head.username if section.section_head else None
-                    },
-                    'ticket_count': section_tickets.count(),
-                    'open_count': section_tickets.filter(status__in=['open', 'assigned']).count(),
-                    'avg_resolution_hours': OrganizationalAnalytics._calculate_avg_resolution_time(
-                        section_tickets
-                    ),
-                    'technician_count': section.technicians.count()
-                })
+                section_performance.append(
+                    {
+                        "section": {
+                            "id": section.id,
+                            "name": section.name,
+                            "code": section.code,
+                            "department": dept.name,
+                            "section_head": (
+                                section.section_head.username
+                                if section.section_head
+                                else None
+                            ),
+                        },
+                        "ticket_count": section_tickets.count(),
+                        "open_count": section_tickets.filter(
+                            status__in=["open", "assigned"]
+                        ).count(),
+                        "avg_resolution_hours": OrganizationalAnalytics._calculate_avg_resolution_time(
+                            section_tickets
+                        ),
+                        "technician_count": section.technicians.count(),
+                    }
+                )
 
         # Technician performance (across campus)
         technicians = CustomUser.objects.filter(
-            role='technician',
-            sections__department__campus=campus
+            role="technician", sections__department__campus=campus
         ).distinct()
 
         tech_performance = []
         for tech in technicians:
             tech_tickets = all_tickets.filter(assigned_to=tech)
-            tech_performance.append({
-                'technician': {
-                    'id': tech.id,
-                    'name': f"{tech.first_name} {tech.last_name}",
-                    'username': tech.username,
-                    'sections': list(
-                        tech.sections.filter(
-                            department__campus=campus
-                        ).values_list('name', flat=True)
-                    )
-                },
-                'total_assigned': tech_tickets.count(),
-                'resolved': tech_tickets.filter(
-                    status__in=['resolved', 'closed']
-                ).count(),
-                'open': tech_tickets.filter(
-                    status__in=['open', 'assigned', 'in_progress']
-                ).count(),
-                'avg_resolution_hours': OrganizationalAnalytics._calculate_avg_resolution_time(
-                    tech_tickets
-                )
-            })
+            tech_performance.append(
+                {
+                    "technician": {
+                        "id": tech.id,
+                        "name": f"{tech.first_name} {tech.last_name}",
+                        "username": tech.username,
+                        "sections": list(
+                            tech.sections.filter(department__campus=campus).values_list(
+                                "name", flat=True
+                            )
+                        ),
+                    },
+                    "total_assigned": tech_tickets.count(),
+                    "resolved": tech_tickets.filter(
+                        status__in=["resolved", "closed"]
+                    ).count(),
+                    "open": tech_tickets.filter(
+                        status__in=["open", "assigned", "in_progress"]
+                    ).count(),
+                    "avg_resolution_hours": OrganizationalAnalytics._calculate_avg_resolution_time(
+                        tech_tickets
+                    ),
+                }
+            )
 
         # Status distribution
-        status_dist = recent_tickets.values('status').annotate(
-            count=Count('id')
-        ).order_by('-count')
+        status_dist = (
+            recent_tickets.values("status")
+            .annotate(count=Count("id"))
+            .order_by("-count")
+        )
 
         # Escalation analysis
-        escalation_by_level = all_tickets.values('escalation_level').annotate(
-            count=Count('id')
-        ).order_by('escalation_level')
+        escalation_by_level = (
+            all_tickets.values("escalation_level")
+            .annotate(count=Count("id"))
+            .order_by("escalation_level")
+        )
 
         result = {
-            'campus': {
-                'name': campus.name,
-                'code': campus.code,
-                'location': campus.location,
-                'departments_count': campus.departments.filter(is_active=True).count()
+            "campus": {
+                "name": campus.name,
+                "code": campus.code,
+                "location": campus.location,
+                "departments_count": campus.departments.filter(is_active=True).count(),
             },
-            'overview': {
-                'total_tickets': total_tickets,
-                'open_tickets': total_open,
-                'overdue_tickets': overdue_count,
-                'escalated_tickets': escalated_count,
-                'avg_resolution_hours': OrganizationalAnalytics._calculate_avg_resolution_time(
+            "overview": {
+                "total_tickets": total_tickets,
+                "open_tickets": total_open,
+                "overdue_tickets": overdue_count,
+                "escalated_tickets": escalated_count,
+                "avg_resolution_hours": OrganizationalAnalytics._calculate_avg_resolution_time(
                     all_tickets
                 ),
-                'sla_compliance': OrganizationalAnalytics._calculate_sla_compliance(all_tickets)
+                "sla_compliance": OrganizationalAnalytics._calculate_sla_compliance(
+                    all_tickets
+                ),
             },
-            'departments': sorted(dept_stats, key=lambda x: x['total_tickets'], reverse=True),
-            'sections': sorted(section_performance, key=lambda x: x['ticket_count'], reverse=True),
-            'technicians': sorted(tech_performance, key=lambda x: x['total_assigned'], reverse=True),
-            'status_distribution': list(status_dist),
-            'escalation_by_level': list(escalation_by_level),
-            'period_days': days
+            "departments": sorted(
+                dept_stats, key=lambda x: x["total_tickets"], reverse=True
+            ),
+            "sections": sorted(
+                section_performance, key=lambda x: x["ticket_count"], reverse=True
+            ),
+            "technicians": sorted(
+                tech_performance, key=lambda x: x["total_assigned"], reverse=True
+            ),
+            "status_distribution": list(status_dist),
+            "escalation_by_level": list(escalation_by_level),
+            "period_days": days,
         }
         cache.set(cache_key, result, ANALYTICS_CACHE_TTL)
         return result
@@ -655,7 +770,7 @@ class OrganizationalAnalytics:
         Returns:
             Dictionary with dashboard metrics
         """
-        if user.role != 'section_head' or not user.primary_department:
+        if user.role != "section_head" or not user.primary_department:
             return {}
 
         cache_key = f"analytics_section_head_{user.primary_department_id}_{days}"
@@ -672,10 +787,10 @@ class OrganizationalAnalytics:
 
         # Department overview
         total_tickets = all_tickets.count()
-        total_open = all_tickets.filter(status__in=['open', 'assigned']).count()
+        total_open = all_tickets.filter(status__in=["open", "assigned"]).count()
         overdue_count = all_tickets.filter(
             created_at__lt=timezone.now() - timedelta(days=7),
-            status__in=['open', 'assigned', 'in_progress', 'pending', 'escalated']
+            status__in=["open", "assigned", "in_progress", "pending", "escalated"],
         ).count()
         escalated_count = all_tickets.filter(escalation_level__gt=0).count()
 
@@ -683,61 +798,74 @@ class OrganizationalAnalytics:
         section_stats = []
         for section in department.sections.filter(is_active=True):
             section_tickets = all_tickets.filter(section=section)
-            section_stats.append({
-                'section': {
-                    'id': section.id,
-                    'name': section.name,
-                    'code': section.code,
-                    'section_head': section.section_head.username if section.section_head else None
-                },
-                'total_tickets': section_tickets.count(),
-                'open_tickets': section_tickets.filter(status__in=['open', 'assigned']).count(),
-                'escalated_tickets': section_tickets.filter(escalation_level__gt=0).count(),
-                'avg_resolution_hours': OrganizationalAnalytics._calculate_avg_resolution_time(
-                    section_tickets
-                ),
-                'technician_count': section.technicians.count()
-            })
+            section_stats.append(
+                {
+                    "section": {
+                        "id": section.id,
+                        "name": section.name,
+                        "code": section.code,
+                        "section_head": (
+                            section.section_head.username
+                            if section.section_head
+                            else None
+                        ),
+                    },
+                    "total_tickets": section_tickets.count(),
+                    "open_tickets": section_tickets.filter(
+                        status__in=["open", "assigned"]
+                    ).count(),
+                    "escalated_tickets": section_tickets.filter(
+                        escalation_level__gt=0
+                    ).count(),
+                    "avg_resolution_hours": OrganizationalAnalytics._calculate_avg_resolution_time(
+                        section_tickets
+                    ),
+                    "technician_count": section.technicians.count(),
+                }
+            )
 
         # Technician performance
         technicians = CustomUser.objects.filter(
-            role='technician',
-            sections__department=department
+            role="technician", sections__department=department
         ).distinct()
 
         tech_performance = []
         for tech in technicians:
             tech_tickets = all_tickets.filter(assigned_to=tech)
-            resolved_tickets = tech_tickets.filter(
-                status__in=['resolved', 'closed']
+            resolved_tickets = tech_tickets.filter(status__in=["resolved", "closed"])
+
+            tech_performance.append(
+                {
+                    "technician": {
+                        "id": tech.id,
+                        "name": f"{tech.first_name} {tech.last_name}",
+                        "username": tech.username,
+                        "sections": list(
+                            tech.sections.filter(department=department).values_list(
+                                "name", flat=True
+                            )
+                        ),
+                    },
+                    "total_assigned": tech_tickets.count(),
+                    "resolved": resolved_tickets.count(),
+                    "open": tech_tickets.filter(
+                        status__in=["open", "assigned", "in_progress"]
+                    ).count(),
+                    "avg_resolution_hours": OrganizationalAnalytics._calculate_avg_resolution_time(
+                        tech_tickets
+                    ),
+                    "escalation_count": tech_tickets.filter(
+                        escalation_level__gt=0
+                    ).count(),
+                }
             )
 
-            tech_performance.append({
-                'technician': {
-                    'id': tech.id,
-                    'name': f"{tech.first_name} {tech.last_name}",
-                    'username': tech.username,
-                    'sections': list(
-                        tech.sections.filter(department=department).values_list(
-                            'name', flat=True
-                        )
-                    )
-                },
-                'total_assigned': tech_tickets.count(),
-                'resolved': resolved_tickets.count(),
-                'open': tech_tickets.filter(
-                    status__in=['open', 'assigned', 'in_progress']
-                ).count(),
-                'avg_resolution_hours': OrganizationalAnalytics._calculate_avg_resolution_time(
-                    tech_tickets
-                ),
-                'escalation_count': tech_tickets.filter(escalation_level__gt=0).count()
-            })
-
         # Status distribution
-        status_dist = recent_tickets.values('status').annotate(
-            count=Count('id')
-        ).order_by('-count')
+        status_dist = (
+            recent_tickets.values("status")
+            .annotate(count=Count("id"))
+            .order_by("-count")
+        )
 
         # Escalation trends
         escalation_trends = OrganizationalAnalytics._get_escalation_trends(
@@ -745,34 +873,42 @@ class OrganizationalAnalytics:
         )
 
         # Pending tickets analysis
-        pending_tickets = all_tickets.filter(status='pending')
-        pending_reasons = pending_tickets.values('pending_reason').annotate(
-            count=Count('id')
-        ).order_by('-count')
+        pending_tickets = all_tickets.filter(status="pending")
+        pending_reasons = (
+            pending_tickets.values("pending_reason")
+            .annotate(count=Count("id"))
+            .order_by("-count")
+        )
 
         result = {
-            'department': {
-                'name': department.name,
-                'code': department.code,
-                'campus': department.campus.name if department.campus else None,
-                'sections_count': department.sections.filter(is_active=True).count()
+            "department": {
+                "name": department.name,
+                "code": department.code,
+                "campus": department.campus.name if department.campus else None,
+                "sections_count": department.sections.filter(is_active=True).count(),
             },
-            'overview': {
-                'total_tickets': total_tickets,
-                'open_tickets': total_open,
-                'overdue_tickets': overdue_count,
-                'escalated_tickets': escalated_count,
-                'avg_resolution_hours': OrganizationalAnalytics._calculate_avg_resolution_time(
+            "overview": {
+                "total_tickets": total_tickets,
+                "open_tickets": total_open,
+                "overdue_tickets": overdue_count,
+                "escalated_tickets": escalated_count,
+                "avg_resolution_hours": OrganizationalAnalytics._calculate_avg_resolution_time(
                     all_tickets
                 ),
-                'sla_compliance': OrganizationalAnalytics._calculate_sla_compliance(all_tickets)
+                "sla_compliance": OrganizationalAnalytics._calculate_sla_compliance(
+                    all_tickets
+                ),
             },
-            'sections': sorted(section_stats, key=lambda x: x['total_tickets'], reverse=True),
-            'technicians': sorted(tech_performance, key=lambda x: x['total_assigned'], reverse=True),
-            'pending_reasons': list(pending_reasons),
-            'status_distribution': list(status_dist),
-            'escalation_trends': escalation_trends,
-            'period_days': days
+            "sections": sorted(
+                section_stats, key=lambda x: x["total_tickets"], reverse=True
+            ),
+            "technicians": sorted(
+                tech_performance, key=lambda x: x["total_assigned"], reverse=True
+            ),
+            "pending_reasons": list(pending_reasons),
+            "status_distribution": list(status_dist),
+            "escalation_trends": escalation_trends,
+            "period_days": days,
         }
         cache.set(cache_key, result, ANALYTICS_CACHE_TTL)
         return result
@@ -792,40 +928,44 @@ class AdminAnalytics:
 
         now = timezone.now()
         resolved_qs = Ticket.objects.filter(
-            status__in=['resolved', 'closed'], resolved_at__isnull=False
+            status__in=["resolved", "closed"], resolved_at__isnull=False
         )
 
         counts = Ticket.objects.aggregate(
-            total=Count('id'),
-            open=Count('id', filter=Q(status='open')),
-            resolved=Count('id', filter=Q(status__in=['resolved', 'closed'], resolved_at__isnull=False)),
-            new_24h=Count('id', filter=Q(created_at__gte=now - timedelta(days=1))),
-            past_week=Count('id', filter=Q(created_at__gte=now - timedelta(days=7))),
-            past_month=Count('id', filter=Q(created_at__gte=now - timedelta(days=30))),
+            total=Count("id"),
+            open=Count("id", filter=Q(status="open")),
+            resolved=Count(
+                "id",
+                filter=Q(status__in=["resolved", "closed"], resolved_at__isnull=False),
+            ),
+            new_24h=Count("id", filter=Q(created_at__gte=now - timedelta(days=1))),
+            past_week=Count("id", filter=Q(created_at__gte=now - timedelta(days=7))),
+            past_month=Count("id", filter=Q(created_at__gte=now - timedelta(days=30))),
         )
 
         avg_resolution_time = resolved_qs.annotate(
             resolution_time=ExpressionWrapper(
-                F('resolved_at') - F('created_at'), output_field=DurationField()
+                F("resolved_at") - F("created_at"), output_field=DurationField()
             )
-        ).aggregate(avg=Avg('resolution_time'))['avg']
+        ).aggregate(avg=Avg("resolution_time"))["avg"]
 
         avg_resolution_hours = (
             round(avg_resolution_time.total_seconds() / 3600, 2)
-            if avg_resolution_time else None
+            if avg_resolution_time
+            else None
         )
-        total = counts['total'] or 0
-        resolved = counts['resolved'] or 0
+        total = counts["total"] or 0
+        resolved = counts["resolved"] or 0
 
         result = {
-            'total_tickets': total,
-            'open_tickets': counts['open'] or 0,
-            'resolved_tickets': resolved,
-            'resolution_rate': round((resolved / total * 100) if total else 0, 2),
-            'new_tickets_24h': counts['new_24h'] or 0,
-            'tickets_past_week': counts['past_week'] or 0,
-            'tickets_past_month': counts['past_month'] or 0,
-            'avg_resolution_time_hours': avg_resolution_hours,
+            "total_tickets": total,
+            "open_tickets": counts["open"] or 0,
+            "resolved_tickets": resolved,
+            "resolution_rate": round((resolved / total * 100) if total else 0, 2),
+            "new_tickets_24h": counts["new_24h"] or 0,
+            "tickets_past_week": counts["past_week"] or 0,
+            "tickets_past_month": counts["past_month"] or 0,
+            "avg_resolution_time_hours": avg_resolution_hours,
         }
         cache.set("analytics_admin_overview", result, ANALYTICS_CACHE_TTL)
         return result
@@ -841,13 +981,12 @@ class AdminAnalytics:
         overdue_tickets = (
             Ticket.objects.filter(
                 created_at__lt=overdue_threshold,
-                status__in=['open', 'assigned', 'in_progress', 'pending']
+                status__in=["open", "assigned", "in_progress", "pending"],
             )
-            .select_related('section', 'facility', 'assigned_to')
+            .select_related("section", "facility", "assigned_to")
             .annotate(
                 age_hours=ExpressionWrapper(
-                    (timezone.now() - F('created_at')),
-                    output_field=DurationField()
+                    (timezone.now() - F("created_at")), output_field=DurationField()
                 )
             )
         )
@@ -855,19 +994,19 @@ class AdminAnalytics:
         result = sorted(
             [
                 {
-                    'id': t.id,
-                    'ticket_no': t.ticket_no,
-                    'title': t.title,
-                    'status': t.status,
-                    'section': t.section.name,
-                    'facility': t.facility.name,
-                    'assigned_to': t.assigned_to.username if t.assigned_to else None,
-                    'age_hours': round(t.age_hours.total_seconds() / 3600, 2),
-                    'created_at': t.created_at,
+                    "id": t.id,
+                    "ticket_no": t.ticket_no,
+                    "title": t.title,
+                    "status": t.status,
+                    "section": t.section.name,
+                    "facility": t.facility.name,
+                    "assigned_to": t.assigned_to.username if t.assigned_to else None,
+                    "age_hours": round(t.age_hours.total_seconds() / 3600, 2),
+                    "created_at": t.created_at,
                 }
                 for t in overdue_tickets
             ],
-            key=lambda x: x['age_hours'],
+            key=lambda x: x["age_hours"],
             reverse=True,
         )
         cache.set("analytics_admin_overdue", result, ANALYTICS_CACHE_TTL)

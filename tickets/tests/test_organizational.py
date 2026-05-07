@@ -13,15 +13,21 @@ from rest_framework import status
 from django.urls import reverse
 
 from tickets.models import (
-    Organization, Campus, Department, Section, Facility,
-    CustomUser, Ticket, TicketLog
+    Organization,
+    Campus,
+    Department,
+    Section,
+    Facility,
+    CustomUser,
+    Ticket,
+    TicketLog,
 )
 from tickets.api.services import TicketService
-
 
 # ============================================================================
 # ORGANIZATIONAL HIERARCHY TESTS
 # ============================================================================
+
 
 def test_organizational_structure_created(organization, campus, department, section):
     """Test that organizational hierarchy is properly created"""
@@ -31,7 +37,16 @@ def test_organizational_structure_created(organization, campus, department, sect
     assert section.department == department
 
 
-def test_director_access_all_tickets(organization, campus, department, section, facility, director_factory, user_factory, technician_factory):
+def test_director_access_all_tickets(
+    organization,
+    campus,
+    department,
+    section,
+    facility,
+    director_factory,
+    user_factory,
+    technician_factory,
+):
     """Test that directors can access all tickets in their organization"""
     director = director_factory()
     director.primary_campus = campus
@@ -70,10 +85,20 @@ def test_director_access_all_tickets(organization, campus, department, section, 
     # Test through TicketService
     accessible_tickets = TicketService.get_accessible_tickets(director)
     assert ticket1 in accessible_tickets or ticket1.id in [
-        t.id for t in accessible_tickets]
+        t.id for t in accessible_tickets
+    ]
 
 
-def test_hod_campus_scoped_access(organization, campus, department, section, facility, hod_factory, user_factory, technician_factory):
+def test_hod_campus_scoped_access(
+    organization,
+    campus,
+    department,
+    section,
+    facility,
+    hod_factory,
+    user_factory,
+    technician_factory,
+):
     """Test HOD access is scoped to their campus"""
     hod = hod_factory()
     hod.primary_campus = campus
@@ -103,7 +128,16 @@ def test_hod_campus_scoped_access(organization, campus, department, section, fac
     assert hod.organizational_scope == "department"
 
 
-def test_section_head_department_scoped_access(organization, campus, department, section, facility, section_head_factory, user_factory, technician_factory):
+def test_section_head_department_scoped_access(
+    organization,
+    campus,
+    department,
+    section,
+    facility,
+    section_head_factory,
+    user_factory,
+    technician_factory,
+):
     """Test section head access is scoped to their department"""
     section_head = section_head_factory()
     section_head.primary_campus = campus
@@ -134,7 +168,15 @@ def test_section_head_department_scoped_access(organization, campus, department,
     assert section_head.organizational_scope == "section"
 
 
-def test_technician_section_scoped_access(organization, campus, department, section, facility, technician_factory, user_factory):
+def test_technician_section_scoped_access(
+    organization,
+    campus,
+    department,
+    section,
+    facility,
+    technician_factory,
+    user_factory,
+):
     """Test technician access is scoped to their section"""
     user = user_factory()
     user.primary_campus = campus
@@ -163,7 +205,17 @@ def test_technician_section_scoped_access(organization, campus, department, sect
 # ESCALATION WORKFLOW TESTS
 # ============================================================================
 
-def test_escalation_to_section_head(organization, campus, department, section, facility, user_factory, technician_factory, section_head_factory):
+
+def test_escalation_to_section_head(
+    organization,
+    campus,
+    department,
+    section,
+    facility,
+    user_factory,
+    technician_factory,
+    section_head_factory,
+):
     """Test ticket escalation to section head"""
     user = user_factory()
     user.primary_campus = campus
@@ -192,9 +244,7 @@ def test_escalation_to_section_head(organization, campus, department, section, f
 
     # Escalate ticket (technician can escalate)
     TicketService.escalate_ticket(
-        ticket=ticket,
-        escalated_by=technician,
-        reason="Escalating to section head"
+        ticket=ticket, escalated_by=technician, reason="Escalating to section head"
     )
 
     ticket.refresh_from_db()
@@ -202,7 +252,16 @@ def test_escalation_to_section_head(organization, campus, department, section, f
     assert ticket.status == "escalated"
 
 
-def test_escalation_to_hod(organization, campus, department, section, facility, user_factory, technician_factory, hod_factory):
+def test_escalation_to_hod(
+    organization,
+    campus,
+    department,
+    section,
+    facility,
+    user_factory,
+    technician_factory,
+    hod_factory,
+):
     """Test ticket escalation to HOD"""
     user = user_factory()
     user.primary_campus = campus
@@ -231,9 +290,7 @@ def test_escalation_to_hod(organization, campus, department, section, facility, 
 
     # Escalate to HOD (technician can escalate)
     TicketService.escalate_ticket(
-        ticket=ticket,
-        escalated_by=technician,
-        reason="Escalating to HOD"
+        ticket=ticket, escalated_by=technician, reason="Escalating to HOD"
     )
 
     ticket.refresh_from_db()
@@ -241,7 +298,15 @@ def test_escalation_to_hod(organization, campus, department, section, facility, 
     assert ticket.status == "escalated"
 
 
-def test_cannot_escalate_beyond_hod(organization, campus, department, section, facility, user_factory, technician_factory):
+def test_cannot_escalate_beyond_hod(
+    organization,
+    campus,
+    department,
+    section,
+    facility,
+    user_factory,
+    technician_factory,
+):
     """Test that tickets cannot be escalated beyond HOD"""
     user = user_factory()
     user.primary_campus = campus
@@ -265,15 +330,15 @@ def test_cannot_escalate_beyond_hod(organization, campus, department, section, f
 
     # Try to escalate beyond HOD (should return ticket unchanged)
     result = TicketService.escalate_ticket(
-        ticket=ticket,
-        escalated_by=technician,
-        reason="Trying to escalate beyond HOD"
+        ticket=ticket, escalated_by=technician, reason="Trying to escalate beyond HOD"
     )
     # Should remain at level 2, cannot escalate further
     assert result.escalation_level == 2
 
 
-def test_priority_level_0_is_low(organization, campus, department, section, facility, user_factory):
+def test_priority_level_0_is_low(
+    organization, campus, department, section, facility, user_factory
+):
     """Test that escalation level 0 (open) tickets have LOW priority"""
     user = user_factory()
     user.primary_campus = campus
@@ -286,7 +351,7 @@ def test_priority_level_0_is_low(organization, campus, department, section, faci
         facility=facility,
         raised_by=user,
         status="open",
-        escalation_level=0
+        escalation_level=0,
     )
 
     ticket.refresh_from_db()
@@ -294,7 +359,16 @@ def test_priority_level_0_is_low(organization, campus, department, section, faci
     assert ticket.priority == "low"
 
 
-def test_priority_level_1_is_medium(organization, campus, department, section, facility, user_factory, technician_factory, section_head_factory):
+def test_priority_level_1_is_medium(
+    organization,
+    campus,
+    department,
+    section,
+    facility,
+    user_factory,
+    technician_factory,
+    section_head_factory,
+):
     """Test that escalation level 1 (first escalation) tickets have MEDIUM priority"""
     user = user_factory()
     user.primary_campus = campus
@@ -320,14 +394,12 @@ def test_priority_level_1_is_medium(organization, campus, department, section, f
         assigned_to=technician,
         status="open",
         escalation_level=0,
-        priority="low"
+        priority="low",
     )
 
     # Escalate to section head
     TicketService.escalate_ticket(
-        ticket=ticket,
-        escalated_by=technician,
-        reason="Escalating to section head"
+        ticket=ticket, escalated_by=technician, reason="Escalating to section head"
     )
 
     ticket.refresh_from_db()
@@ -335,7 +407,16 @@ def test_priority_level_1_is_medium(organization, campus, department, section, f
     assert ticket.priority == "medium"
 
 
-def test_priority_level_2_is_high(organization, campus, department, section, facility, user_factory, technician_factory, hod_factory):
+def test_priority_level_2_is_high(
+    organization,
+    campus,
+    department,
+    section,
+    facility,
+    user_factory,
+    technician_factory,
+    hod_factory,
+):
     """Test that escalation level 2 (final escalation) tickets have HIGH priority"""
     user = user_factory()
     user.primary_campus = campus
@@ -360,20 +441,15 @@ def test_priority_level_2_is_high(organization, campus, department, section, fac
         assigned_to=technician,
         status="open",
         escalation_level=0,
-        priority="low"
+        priority="low",
     )
 
     # Escalate to section head first
-    ticket.escalate(
-        escalated_by=technician,
-        reason="Escalating to section head"
-    )
+    ticket.escalate(escalated_by=technician, reason="Escalating to section head")
 
     # Then escalate to HOD
     TicketService.escalate_ticket(
-        ticket=ticket,
-        escalated_by=technician,
-        reason="Escalating to HOD"
+        ticket=ticket, escalated_by=technician, reason="Escalating to HOD"
     )
 
     ticket.refresh_from_db()
@@ -385,7 +461,17 @@ def test_priority_level_2_is_high(organization, campus, department, section, fac
 # API INTEGRATION TESTS
 # ============================================================================
 
-def test_organizational_ticket_list_endpoint(authenticated_client, organization, campus, department, section, facility, user_factory, technician_factory):
+
+def test_organizational_ticket_list_endpoint(
+    authenticated_client,
+    organization,
+    campus,
+    department,
+    section,
+    facility,
+    user_factory,
+    technician_factory,
+):
     """Test organizational ticket list endpoint"""
     user = user_factory()
     user.primary_campus = campus
@@ -405,16 +491,24 @@ def test_organizational_ticket_list_endpoint(authenticated_client, organization,
         assigned_to=technician,
     )
 
-    client = authenticated_client['client']
+    client = authenticated_client["client"]
     url = reverse("organizational-ticket-list")
     response = client.get(url)
 
     # Endpoint should return successfully (200 or 403 depending on permissions)
-    assert response.status_code in [
-        status.HTTP_200_OK, status.HTTP_403_FORBIDDEN]
+    assert response.status_code in [status.HTTP_200_OK, status.HTTP_403_FORBIDDEN]
 
 
-def test_assignable_users_endpoint(authenticated_client, organization, campus, department, section, facility, user_factory, technician_factory):
+def test_assignable_users_endpoint(
+    authenticated_client,
+    organization,
+    campus,
+    department,
+    section,
+    facility,
+    user_factory,
+    technician_factory,
+):
     """Test assignable users endpoint returns technicians in section"""
     user = user_factory()
     user.primary_campus = campus
@@ -425,16 +519,24 @@ def test_assignable_users_endpoint(authenticated_client, organization, campus, d
     technician.sections.add(section)
     technician.save()
 
-    client = authenticated_client['client']
+    client = authenticated_client["client"]
     url = reverse("assignable-users") + f"?section_id={section.id}"
     response = client.get(url)
 
     # Endpoint should return successfully
-    assert response.status_code in [
-        status.HTTP_200_OK, status.HTTP_403_FORBIDDEN]
+    assert response.status_code in [status.HTTP_200_OK, status.HTTP_403_FORBIDDEN]
 
 
-def test_organizational_analytics_endpoint(authenticated_client, organization, campus, department, section, facility, user_factory, technician_factory):
+def test_organizational_analytics_endpoint(
+    authenticated_client,
+    organization,
+    campus,
+    department,
+    section,
+    facility,
+    user_factory,
+    technician_factory,
+):
     """Test organizational analytics endpoint"""
     user = user_factory()
     user.primary_campus = campus
@@ -454,16 +556,24 @@ def test_organizational_analytics_endpoint(authenticated_client, organization, c
         assigned_to=technician,
     )
 
-    client = authenticated_client['client']
+    client = authenticated_client["client"]
     url = reverse("analytics-tickets")
     response = client.get(url)
 
     # Endpoint should return successfully or forbidden based on permissions
-    assert response.status_code in [
-        status.HTTP_200_OK, status.HTTP_403_FORBIDDEN]
+    assert response.status_code in [status.HTTP_200_OK, status.HTTP_403_FORBIDDEN]
 
 
-def test_escalate_ticket_manual_endpoint(authenticated_client, organization, campus, department, section, facility, user_factory, technician_factory):
+def test_escalate_ticket_manual_endpoint(
+    authenticated_client,
+    organization,
+    campus,
+    department,
+    section,
+    facility,
+    user_factory,
+    technician_factory,
+):
     """Test manual ticket escalation endpoint"""
     user = user_factory()
     user.primary_campus = campus
@@ -484,7 +594,7 @@ def test_escalate_ticket_manual_endpoint(authenticated_client, organization, cam
         status="open",
     )
 
-    client = authenticated_client['client']
+    client = authenticated_client["client"]
     url = reverse("escalate-ticket-manual", args=[ticket.id])
     data = {"reason": "Needs urgent attention"}
 
@@ -492,14 +602,27 @@ def test_escalate_ticket_manual_endpoint(authenticated_client, organization, cam
 
     # Endpoint should process the escalation
     assert response.status_code in [
-        status.HTTP_200_OK, status.HTTP_400_BAD_REQUEST, status.HTTP_403_FORBIDDEN]
+        status.HTTP_200_OK,
+        status.HTTP_400_BAD_REQUEST,
+        status.HTTP_403_FORBIDDEN,
+    ]
 
 
 # ============================================================================
 # ANALYTICS AGGREGATION TESTS
 # ============================================================================
 
-def test_director_dashboard_aggregates_metrics(director_factory, organization, campus, department, section, facility, user_factory, technician_factory):
+
+def test_director_dashboard_aggregates_metrics(
+    director_factory,
+    organization,
+    campus,
+    department,
+    section,
+    facility,
+    user_factory,
+    technician_factory,
+):
     """Test director dashboard aggregates organization-wide metrics"""
     director = director_factory()
     director.primary_campus = campus
@@ -530,7 +653,16 @@ def test_director_dashboard_aggregates_metrics(director_factory, organization, c
     assert director.role == "director"
 
 
-def test_hod_dashboard_campus_scoped(hod_factory, organization, campus, department, section, facility, user_factory, technician_factory):
+def test_hod_dashboard_campus_scoped(
+    hod_factory,
+    organization,
+    campus,
+    department,
+    section,
+    facility,
+    user_factory,
+    technician_factory,
+):
     """Test HOD dashboard shows campus-scoped metrics"""
     hod = hod_factory()
     hod.primary_campus = campus
@@ -566,7 +698,16 @@ def test_hod_dashboard_campus_scoped(hod_factory, organization, campus, departme
 # TICKET SERVICE TESTS
 # ============================================================================
 
-def test_create_ticket_with_proper_scope(organization, campus, department, section, facility, user_factory, technician_factory):
+
+def test_create_ticket_with_proper_scope(
+    organization,
+    campus,
+    department,
+    section,
+    facility,
+    user_factory,
+    technician_factory,
+):
     """Test creating ticket with proper organizational scope"""
     user = user_factory()
     user.primary_campus = campus
@@ -580,16 +721,13 @@ def test_create_ticket_with_proper_scope(organization, campus, department, secti
     technician.save()
 
     ticket_data = {
-        'title': 'Scope Test Ticket',
-        'description': 'Testing organizational scope',
-        'priority': 'low',
+        "title": "Scope Test Ticket",
+        "description": "Testing organizational scope",
+        "priority": "low",
     }
 
     ticket = TicketService.create_ticket(
-        data=ticket_data,
-        created_by=user,
-        section=section,
-        facility=facility
+        data=ticket_data, created_by=user, section=section, facility=facility
     )
 
     assert ticket.id is not None
@@ -598,7 +736,15 @@ def test_create_ticket_with_proper_scope(organization, campus, department, secti
     assert ticket.status == "open"
 
 
-def test_create_ticket_exceeds_scope(organization, campus, department, section, facility, user_factory, technician_factory):
+def test_create_ticket_exceeds_scope(
+    organization,
+    campus,
+    department,
+    section,
+    facility,
+    user_factory,
+    technician_factory,
+):
     """Test creating ticket with section outside user scope raises error"""
     user = user_factory()
     user.primary_campus = campus
@@ -611,29 +757,34 @@ def test_create_ticket_exceeds_scope(organization, campus, department, section, 
 
     # Create another section user can't access
     other_section = Section.objects.create(
-        name="Restricted Section",
-        code="RESTRICTED",
-        department=department
+        name="Restricted Section", code="RESTRICTED", department=department
     )
 
     ticket_data = {
-        'title': 'Out of Scope Ticket',
-        'description': 'Testing out of scope access',
-        'priority': 'low',
+        "title": "Out of Scope Ticket",
+        "description": "Testing out of scope access",
+        "priority": "low",
     }
 
     # Should raise InsufficientScopeException when user doesn't have access
     from tickets.api.services import InsufficientScopeException
+
     with pytest.raises(InsufficientScopeException):
         TicketService.create_ticket(
-            data=ticket_data,
-            created_by=user,
-            section=other_section,
-            facility=facility
+            data=ticket_data, created_by=user, section=other_section, facility=facility
         )
 
 
-def test_assign_ticket_with_proper_validation(organization, campus, department, section, facility, user_factory, technician_factory, section_head_factory):
+def test_assign_ticket_with_proper_validation(
+    organization,
+    campus,
+    department,
+    section,
+    facility,
+    user_factory,
+    technician_factory,
+    section_head_factory,
+):
     """Test ticket assignment with proper technician validation"""
     user = user_factory()
     user.primary_campus = campus
@@ -662,9 +813,7 @@ def test_assign_ticket_with_proper_validation(organization, campus, department, 
 
     # Assign ticket (section_head can assign)
     TicketService.assign_ticket(
-        ticket=ticket,
-        technician=technician,
-        assigned_by=section_head
+        ticket=ticket, technician=technician, assigned_by=section_head
     )
 
     ticket.refresh_from_db()
@@ -672,7 +821,16 @@ def test_assign_ticket_with_proper_validation(organization, campus, department, 
     assert ticket.status == "assigned"
 
 
-def test_assign_ticket_invalid_technician(organization, campus, department, section, facility, user_factory, technician_factory, section_head_factory):
+def test_assign_ticket_invalid_technician(
+    organization,
+    campus,
+    department,
+    section,
+    facility,
+    user_factory,
+    technician_factory,
+    section_head_factory,
+):
     """Test ticket assignment fails with invalid technician"""
     user = user_factory()
     user.primary_campus = campus
@@ -704,15 +862,22 @@ def test_assign_ticket_invalid_technician(organization, campus, department, sect
 
     # Try to assign to technician not in section (section_head tries to assign)
     from tickets.api.services import InvalidAssignmentException
+
     with pytest.raises(InvalidAssignmentException):
         TicketService.assign_ticket(
-            ticket=ticket,
-            technician=technician2,
-            assigned_by=section_head
+            ticket=ticket, technician=technician2, assigned_by=section_head
         )
 
 
-def test_escalate_ticket(organization, campus, department, section, facility, user_factory, technician_factory):
+def test_escalate_ticket(
+    organization,
+    campus,
+    department,
+    section,
+    facility,
+    user_factory,
+    technician_factory,
+):
     """Test ticket escalation through service"""
     user = user_factory()
     user.primary_campus = campus
@@ -735,9 +900,7 @@ def test_escalate_ticket(organization, campus, department, section, facility, us
 
     # Escalate ticket (technician can escalate)
     TicketService.escalate_ticket(
-        ticket=ticket,
-        escalated_by=technician,
-        reason="Needs escalation"
+        ticket=ticket, escalated_by=technician, reason="Needs escalation"
     )
 
     ticket.refresh_from_db()
@@ -745,7 +908,16 @@ def test_escalate_ticket(organization, campus, department, section, facility, us
     assert ticket.status == "escalated"
 
 
-def test_get_accessible_tickets_respects_scope(organization, campus, department, section, facility, user_factory, technician_factory, admin_user_factory):
+def test_get_accessible_tickets_respects_scope(
+    organization,
+    campus,
+    department,
+    section,
+    facility,
+    user_factory,
+    technician_factory,
+    admin_user_factory,
+):
     """Test that get_accessible_tickets respects organizational scope"""
     user = user_factory()
     user.primary_campus = campus
@@ -780,20 +952,26 @@ def test_get_accessible_tickets_respects_scope(organization, campus, department,
 
     # User should see their own tickets
     user_accessible = TicketService.get_accessible_tickets(user)
-    assert ticket1 in user_accessible or ticket1.id in [
-        t.id for t in user_accessible]
+    assert ticket1 in user_accessible or ticket1.id in [t.id for t in user_accessible]
 
     # Technician should see assigned tickets and same-section tickets
     tech_accessible = TicketService.get_accessible_tickets(technician)
-    assert ticket2 in tech_accessible or ticket2.id in [
-        t.id for t in tech_accessible]
+    assert ticket2 in tech_accessible or ticket2.id in [t.id for t in tech_accessible]
 
     # Admin should see all tickets
     admin_accessible = TicketService.get_accessible_tickets(admin)
     assert len(admin_accessible) >= 2
 
 
-def test_auto_escalation_processing(organization, campus, department, section, facility, user_factory, technician_factory):
+def test_auto_escalation_processing(
+    organization,
+    campus,
+    department,
+    section,
+    facility,
+    user_factory,
+    technician_factory,
+):
     """Test automatic escalation processing by background task"""
     user = user_factory()
     user.primary_campus = campus
@@ -829,7 +1007,17 @@ def test_auto_escalation_processing(organization, campus, department, section, f
 # ANALYTICS DASHBOARD TESTS
 # ============================================================================
 
-def test_director_dashboard(director_factory, organization, campus, department, section, facility, user_factory, technician_factory):
+
+def test_director_dashboard(
+    director_factory,
+    organization,
+    campus,
+    department,
+    section,
+    facility,
+    user_factory,
+    technician_factory,
+):
     """Test director dashboard with organization-wide metrics"""
     director = director_factory()
     director.primary_campus = campus
@@ -860,7 +1048,16 @@ def test_director_dashboard(director_factory, organization, campus, department, 
     assert director.organizational_scope == "organization"
 
 
-def test_hod_dashboard(hod_factory, organization, campus, department, section, facility, user_factory, technician_factory):
+def test_hod_dashboard(
+    hod_factory,
+    organization,
+    campus,
+    department,
+    section,
+    facility,
+    user_factory,
+    technician_factory,
+):
     """Test HOD dashboard with department-scoped metrics"""
     hod = hod_factory()
     hod.primary_campus = campus
@@ -891,7 +1088,16 @@ def test_hod_dashboard(hod_factory, organization, campus, department, section, f
     assert hod.organizational_scope == "department"
 
 
-def test_section_head_dashboard(section_head_factory, organization, campus, department, section, facility, user_factory, technician_factory):
+def test_section_head_dashboard(
+    section_head_factory,
+    organization,
+    campus,
+    department,
+    section,
+    facility,
+    user_factory,
+    technician_factory,
+):
     """Test section head dashboard with section-scoped metrics"""
     section_head = section_head_factory()
     section_head.primary_campus = campus
@@ -923,7 +1129,15 @@ def test_section_head_dashboard(section_head_factory, organization, campus, depa
     assert section_head.organizational_scope == "section"
 
 
-def test_dashboard_sla_compliance_calculation(organization, campus, department, section, facility, user_factory, technician_factory):
+def test_dashboard_sla_compliance_calculation(
+    organization,
+    campus,
+    department,
+    section,
+    facility,
+    user_factory,
+    technician_factory,
+):
     """Test SLA compliance calculation in dashboards"""
     user = user_factory()
     user.primary_campus = campus
@@ -951,7 +1165,15 @@ def test_dashboard_sla_compliance_calculation(organization, campus, department, 
     assert ticket.created_at is not None
 
 
-def test_escalation_trends(organization, campus, department, section, facility, user_factory, technician_factory):
+def test_escalation_trends(
+    organization,
+    campus,
+    department,
+    section,
+    facility,
+    user_factory,
+    technician_factory,
+):
     """Test escalation trend analysis"""
     user = user_factory()
     user.primary_campus = campus
@@ -976,6 +1198,6 @@ def test_escalation_trends(organization, campus, department, section, facility, 
         )
 
     # Verify escalation levels are set correctly
-    tickets = Ticket.objects.all().order_by('escalation_level')
+    tickets = Ticket.objects.all().order_by("escalation_level")
     assert tickets.first().escalation_level == 0
     assert tickets.last().escalation_level == 2

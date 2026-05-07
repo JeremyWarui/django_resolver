@@ -13,10 +13,10 @@ from .views import (
 )
 
 __all__ = [
-    'TicketAnalyticsView',
-    'TechnicianAnalyticsView',
-    'AdminDashboardAnalyticsView',
-    'DirectorDashboardView',
-    'HODDashboardView',
-    'SectionHeadDashboardView',
+    "TicketAnalyticsView",
+    "TechnicianAnalyticsView",
+    "AdminDashboardAnalyticsView",
+    "DirectorDashboardView",
+    "HODDashboardView",
+    "SectionHeadDashboardView",
 ]

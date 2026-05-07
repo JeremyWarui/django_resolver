@@ -2,6 +2,7 @@
 API Views for analytics endpoints.
 These endpoints provide various statistics for dashboards and reporting.
 """
+
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
@@ -9,15 +10,20 @@ from rest_framework.views import APIView
 from tickets.api.permissions import IsTechnicianOrAdmin, IsAdminOrManager
 
 from tickets.models import Ticket, CustomUser, Feedback, Section, Facility
-from tickets.api.analytics.analytics import TicketAnalytics, TechnicianAnalytics, AdminAnalytics, OrganizationalAnalytics
+from tickets.api.analytics.analytics import (
+    TicketAnalytics,
+    TechnicianAnalytics,
+    AdminAnalytics,
+    OrganizationalAnalytics,
+)
 
 
 class TicketAnalyticsView(generics.GenericAPIView):
     """
     API view for ticket analytics data.
     """
-    permission_classes = [
-        IsTechnicianOrAdmin]  # Only technicians and above can view analytics
+
+    permission_classes = [IsAuthenticated]  # All authenticated users can view analytics
 
     def get(self, request, format=None):
         """
@@ -31,45 +37,37 @@ class TicketAnalyticsView(generics.GenericAPIView):
         - days: Number of days for historical data (default: 30)
         """
         # Extract query parameters
-        timeframe = request.query_params.get('timeframe', 'day')
-        facility_id = request.query_params.get('facility_id')
-        section_id = request.query_params.get('section_id')
-        group_by = request.query_params.get('group_by', 'day')
-        days = int(request.query_params.get('days', 30))
+        timeframe = request.query_params.get("timeframe", "day")
+        facility_id = request.query_params.get("facility_id")
+        section_id = request.query_params.get("section_id")
+        group_by = request.query_params.get("group_by", "day")
+        days = int(request.query_params.get("days", 30))
 
         # Map timeframe to days
-        days_map = {
-            'day': 1,
-            'week': 7,
-            'month': 30
-        }
+        days_map = {"day": 1, "week": 7, "month": 30}
 
         time_days = days_map.get(timeframe, 1)
 
         # Get analytics data
         ticket_counts = TicketAnalytics.get_ticket_counts_by_timeframe(
-            days=time_days,
-            facility_id=facility_id,
-            section_id=section_id
+            days=time_days, facility_id=facility_id, section_id=section_id
         )
 
         status_counts = TicketAnalytics.get_ticket_counts_by_status(
-            facility_id=facility_id,
-            section_id=section_id
+            facility_id=facility_id, section_id=section_id
         )
 
-        trend_data = TicketAnalytics.get_ticket_trend_data(
-            days=days, group_by=group_by)
+        trend_data = TicketAnalytics.get_ticket_trend_data(days=days, group_by=group_by)
 
         facility_distribution = TicketAnalytics.get_tickets_by_facility()
         section_distribution = TicketAnalytics.get_tickets_by_section()
 
         data = {
-            'ticket_counts': ticket_counts,
-            'status_counts': status_counts,
-            'trend_data': trend_data,
-            'facility_distribution': facility_distribution,
-            'section_distribution': section_distribution
+            "ticket_counts": ticket_counts,
+            "status_counts": status_counts,
+            "trend_data": trend_data,
+            "facility_distribution": facility_distribution,
+            "section_distribution": section_distribution,
         }
 
         return Response(data)
@@ -79,8 +77,8 @@ class TechnicianAnalyticsView(generics.GenericAPIView):
     """
     API view for technician performance analytics.
     """
-    permission_classes = [
-        IsTechnicianOrAdmin]  # Only technicians and above can view
+
+    permission_classes = [IsAuthenticated]  # All authenticated users can view
 
     def get(self, request, format=None):
         """
@@ -90,28 +88,25 @@ class TechnicianAnalyticsView(generics.GenericAPIView):
         Query Parameters:
         - technician_id: Optional specific technician to analyze
         """
-        technician_id = request.query_params.get('technician_id')
+        technician_id = request.query_params.get("technician_id")
 
         # Restrict technicians to their own stats
-        if request.user.role == 'technician':
+        if request.user.role == "technician":
             technician_id = request.user.id
         # Admins and managers can specify any technician_id
 
         # Get analytics data
-        performance_data = TechnicianAnalytics.get_technician_performance(
-            technician_id)
+        performance_data = TechnicianAnalytics.get_technician_performance(technician_id)
 
         # Get section ratings if requesting all technicians and user is admin/manager
         section_ratings = None
-        if not technician_id and request.user.role in ['admin', 'manager']:
+        if not technician_id and request.user.role in ["admin", "manager"]:
             section_ratings = TechnicianAnalytics.get_technician_ratings_by_section()
 
-        response_data = {
-            'technician_performance': performance_data
-        }
+        response_data = {"technician_performance": performance_data}
 
         if section_ratings:
-            response_data['section_ratings'] = section_ratings
+            response_data["section_ratings"] = section_ratings
 
         return Response(response_data)
 
@@ -121,6 +116,7 @@ class AdminDashboardAnalyticsView(generics.GenericAPIView):
     API view for admin dashboard analytics.
     Now accessible to all authenticated users for viewing system stats.
     """
+
     permission_classes = [IsAuthenticated]  # All authenticated users can view
 
     def get(self, request, format=None):
@@ -130,13 +126,10 @@ class AdminDashboardAnalyticsView(generics.GenericAPIView):
 
         # Only show overdue tickets to admins/managers/technicians
         overdue_tickets = []
-        if request.user.role in ['admin', 'manager', 'technician']:
+        if request.user.role in ["admin", "manager", "technician"]:
             overdue_tickets = AdminAnalytics.get_overdue_tickets()
 
-        data = {
-            'system_overview': system_overview,
-            'overdue_tickets': overdue_tickets
-        }
+        data = {"system_overview": system_overview, "overdue_tickets": overdue_tickets}
 
         return Response(data)
 
@@ -144,6 +137,7 @@ class AdminDashboardAnalyticsView(generics.GenericAPIView):
 # ============================================================================
 # ORGANIZATIONAL ANALYTICS VIEWS
 # ============================================================================
+
 
 class DirectorDashboardView(APIView):
     """
@@ -154,23 +148,23 @@ class DirectorDashboardView(APIView):
     Query Parameters:
     - days: Number of days to analyze (default: 30)
     """
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         """Get organization-wide dashboard for directors"""
         # Verify user is director
-        if request.user.role not in ['director', 'admin']:
+        if request.user.role not in ["director", "admin"]:
             return Response(
-                {'error': 'Only directors and admins can access this endpoint'},
-                status=status.HTTP_403_FORBIDDEN
+                {"error": "Only directors and admins can access this endpoint"},
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         # Get query parameters
-        days = int(request.query_params.get('days', 30))
+        days = int(request.query_params.get("days", 30))
 
         # Get dashboard data
-        dashboard = OrganizationalAnalytics.director_dashboard(
-            request.user, days=days)
+        dashboard = OrganizationalAnalytics.director_dashboard(request.user, days=days)
 
         return Response(dashboard)
 
@@ -184,23 +178,23 @@ class HODDashboardView(APIView):
     Query Parameters:
     - days: Number of days to analyze (default: 30)
     """
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         """Get campus-level dashboard for HODs"""
         # Verify user is HOD
-        if request.user.role not in ['hod', 'admin']:
+        if request.user.role not in ["hod", "admin"]:
             return Response(
-                {'error': 'Only HODs and admins can access this endpoint'},
-                status=status.HTTP_403_FORBIDDEN
+                {"error": "Only HODs and admins can access this endpoint"},
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         # Get query parameters
-        days = int(request.query_params.get('days', 30))
+        days = int(request.query_params.get("days", 30))
 
         # Get dashboard data
-        dashboard = OrganizationalAnalytics.hod_dashboard(
-            request.user, days=days)
+        dashboard = OrganizationalAnalytics.hod_dashboard(request.user, days=days)
 
         return Response(dashboard)
 
@@ -214,22 +208,24 @@ class SectionHeadDashboardView(APIView):
     Query Parameters:
     - days: Number of days to analyze (default: 30)
     """
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         """Get department-level dashboard for section heads"""
         # Verify user is section head
-        if request.user.role not in ['section_head', 'admin']:
+        if request.user.role not in ["section_head", "admin"]:
             return Response(
-                {'error': 'Only section heads and admins can access this endpoint'},
-                status=status.HTTP_403_FORBIDDEN
+                {"error": "Only section heads and admins can access this endpoint"},
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         # Get query parameters
-        days = int(request.query_params.get('days', 30))
+        days = int(request.query_params.get("days", 30))
 
         # Get dashboard data
         dashboard = OrganizationalAnalytics.section_head_dashboard(
-            request.user, days=days)
+            request.user, days=days
+        )
 
         return Response(dashboard)

@@ -19,8 +19,8 @@ from .analytics import (
 OrganizationalAnalyticsService = OrganizationalAnalytics
 
 __all__ = [
-    'TicketAnalytics',
-    'TechnicianAnalytics',
-    'OrganizationalAnalytics',
-    'OrganizationalAnalyticsService',
+    "TicketAnalytics",
+    "TechnicianAnalytics",
+    "OrganizationalAnalytics",
+    "OrganizationalAnalyticsService",
 ]

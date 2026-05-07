@@ -37,18 +37,14 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 DEBUG = True
 
 # Allow all hosts in production for now (more secure to specify exact domains)
-ALLOWED_HOSTS = [
-    "127.0.0.1",
-    "localhost",
-    "django-resolver.onrender.com"
-]
+ALLOWED_HOSTS = ["127.0.0.1", "localhost", "django-resolver.onrender.com"]
 # Application definition
 
 INSTALLED_APPS = [
     # Modern admin interface (must be before django.contrib.admin)
     "unfold",
     "unfold.contrib.filters",  # Optional but recommended
-    "unfold.contrib.forms",    # Optional but recommended
+    "unfold.contrib.forms",  # Optional but recommended
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -90,7 +86,7 @@ UNFOLD = {
                         "icon": "dashboard",
                         "link": "/admin/",
                     },
-                ]
+                ],
             },
             {
                 "title": "Ticket Management",
@@ -112,7 +108,7 @@ UNFOLD = {
                         "icon": "star_rate",
                         "link": "/admin/tickets/feedback/",
                     },
-                ]
+                ],
             },
             {
                 "title": "System Management",
@@ -135,9 +131,9 @@ UNFOLD = {
                         "link": "/admin/tickets/facility/",
                         "badge": "tickets.admin.facility_count_badge",
                     },
-                ]
+                ],
             },
-        ]
+        ],
     },
     "COLORS": {
         "primary": {
@@ -156,9 +152,9 @@ UNFOLD = {
 }
 
 CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'resolver-analytics',
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "resolver-analytics",
     }
 }
 
@@ -298,10 +294,22 @@ WHITENOISE_AUTOREFRESH = DEBUG
 WHITENOISE_USE_FINDERS = DEBUG
 WHITENOISE_MANIFEST_STRICT = False  # Don't fail on missing files
 WHITENOISE_SKIP_COMPRESS_EXTENSIONS = [
-    'jpg', 'jpeg', 'png', 'gif', 'webp', 'zip', 'gz', 'tgz', 'bz2', 'tbz', 'xz', 'br']
+    "jpg",
+    "jpeg",
+    "png",
+    "gif",
+    "webp",
+    "zip",
+    "gz",
+    "tgz",
+    "bz2",
+    "tbz",
+    "xz",
+    "br",
+]
 WHITENOISE_MIMETYPES = {
-    '.js': 'application/javascript',
-    '.css': 'text/css',
+    ".js": "application/javascript",
+    ".css": "text/css",
 }
 
 # Default primary key field type

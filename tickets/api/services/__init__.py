@@ -29,16 +29,16 @@ OrganizationalTicketServiceException = TicketServiceException
 
 __all__ = [
     # Main service class
-    'TicketService',
+    "TicketService",
     # Validators
-    'validate_status_transition',
-    'manual_escalation_allowed',
+    "validate_status_transition",
+    "manual_escalation_allowed",
     # Exceptions
-    'TicketServiceException',
-    'InsufficientScopeException',
-    'InvalidAssignmentException',
-    'InvalidEscalationException',
+    "TicketServiceException",
+    "InsufficientScopeException",
+    "InvalidAssignmentException",
+    "InvalidEscalationException",
     # Backwards compatibility
-    'OrganizationalTicketService',
-    'OrganizationalTicketServiceException',
+    "OrganizationalTicketService",
+    "OrganizationalTicketServiceException",
 ]

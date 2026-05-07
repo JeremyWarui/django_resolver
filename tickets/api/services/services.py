@@ -27,33 +27,48 @@ from django.db import transaction
 from django.utils import timezone
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.shortcuts import get_object_or_404
-from rest_framework.exceptions import ValidationError as DRFValidationError, PermissionDenied as DRFPermissionDenied
-from tickets.models import Ticket, CustomUser, TicketLog, Comment, Feedback, Section, Facility
+from rest_framework.exceptions import (
+    ValidationError as DRFValidationError,
+    PermissionDenied as DRFPermissionDenied,
+)
+from tickets.models import (
+    Ticket,
+    CustomUser,
+    TicketLog,
+    Comment,
+    Feedback,
+    Section,
+    Facility,
+)
 from typing import List, Optional, Dict, Tuple, Any
 from datetime import timedelta
-
 
 # ============================================================================
 # EXCEPTIONS
 # ============================================================================
 
+
 class TicketServiceException(Exception):
     """Base exception for ticket service errors"""
+
     pass
 
 
 class InsufficientScopeException(TicketServiceException):
     """User lacks organizational scope to perform operation"""
+
     pass
 
 
 class InvalidAssignmentException(TicketServiceException):
     """Technician cannot be assigned for organizational or role reasons"""
+
     pass
 
 
 class InvalidEscalationException(TicketServiceException):
     """Escalation cannot be performed for organizational or state reasons"""
+
     pass
 
 
@@ -61,7 +76,10 @@ class InvalidEscalationException(TicketServiceException):
 # VALIDATORS - Pure validation functions
 # ============================================================================
 
-def validate_status_transition(old_status: str, new_status: str, user_role: str) -> Tuple[bool, str]:
+
+def validate_status_transition(
+    old_status: str, new_status: str, user_role: str
+) -> Tuple[bool, str]:
     """
     Validate if a ticket status transition is allowed based on business rules.
 
@@ -75,33 +93,62 @@ def validate_status_transition(old_status: str, new_status: str, user_role: str)
     """
     # Define valid transitions based on current status
     valid_transitions = {
-        'open': ['assigned', 'pending', 'escalated'],
-        'assigned': ['in_progress', 'pending', 'escalated'],
-        'in_progress': ['pending', 'resolved', 'escalated'],
-        'pending': ['in_progress', 'resolved', 'escalated'],
-        'resolved': ['closed'],
-        'closed': [],  # No transitions allowed from closed state
-        'escalated': ['in_progress', 'pending', 'resolved']
+        "open": ["assigned", "pending", "escalated"],
+        "assigned": ["in_progress", "pending", "escalated"],
+        "in_progress": ["pending", "resolved", "escalated"],
+        "pending": ["in_progress", "resolved", "escalated"],
+        "resolved": ["closed"],
+        "closed": [],  # No transitions allowed from closed state
+        "escalated": ["in_progress", "pending", "resolved"],
     }
 
     # Define which roles can perform which transitions
     role_permissions = {
-        'technician': ['open', 'assigned', 'in_progress', 'pending', 'resolved', 'escalated'],
-        'section_head': ['in_progress', 'pending', 'resolved', 'escalated'],
-        'hod': ['in_progress', 'pending', 'resolved', 'escalated'],
-        'admin': ['open', 'assigned', 'in_progress', 'pending', 'resolved', 'closed', 'escalated'],
-        'manager': ['open', 'assigned', 'in_progress', 'pending', 'resolved', 'closed', 'escalated'],
-        'user': []  # Regular users can't change status
+        "technician": [
+            "open",
+            "assigned",
+            "in_progress",
+            "pending",
+            "resolved",
+            "escalated",
+        ],
+        "section_head": ["in_progress", "pending", "resolved", "escalated"],
+        "hod": ["in_progress", "pending", "resolved", "escalated"],
+        "admin": [
+            "open",
+            "assigned",
+            "in_progress",
+            "pending",
+            "resolved",
+            "closed",
+            "escalated",
+        ],
+        "manager": [
+            "open",
+            "assigned",
+            "in_progress",
+            "pending",
+            "resolved",
+            "closed",
+            "escalated",
+        ],
+        "user": [],  # Regular users can't change status
     }
 
     # Check if transition is valid
     if new_status not in valid_transitions.get(old_status, []):
         valid_options = ", ".join(valid_transitions.get(old_status, []))
-        return False, f"Invalid status transition from '{old_status}' to '{new_status}'. Valid options: {valid_options}"
+        return (
+            False,
+            f"Invalid status transition from '{old_status}' to '{new_status}'. Valid options: {valid_options}",
+        )
 
     # Check if user role has permission for this new status
     if new_status not in role_permissions.get(user_role, []):
-        return False, f"User with role '{user_role}' cannot set ticket status to '{new_status}'"
+        return (
+            False,
+            f"User with role '{user_role}' cannot set ticket status to '{new_status}'",
+        )
 
     return True, ""
 
@@ -113,7 +160,9 @@ def manual_escalation_allowed(ticket: Ticket) -> bool:
     return timezone.now() > ticket.next_escalation_due
 
 
-def validate_pending_transition(new_status: str, pending_reason: str, pending_comment: str) -> Tuple[bool, str]:
+def validate_pending_transition(
+    new_status: str, pending_reason: str, pending_comment: str
+) -> Tuple[bool, str]:
     """
     Validate that PENDING status transitions include required reason and comment.
 
@@ -125,7 +174,7 @@ def validate_pending_transition(new_status: str, pending_reason: str, pending_co
     Returns:
         tuple: (is_valid, message)
     """
-    if new_status == 'pending':
+    if new_status == "pending":
         if not pending_reason:
             return False, "pending_reason is required when marking ticket as PENDING"
         if not pending_comment:
@@ -137,6 +186,7 @@ def validate_pending_transition(new_status: str, pending_reason: str, pending_co
 # ============================================================================
 # TICKET SERVICE - Organizational-focused
 # ============================================================================
+
 
 class TicketService:
     """
@@ -160,7 +210,7 @@ class TicketService:
         created_by: CustomUser,
         section: Section,
         facility: Facility,
-        enable_auto_escalation: bool = True
+        enable_auto_escalation: bool = True,
     ) -> Ticket:
         """
         Create a new ticket with organizational validation.
@@ -195,20 +245,18 @@ class TicketService:
         with transaction.atomic():
             # Create ticket with organizational context
             ticket = Ticket.objects.create(
-                title=data.get('title'),
-                description=data.get('description'),
+                title=data.get("title"),
+                description=data.get("description"),
                 section=section,
                 facility=facility,
                 raised_by=created_by,
                 auto_escalation_enabled=enable_auto_escalation,
-                status='open'
+                status="open",
             )
 
             # Log ticket creation
             TicketLog.objects.create(
-                ticket=ticket,
-                action='created',
-                performed_by=created_by
+                ticket=ticket, action="created", performed_by=created_by
             )
 
             # Notify relevant users
@@ -222,9 +270,7 @@ class TicketService:
 
     @staticmethod
     def assign_ticket(
-        ticket: Ticket,
-        technician: CustomUser,
-        assigned_by: CustomUser
+        ticket: Ticket, technician: CustomUser, assigned_by: CustomUser
     ) -> Ticket:
         """
         Assign a ticket to a technician with organizational validation.
@@ -242,7 +288,13 @@ class TicketService:
             InvalidAssignmentException: Technician cannot be assigned for any reason
         """
         # Check assigner has permission
-        if assigned_by.role not in ['section_head', 'hod', 'director', 'admin', 'technician']:
+        if assigned_by.role not in [
+            "section_head",
+            "hod",
+            "director",
+            "admin",
+            "technician",
+        ]:
             raise DRFPermissionDenied(
                 f"User {assigned_by.username} (role: {assigned_by.role}) cannot assign tickets"
             )
@@ -254,7 +306,7 @@ class TicketService:
             )
 
         # Validate technician
-        if technician.role != 'technician':
+        if technician.role != "technician":
             raise InvalidAssignmentException(
                 f"User {technician.username} is not a technician (role: {technician.role})"
             )
@@ -266,14 +318,16 @@ class TicketService:
             )
 
         # Check technician's campus matches ticket's campus (handle None department)
-        ticket_campus = ticket.section.department.campus if ticket.section.department else None
+        ticket_campus = (
+            ticket.section.department.campus if ticket.section.department else None
+        )
         if ticket_campus and technician.primary_campus != ticket_campus:
             raise InvalidAssignmentException(
                 f"Technician {technician.username} is not assigned to this campus"
             )
 
         # Check ticket can be assigned (not resolved/closed)
-        if ticket.status in ['resolved', 'closed']:
+        if ticket.status in ["resolved", "closed"]:
             raise InvalidAssignmentException(
                 f"Cannot assign ticket in '{ticket.status}' status"
             )
@@ -295,10 +349,7 @@ class TicketService:
 
     @staticmethod
     def escalate_ticket(
-        ticket: Ticket,
-        escalated_by: CustomUser,
-        reason: str,
-        manual: bool = True
+        ticket: Ticket, escalated_by: CustomUser, reason: str, manual: bool = True
     ) -> Ticket:
         """
         Escalate a ticket to the next level in approval chain.
@@ -322,13 +373,13 @@ class TicketService:
             DRFValidationError: Ticket cannot be escalated
         """
         # Check permission to escalate - allow technician, section_head, hod, admin
-        if escalated_by.role not in ['technician', 'section_head', 'hod', 'admin']:
+        if escalated_by.role not in ["technician", "section_head", "hod", "admin"]:
             raise DRFPermissionDenied(
                 f"User {escalated_by.username} (role: {escalated_by.role}) cannot escalate tickets"
             )
 
         # Check ticket status allows escalation
-        if ticket.status in ['resolved', 'closed']:
+        if ticket.status in ["resolved", "closed"]:
             raise ValidationError(
                 f"Cannot escalate resolved or closed ticket {ticket.ticket_no}"
             )
@@ -341,9 +392,7 @@ class TicketService:
         with transaction.atomic():
             # Use model's atomic helper
             ticket.escalate(
-                escalated_by=escalated_by,
-                reason=reason,
-                is_auto_escalation=not manual
+                escalated_by=escalated_by, reason=reason, is_auto_escalation=not manual
             )
 
             # Notify escalation recipient
@@ -362,7 +411,7 @@ class TicketService:
         updated_by: CustomUser,
         notes: Optional[str] = None,
         pending_reason: Optional[str] = None,
-        pending_comment: Optional[str] = None
+        pending_comment: Optional[str] = None,
     ) -> Ticket:
         """
         Update ticket status with proper validation and logging.
@@ -388,28 +437,35 @@ class TicketService:
 
         # Validate status transition
         is_valid, error_msg = validate_status_transition(
-            old_status, new_status, updated_by.role)
+            old_status, new_status, updated_by.role
+        )
         if not is_valid:
             raise ValidationError(error_msg)
 
         # Validate pending fields if marking as PENDING
-        if new_status == 'pending':
+        if new_status == "pending":
             is_valid, error_msg = validate_pending_transition(
-                new_status, pending_reason, pending_comment)
+                new_status, pending_reason, pending_comment
+            )
             if not is_valid:
                 raise ValidationError(error_msg)
 
         # Check permission for this specific transition
-        if new_status == 'closed' and updated_by.role not in ['admin', 'manager', 'user']:
+        if new_status == "closed" and updated_by.role not in [
+            "admin",
+            "manager",
+            "user",
+        ]:
             raise DRFPermissionDenied(
-                "Only admins/managers or ticket raiser can close tickets")
+                "Only admins/managers or ticket raiser can close tickets"
+            )
 
         # Perform status change
         with transaction.atomic():
             ticket.change_status(new_status, performed_by=updated_by)
 
             # Set pending fields if applicable
-            if new_status == 'pending':
+            if new_status == "pending":
                 ticket.pending_reason = pending_reason
                 ticket.pending_comment = pending_comment
                 ticket.save()
@@ -418,8 +474,8 @@ class TicketService:
             if notes:
                 TicketLog.objects.create(
                     ticket=ticket,
-                    action=f'{old_status} → {new_status}: {notes}',
-                    performed_by=updated_by
+                    action=f"{old_status} → {new_status}: {notes}",
+                    performed_by=updated_by,
                 )
 
         return ticket
@@ -429,7 +485,7 @@ class TicketService:
         ticket_ids: list,
         new_status: str,
         updated_by: CustomUser,
-        reason: Optional[str] = None
+        reason: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Update status for multiple tickets in two DB round-trips: one bulk UPDATE
@@ -439,53 +495,58 @@ class TicketService:
             ticket_ids = [ticket_ids]
 
         results = {
-            'success': len(ticket_ids) > 0,
-            'total': len(ticket_ids),
-            'updated': 0,
-            'failed': 0,
-            'errors': []
+            "success": len(ticket_ids) > 0,
+            "total": len(ticket_ids),
+            "updated": 0,
+            "failed": 0,
+            "errors": [],
         }
 
         tickets = list(
-            Ticket.objects.filter(id__in=ticket_ids).only('id', 'ticket_no', 'status')
+            Ticket.objects.filter(id__in=ticket_ids).only("id", "ticket_no", "status")
         )
 
         found_ids = {t.id for t in tickets}
         for missing_id in set(ticket_ids) - found_ids:
-            results['failed'] += 1
-            results['success'] = False
-            results['errors'].append({
-                'ticket_id': missing_id,
-                'error': f'Ticket with ID {missing_id} not found'
-            })
+            results["failed"] += 1
+            results["success"] = False
+            results["errors"].append(
+                {
+                    "ticket_id": missing_id,
+                    "error": f"Ticket with ID {missing_id} not found",
+                }
+            )
 
         valid_tickets = []
         for ticket in tickets:
             if ticket.status == new_status:
-                results['updated'] += 1
+                results["updated"] += 1
                 continue
             is_valid, error_msg = validate_status_transition(
-                ticket.status, new_status, updated_by.role)
+                ticket.status, new_status, updated_by.role
+            )
             if is_valid:
                 valid_tickets.append(ticket)
             else:
-                results['failed'] += 1
-                results['success'] = False
-                results['errors'].append({
-                    'ticket_id': ticket.id,
-                    'ticket_no': ticket.ticket_no,
-                    'error': error_msg
-                })
+                results["failed"] += 1
+                results["success"] = False
+                results["errors"].append(
+                    {
+                        "ticket_id": ticket.id,
+                        "ticket_no": ticket.ticket_no,
+                        "error": error_msg,
+                    }
+                )
 
         if valid_tickets:
             valid_ids = [t.id for t in valid_tickets]
             now = timezone.now()
 
-            update_kwargs = {'status': new_status, 'updated_at': now}
-            if new_status in ['resolved', 'closed']:
-                update_kwargs['resolved_at'] = now
-            if new_status == 'closed':
-                update_kwargs['closed_at'] = now
+            update_kwargs = {"status": new_status, "updated_at": now}
+            if new_status in ["resolved", "closed"]:
+                update_kwargs["resolved_at"] = now
+            if new_status == "closed":
+                update_kwargs["closed_at"] = now
 
             action = f"Bulk status update to '{new_status}'"
             if reason:
@@ -493,12 +554,16 @@ class TicketService:
 
             with transaction.atomic():
                 Ticket.objects.filter(id__in=valid_ids).update(**update_kwargs)
-                TicketLog.objects.bulk_create([
-                    TicketLog(ticket_id=t.id, action=action, performed_by=updated_by)
-                    for t in valid_tickets
-                ])
+                TicketLog.objects.bulk_create(
+                    [
+                        TicketLog(
+                            ticket_id=t.id, action=action, performed_by=updated_by
+                        )
+                        for t in valid_tickets
+                    ]
+                )
 
-            results['updated'] += len(valid_tickets)
+            results["updated"] += len(valid_tickets)
 
         return results
 
@@ -508,9 +573,7 @@ class TicketService:
 
     @staticmethod
     def close_ticket(
-        ticket: Ticket,
-        closed_by: CustomUser,
-        closure_notes: Optional[str] = None
+        ticket: Ticket, closed_by: CustomUser, closure_notes: Optional[str] = None
     ) -> Ticket:
         """
         Close a resolved ticket.
@@ -532,33 +595,33 @@ class TicketService:
             DRFValidationError: Ticket is not resolved
         """
         # Check permission - allow requester OR admin/manager
-        if closed_by.role == 'user':
+        if closed_by.role == "user":
             # User can only close their own tickets
             if ticket.raised_by != closed_by:
                 raise DRFPermissionDenied(
                     "Only the ticket creator or administrators can close this ticket"
                 )
-        elif closed_by.role not in ['admin', 'manager']:
+        elif closed_by.role not in ["admin", "manager"]:
             raise DRFPermissionDenied(
                 f"Only ticket raiser, admins, or managers can close tickets, not {closed_by.role}"
             )
 
         # Check ticket is resolved
-        if ticket.status != 'resolved':
+        if ticket.status != "resolved":
             raise DRFValidationError(
                 f"Only resolved tickets can be closed. Ticket {ticket.ticket_no} is '{ticket.status}'"
             )
 
         with transaction.atomic():
             # Use model's atomic helper
-            ticket.change_status('closed', performed_by=closed_by)
+            ticket.change_status("closed", performed_by=closed_by)
 
             # Log closure details
             if closure_notes:
                 TicketLog.objects.create(
                     ticket=ticket,
-                    action=f'closed - {closure_notes}',
-                    performed_by=closed_by
+                    action=f"closed - {closure_notes}",
+                    performed_by=closed_by,
                 )
 
         return ticket
@@ -586,12 +649,7 @@ class TicketService:
                 'errors': [list of error messages]
             }
         """
-        stats = {
-            'processed': 0,
-            'escalated': 0,
-            'failed': 0,
-            'errors': []
-        }
+        stats = {"processed": 0, "escalated": 0, "failed": 0, "errors": []}
 
         # Find all tickets due for auto-escalation
         # Must be assigned (assigned_at IS NOT NULL) to be considered for escalation
@@ -599,11 +657,13 @@ class TicketService:
             auto_escalation_enabled=True,
             assigned_at__isnull=False,  # Only assigned tickets
             next_escalation_due__lte=timezone.now(),
-            status__in=['open', 'assigned', 'in_progress', 'pending']
-        ).exclude(escalation_level=2)  # Don't escalate beyond HOD
+            status__in=["open", "assigned", "in_progress", "pending"],
+        ).exclude(
+            escalation_level=2
+        )  # Don't escalate beyond HOD
 
         for ticket in tickets_due:
-            stats['processed'] += 1
+            stats["processed"] += 1
             try:
                 # Get system user for auto-escalation
                 system_user = TicketService._get_system_user()
@@ -612,23 +672,23 @@ class TicketService:
                 TicketService.escalate_ticket(
                     ticket=ticket,
                     escalated_by=system_user,
-                    reason='Automatic escalation due to timeout',
-                    manual=False
+                    reason="Automatic escalation due to timeout",
+                    manual=False,
                 )
 
-                stats['escalated'] += 1
+                stats["escalated"] += 1
 
                 # Log auto-escalation event
                 TicketLog.objects.create(
                     ticket=ticket,
-                    action=f'auto_escalated to level {ticket.escalation_level}',
-                    performed_by=system_user
+                    action=f"auto_escalated to level {ticket.escalation_level}",
+                    performed_by=system_user,
                 )
 
             except Exception as e:
-                stats['failed'] += 1
+                stats["failed"] += 1
                 error_msg = f"Failed to escalate ticket {ticket.ticket_no}: {str(e)}"
-                stats['errors'].append(error_msg)
+                stats["errors"].append(error_msg)
 
         return stats
 
@@ -638,8 +698,7 @@ class TicketService:
 
     @staticmethod
     def get_accessible_tickets(
-        user: CustomUser,
-        filters: Optional[Dict] = None
+        user: CustomUser, filters: Optional[Dict] = None
     ) -> List[Ticket]:
         """
         Get all tickets user can access based on organizational scope.
@@ -651,10 +710,10 @@ class TicketService:
         Returns:
             Queryset of accessible Ticket objects
         """
-        if user.role == 'admin':
+        if user.role == "admin":
             # Admin can see all tickets
             queryset = Ticket.objects.all()
-        elif user.role == 'director':
+        elif user.role == "director":
             # Director can see all tickets in organization
             if user.primary_campus:
                 queryset = Ticket.objects.filter(
@@ -662,7 +721,7 @@ class TicketService:
                 )
             else:
                 queryset = Ticket.objects.none()
-        elif user.role == 'hod':
+        elif user.role == "hod":
             # HOD can see all tickets in their department
             if user.primary_department:
                 queryset = Ticket.objects.filter(
@@ -670,47 +729,46 @@ class TicketService:
                 )
             else:
                 queryset = Ticket.objects.none()
-        elif user.role == 'section_head':
+        elif user.role == "section_head":
             # Section head can see all tickets in sections they manage
             # They manage sections via Section.section_head FK
-            queryset = Ticket.objects.filter(
-                section__section_head=user
-            )
-        elif user.role == 'technician':
+            queryset = Ticket.objects.filter(section__section_head=user)
+        elif user.role == "technician":
             # Technician can see tickets in their sections or assigned to them
-            queryset = Ticket.objects.filter(
-                section__in=user.sections.all()
-            ) | Ticket.objects.filter(assigned_to=user) | Ticket.objects.filter(raised_by=user)
+            queryset = (
+                Ticket.objects.filter(section__in=user.sections.all())
+                | Ticket.objects.filter(assigned_to=user)
+                | Ticket.objects.filter(raised_by=user)
+            )
         else:  # user role
             # Users can only see their own tickets
             queryset = Ticket.objects.filter(raised_by=user)
 
         # Apply additional filters if provided
         if filters:
-            if 'status' in filters:
-                queryset = queryset.filter(status=filters['status'])
-            if 'section_id' in filters:
-                queryset = queryset.filter(section_id=filters['section_id'])
-            if 'facility_id' in filters:
-                queryset = queryset.filter(facility_id=filters['facility_id'])
-            if 'escalation_level' in filters:
-                queryset = queryset.filter(
-                    escalation_level=filters['escalation_level'])
+            if "status" in filters:
+                queryset = queryset.filter(status=filters["status"])
+            if "section_id" in filters:
+                queryset = queryset.filter(section_id=filters["section_id"])
+            if "facility_id" in filters:
+                queryset = queryset.filter(facility_id=filters["facility_id"])
+            if "escalation_level" in filters:
+                queryset = queryset.filter(escalation_level=filters["escalation_level"])
 
-        return queryset.select_related(
-            'section', 'facility', 'raised_by', 'assigned_to', 'escalated_to'
-        ).distinct().order_by('-created_at')
+        return (
+            queryset.select_related(
+                "section", "facility", "raised_by", "assigned_to", "escalated_to"
+            )
+            .distinct()
+            .order_by("-created_at")
+        )
 
     # ========================================================================
     # COMMENTS
     # ========================================================================
 
     @staticmethod
-    def create_comment(
-        serializer,
-        user: CustomUser,
-        ticket_id: int
-    ) -> Comment:
+    def create_comment(serializer, user: CustomUser, ticket_id: int) -> Comment:
         """
         Attach author and ticket to a new comment.
         Log the action under TicketLog.
@@ -724,9 +782,7 @@ class TicketService:
         comment = serializer.save(author=user, ticket=ticket)
 
         TicketLog.objects.create(
-            ticket=ticket,
-            performed_by=user,
-            action=f"Comment added by {user.username}"
+            ticket=ticket, performed_by=user, action=f"Comment added by {user.username}"
         )
 
         return comment
@@ -736,11 +792,7 @@ class TicketService:
     # ========================================================================
 
     @staticmethod
-    def create_feedback(
-        serializer,
-        user: CustomUser,
-        ticket_id: int
-    ) -> Feedback:
+    def create_feedback(serializer, user: CustomUser, ticket_id: int) -> Feedback:
         """
         Ensure only the ticket raiser can provide feedback.
         Attach user and ticket, log the action.
@@ -748,18 +800,14 @@ class TicketService:
         ticket = get_object_or_404(Ticket, id=ticket_id)
 
         if ticket.raised_by != user:
-            raise DRFPermissionDenied(
-                "Only the ticket raiser can give feedback.")
+            raise DRFPermissionDenied("Only the ticket raiser can give feedback.")
 
         # Feedback can be provided on resolved tickets, but not on closed tickets
         if ticket.status == "closed":
-            raise DRFValidationError(
-                "Cannot provide feedback on a closed ticket.")
+            raise DRFValidationError("Cannot provide feedback on a closed ticket.")
 
         if ticket.status != "resolved":
-            raise DRFValidationError(
-                "The ticket has to be resolved to rate the job."
-            )
+            raise DRFValidationError("The ticket has to be resolved to rate the job.")
 
         # Prevent duplicate feedback for the same ticket
         if Feedback.objects.filter(ticket=ticket).exists():
@@ -772,7 +820,7 @@ class TicketService:
         TicketLog.objects.create(
             ticket=ticket,
             performed_by=user,
-            action=f"Feedback ({serializer.validated_data.get('rating', '?')}/5) added by {user.username}"
+            action=f"Feedback ({serializer.validated_data.get('rating', '?')}/5) added by {user.username}",
         )
 
         return feedback
@@ -784,19 +832,22 @@ class TicketService:
     @staticmethod
     def _user_can_access_section(user: CustomUser, section: Section) -> bool:
         """Check if user has access to section based on role and organizational scope"""
-        if user.role == 'admin':
+        if user.role == "admin":
             return True
 
         if not section or not section.department or not section.department.campus:
             return False
 
-        if user.role == 'director':
-            return section.department.campus.organization == user.primary_campus.organization
-        elif user.role == 'hod':
+        if user.role == "director":
+            return (
+                section.department.campus.organization
+                == user.primary_campus.organization
+            )
+        elif user.role == "hod":
             return section.department.campus == user.primary_campus
-        elif user.role == 'section_head':
+        elif user.role == "section_head":
             return section.department == user.primary_department
-        elif user.role in ['technician', 'user']:
+        elif user.role in ["technician", "user"]:
             return section in user.sections.all()
 
         return False
@@ -804,19 +855,17 @@ class TicketService:
     @staticmethod
     def _user_can_access_facility(user: CustomUser, facility: Facility) -> bool:
         """Check if user has access to facility based on role and organizational scope"""
-        if user.role == 'admin':
+        if user.role == "admin":
             return True
 
-        if not facility.campus or not facility.department:
+        if not facility.campus:
             return False
 
-        if user.role == 'director':
+        if user.role == "director":
             return facility.campus.organization == user.primary_campus.organization
-        elif user.role == 'hod':
+        elif user.role in ["hod", "section_head"]:
             return facility.campus == user.primary_campus
-        elif user.role == 'section_head':
-            return facility.department == user.primary_department
-        elif user.role in ['technician', 'user']:
+        elif user.role in ["technician", "user"]:
             return facility.campus == user.primary_campus
 
         return False
@@ -825,14 +874,14 @@ class TicketService:
     def _get_system_user() -> CustomUser:
         """Get or create system user for automated operations"""
         user, _ = CustomUser.objects.get_or_create(
-            username='system',
+            username="system",
             defaults={
-                'first_name': 'System',
-                'last_name': 'User',
-                'email': 'system@example.com',
-                'role': 'admin',
-                'is_staff': True,
-            }
+                "first_name": "System",
+                "last_name": "User",
+                "email": "system@example.com",
+                "role": "admin",
+                "is_staff": True,
+            },
         )
         return user
 
@@ -853,12 +902,13 @@ class TicketService:
                 # Log notification event (actual email sending handled elsewhere)
                 TicketLog.objects.create(
                     ticket=ticket,
-                    action='notification: ticket created',
-                    performed_by=ticket.raised_by
+                    action="notification: ticket created",
+                    performed_by=ticket.raised_by,
                 )
         except Exception as e:
             # Log notification error but don't fail the ticket creation
             import logging
+
             logger = logging.getLogger(__name__)
             logger.error(
                 f"Failed to notify on ticket creation {ticket.ticket_no}: {str(e)}"
@@ -879,12 +929,13 @@ class TicketService:
                 # Log escalation notification
                 TicketLog.objects.create(
                     ticket=ticket,
-                    action=f'notification: escalated to {ticket.escalated_to.username}',
-                    performed_by=ticket.raised_by
+                    action=f"notification: escalated to {ticket.escalated_to.username}",
+                    performed_by=ticket.raised_by,
                 )
         except Exception as e:
             # Log notification error but don't fail the escalation
             import logging
+
             logger = logging.getLogger(__name__)
             logger.error(
                 f"Failed to notify on ticket escalation {ticket.ticket_no}: {str(e)}"

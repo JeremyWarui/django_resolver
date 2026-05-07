@@ -46,38 +46,38 @@ from .views import (
 
 __all__ = [
     # Organization Hierarchy
-    'OrganizationListCreateView',
-    'OrganizationDetailView',
-    'CampusListCreateView',
-    'CampusDetailView',
-    'DepartmentListCreateView',
-    'DepartmentDetailView',
+    "OrganizationListCreateView",
+    "OrganizationDetailView",
+    "CampusListCreateView",
+    "CampusDetailView",
+    "DepartmentListCreateView",
+    "DepartmentDetailView",
     # Sections
-    'SectionListCreateView',
-    'SectionDetailView',
+    "SectionListCreateView",
+    "SectionDetailView",
     # Facilities
-    'FacilityListCreateView',
-    'FacilityDetailView',
+    "FacilityListCreateView",
+    "FacilityDetailView",
     # Tickets
-    'TicketListCreateView',
-    'TicketDetailView',
-    'TicketEscalationView',
-    'TicketCloseView',
-    'OrganizationalTicketListView',
-    'EscalateTicketView',
+    "TicketListCreateView",
+    "TicketDetailView",
+    "TicketEscalationView",
+    "TicketCloseView",
+    "OrganizationalTicketListView",
+    "EscalateTicketView",
     # Comments
-    'CommentListCreateView',
+    "CommentListCreateView",
     # Feedback
-    'FeedbackListCreateView',
+    "FeedbackListCreateView",
     # Users
-    'UserListCreateView',
-    'UserDetailView',
-    'TechniciansBySectionView',
-    'AssignableUsersView',
+    "UserListCreateView",
+    "UserDetailView",
+    "TechniciansBySectionView",
+    "AssignableUsersView",
     # Bulk Operations
-    'BulkTicketStatusUpdateView',
+    "BulkTicketStatusUpdateView",
     # Analytics
-    'OrganizationalAnalyticsView',
-    'AnalyticsTicketsView',
-    'AnalyticsTechniciansView',
+    "OrganizationalAnalyticsView",
+    "AnalyticsTicketsView",
+    "AnalyticsTechniciansView",
 ]

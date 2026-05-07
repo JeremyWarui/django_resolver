@@ -17,23 +17,23 @@ class OrganizationalScopeFilterMixin:
 
     def get_queryset(self, queryset):
         """Filter queryset based on user's organizational scope"""
-        user = self.request.user if hasattr(self, 'request') else None
+        user = self.request.user if hasattr(self, "request") else None
         if not user or not user.is_authenticated:
             return queryset.none()
 
         # Apply role-based filtering
-        if user.role == 'admin':
+        if user.role == "admin":
             return queryset
-        elif user.role == 'director':
+        elif user.role == "director":
             # Director sees items in their organization
             return self._filter_by_organization(queryset, user)
-        elif user.role == 'hod':
+        elif user.role == "hod":
             # HOD sees items in their campus
             return self._filter_by_campus(queryset, user)
-        elif user.role == 'section_head':
+        elif user.role == "section_head":
             # Section head sees items in their department
             return self._filter_by_department(queryset, user)
-        elif user.role in ['technician', 'user']:
+        elif user.role in ["technician", "user"]:
             # Technician/user sees items in their accessible sections
             return self._filter_by_section(queryset, user)
 
@@ -70,57 +70,52 @@ class TicketFilter(filters.FilterSet, OrganizationalScopeFilterMixin):
     """
 
     status = filters.ChoiceFilter(
-        choices=Ticket.STATUS_CHOICES,
-        help_text="Filter by ticket status"
+        choices=Ticket.STATUS_CHOICES, help_text="Filter by ticket status"
     )
 
     escalation_level = filters.NumberFilter(
-        field_name='escalation_level',
-        help_text="Filter by escalation level (0=none, 1=section_head, 2=hod)"
+        field_name="escalation_level",
+        help_text="Filter by escalation level (0=none, 1=section_head, 2=hod)",
     )
 
     escalation_status = filters.CharFilter(
-        method='filter_by_escalation_status',
-        help_text="Filter by escalation status (not_escalated, escalated_l1, escalated_l2)"
+        method="filter_by_escalation_status",
+        help_text="Filter by escalation status (not_escalated, escalated_l1, escalated_l2)",
     )
 
     is_overdue = filters.BooleanFilter(
-        method='filter_by_overdue',
-        help_text="Filter overdue tickets (>7 days in open/assigned/in_progress)"
+        method="filter_by_overdue",
+        help_text="Filter overdue tickets (>7 days in open/assigned/in_progress)",
     )
 
     is_due_for_escalation = filters.BooleanFilter(
-        field_name='is_due_for_escalation',
-        help_text="Filter tickets due for auto-escalation"
+        field_name="is_due_for_escalation",
+        help_text="Filter tickets due for auto-escalation",
     )
 
     section = filters.ModelChoiceFilter(
-        queryset=Section.objects.all(),
-        help_text="Filter by section"
+        queryset=Section.objects.all(), help_text="Filter by section"
     )
 
     department = filters.ModelChoiceFilter(
-        queryset=Department.objects.all(),
-        help_text="Filter by department"
+        queryset=Department.objects.all(), help_text="Filter by department"
     )
 
     campus = filters.ModelChoiceFilter(
-        queryset=Campus.objects.all(),
-        help_text="Filter by campus"
+        queryset=Campus.objects.all(), help_text="Filter by campus"
     )
 
     class Meta:
         model = Ticket
-        fields = ['status',
-                  'escalation_level', 'section', 'assigned_to']
+        fields = ["status", "escalation_level", "section", "assigned_to"]
 
     def filter_by_escalation_status(self, queryset, name, value):
         """Filter by escalation status"""
-        if value == 'not_escalated':
+        if value == "not_escalated":
             return queryset.filter(escalation_level=0)
-        elif value == 'escalated_l1':
+        elif value == "escalated_l1":
             return queryset.filter(escalation_level=1)
-        elif value == 'escalated_l2':
+        elif value == "escalated_l2":
             return queryset.filter(escalation_level=2)
         return queryset
 
@@ -129,10 +124,11 @@ class TicketFilter(filters.FilterSet, OrganizationalScopeFilterMixin):
         if value:
             from django.utils import timezone
             from datetime import timedelta
+
             seven_days_ago = timezone.now() - timedelta(days=7)
             queryset = queryset.filter(
                 created_at__lt=seven_days_ago,
-                status__in=['open', 'assigned', 'in_progress']
+                status__in=["open", "assigned", "in_progress"],
             )
         return queryset
 
@@ -165,18 +161,16 @@ class SectionFilter(filters.FilterSet, OrganizationalScopeFilterMixin):
     """Filter for sections with organizational scope awareness."""
 
     department = filters.ModelChoiceFilter(
-        queryset=Department.objects.all(),
-        help_text="Filter by department"
+        queryset=Department.objects.all(), help_text="Filter by department"
     )
 
     is_active = filters.BooleanFilter(
-        field_name='is_active',
-        help_text="Filter by active status"
+        field_name="is_active", help_text="Filter by active status"
     )
 
     class Meta:
         model = Section
-        fields = ['department', 'is_active']
+        fields = ["department", "is_active"]
 
     def _filter_by_organization(self, queryset, user):
         if user.primary_campus:
@@ -203,32 +197,30 @@ class FacilityFilter(filters.FilterSet, OrganizationalScopeFilterMixin):
     """Filter for facilities with organizational scope awareness."""
 
     campus = filters.ModelChoiceFilter(
-        queryset=Campus.objects.all(),
-        help_text="Filter by campus"
+        queryset=Campus.objects.all(), help_text="Filter by campus"
     )
 
     department = filters.ModelChoiceFilter(
-        queryset=Department.objects.all(),
-        help_text="Filter by department"
+        queryset=Department.objects.all(), help_text="Filter by department"
     )
 
     facility_type = filters.ChoiceFilter(
-        choices=Facility.FACILITY_TYPE_CHOICES,
-        help_text="Filter by facility type"
+        choices=Facility.FACILITY_TYPE_CHOICES, help_text="Filter by facility type"
     )
 
     status = filters.ChoiceFilter(
-        choices=Facility.STATUS_CHOICES,
-        help_text="Filter by facility status"
+        choices=Facility.STATUS_CHOICES, help_text="Filter by facility status"
     )
 
     class Meta:
         model = Facility
-        fields = ['campus', 'department', 'facility_type', 'status']
+        fields = ["campus", "department", "facility_type", "status"]
 
     def _filter_by_organization(self, queryset, user):
         if user.primary_campus:
-            return queryset.filter(campus__organization=user.primary_campus.organization)
+            return queryset.filter(
+                campus__organization=user.primary_campus.organization
+            )
         return queryset
 
     def _filter_by_campus(self, queryset, user):

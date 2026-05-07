@@ -10,17 +10,23 @@ from django.urls import reverse
 from rest_framework import status
 
 from tickets.models import (
-    Section, Facility, Ticket, Comment, Feedback, TicketLog, CustomUser
+    Section,
+    Facility,
+    Ticket,
+    Comment,
+    Feedback,
+    TicketLog,
+    CustomUser,
 )
-
 
 # ============================================================================
 # API TESTS - BASIC ENDPOINTS
 # ============================================================================
 
+
 def test_get_tickets(authenticated_client, section, facility, campus):
     """Test retrieving list of tickets via API"""
-    auth_user = authenticated_client['user']
+    auth_user = authenticated_client["user"]
     auth_user.primary_campus = campus
     auth_user.save()
 
@@ -32,7 +38,7 @@ def test_get_tickets(authenticated_client, section, facility, campus):
         raised_by=auth_user,
     )
 
-    client = authenticated_client['client']
+    client = authenticated_client["client"]
     url = reverse("ticket-list")
     response = client.get(url)
 
@@ -48,11 +54,11 @@ def test_get_tickets(authenticated_client, section, facility, campus):
 
 def test_create_ticket_via_api(authenticated_client, section, facility, campus):
     """Test creating ticket via API endpoint"""
-    auth_user = authenticated_client['user']
+    auth_user = authenticated_client["user"]
     auth_user.primary_campus = campus
     auth_user.save()
 
-    client = authenticated_client['client']
+    client = authenticated_client["client"]
     url = reverse("ticket-list")
 
     data = {
@@ -71,7 +77,7 @@ def test_create_ticket_via_api(authenticated_client, section, facility, campus):
 
 def test_get_ticket_detail(authenticated_client, section, facility, campus):
     """Test retrieving a specific ticket with comments & feedback"""
-    auth_user = authenticated_client['user']
+    auth_user = authenticated_client["user"]
     auth_user.primary_campus = campus
     auth_user.save()
 
@@ -90,7 +96,7 @@ def test_get_ticket_detail(authenticated_client, section, facility, campus):
         ticket=ticket, rated_by=auth_user, rating=5, comment="Great service!"
     )
 
-    client = authenticated_client['client']
+    client = authenticated_client["client"]
     url = reverse("ticket-detail", args=[ticket.id])
     response = client.get(url)
 
@@ -109,10 +115,13 @@ def test_get_ticket_detail(authenticated_client, section, facility, campus):
 # TICKET STATUS UPDATE TESTS
 # ============================================================================
 
-def test_update_ticket_status_technician(authenticated_technician_client, section, facility, user_factory, technician_factory):
-    """Test technician updating ticket status"""
+
+def test_update_ticket_status_technician(
+    authenticated_technician_client, section, facility, user_factory
+):
+    """Test technician updating ticket status for assigned ticket"""
     user = user_factory()
-    technician = technician_factory()
+    technician = authenticated_technician_client["user"]
     ticket = Ticket.objects.create(
         title="Test Ticket",
         description="This is a test ticket.",
@@ -123,7 +132,7 @@ def test_update_ticket_status_technician(authenticated_technician_client, sectio
         status="assigned",
     )
 
-    client = authenticated_technician_client['client']
+    client = authenticated_technician_client["client"]
     url = reverse("ticket-detail", args=[ticket.id])
     data = {"status": "in_progress"}
 
@@ -132,7 +141,40 @@ def test_update_ticket_status_technician(authenticated_technician_client, sectio
     assert response.data["status"] == "in_progress"
 
 
-def test_update_ticket_status_admin(authenticated_admin_client, section, facility, user_factory, technician_factory):
+def test_technician_cannot_edit_unassigned_ticket(
+    authenticated_technician_client, section, facility, user_factory, technician_factory
+):
+    """Test that technician can view but cannot edit tickets assigned to someone else"""
+    user = user_factory()
+    other_technician = technician_factory()  # Different technician
+    other_technician.sections.add(section)
+
+    ticket = Ticket.objects.create(
+        title="Unassigned Ticket",
+        description="Assigned to a different technician",
+        section=section,
+        facility=facility,
+        raised_by=user,
+        assigned_to=other_technician,
+        status="assigned",
+    )
+
+    client = authenticated_technician_client["client"]
+    url = reverse("ticket-detail", args=[ticket.id])
+
+    # Technician should be able to view (GET) the ticket
+    response = client.get(url)
+    assert response.status_code == status.HTTP_200_OK
+
+    # But should NOT be able to edit (PATCH) the ticket
+    data = {"status": "in_progress"}
+    response = client.patch(url, data, format="json")
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+def test_update_ticket_status_admin(
+    authenticated_admin_client, section, facility, user_factory, technician_factory
+):
     """Test admin updating ticket status"""
     user = user_factory()
     technician = technician_factory()
@@ -146,7 +188,7 @@ def test_update_ticket_status_admin(authenticated_admin_client, section, facilit
         status="assigned",
     )
 
-    client = authenticated_admin_client['client']
+    client = authenticated_admin_client["client"]
     url = reverse("ticket-detail", args=[ticket.id])
     data = {"status": "in_progress"}
 
@@ -155,7 +197,9 @@ def test_update_ticket_status_admin(authenticated_admin_client, section, facilit
     assert response.data["status"] == "in_progress"
 
 
-def test_update_ticket_user_cant(authenticated_client, section, facility, user_factory, technician_factory):
+def test_update_ticket_user_cant(
+    authenticated_client, section, facility, user_factory, technician_factory
+):
     """Test that regular user cannot update ticket status"""
     user = user_factory()
     technician = technician_factory()
@@ -170,8 +214,8 @@ def test_update_ticket_user_cant(authenticated_client, section, facility, user_f
     )
 
     # Create a different authenticated user so they try to modify someone else's ticket
-    auth_user = authenticated_client['user']
-    client = authenticated_client['client']
+    auth_user = authenticated_client["user"]
+    client = authenticated_client["client"]
     url = reverse("ticket-detail", args=[ticket.id])
     data = {"status": "in_progress"}
 
@@ -183,7 +227,10 @@ def test_update_ticket_user_cant(authenticated_client, section, facility, user_f
 # TICKET ASSIGNMENT TESTS
 # ============================================================================
 
-def test_assign_ticket_admin(authenticated_admin_client, section, facility, user_factory, technician_factory):
+
+def test_assign_ticket_admin(
+    authenticated_admin_client, section, facility, user_factory, technician_factory
+):
     """Test that admin can assign a ticket to technician"""
     user = user_factory()
     technician = technician_factory()
@@ -202,7 +249,7 @@ def test_assign_ticket_admin(authenticated_admin_client, section, facility, user
         status="open",
     )
 
-    client = authenticated_admin_client['client']
+    client = authenticated_admin_client["client"]
     url = reverse("ticket-detail", args=[ticket.id])
     data = {"assigned_to_id": technician.id, "status": "assigned"}
 
@@ -212,9 +259,11 @@ def test_assign_ticket_admin(authenticated_admin_client, section, facility, user
     assert response.data["assigned_to"]["id"] == technician.id
 
 
-def test_user_cannot_assign_ticket(authenticated_client, section, facility, technician_factory):
+def test_user_cannot_assign_ticket(
+    authenticated_client, section, facility, technician_factory
+):
     """Test that a regular user cannot assign tickets"""
-    auth_user = authenticated_client['user']
+    auth_user = authenticated_client["user"]
     technician = technician_factory()
 
     # Create ticket with authenticated user as raiser so they can access it
@@ -227,7 +276,7 @@ def test_user_cannot_assign_ticket(authenticated_client, section, facility, tech
         status="open",
     )
 
-    client = authenticated_client['client']
+    client = authenticated_client["client"]
     url = reverse("ticket-detail", args=[ticket.id])
     data = {"assigned_to_id": technician.id}
 
@@ -239,7 +288,10 @@ def test_user_cannot_assign_ticket(authenticated_client, section, facility, tech
 # TICKET COMMENTS TESTS
 # ============================================================================
 
-def test_user_can_add_comment(authenticated_admin_client, section, facility, user_factory, technician_factory):
+
+def test_user_can_add_comment(
+    authenticated_admin_client, section, facility, user_factory, technician_factory
+):
     """Test user can add comment to ticket"""
     user = user_factory()
     technician = technician_factory()
@@ -253,11 +305,9 @@ def test_user_can_add_comment(authenticated_admin_client, section, facility, use
         status="assigned",
     )
 
-    Comment.objects.create(
-        ticket=ticket, text="This is a test comment.", author=user
-    )
+    Comment.objects.create(ticket=ticket, text="This is a test comment.", author=user)
 
-    client = authenticated_admin_client['client']
+    client = authenticated_admin_client["client"]
     url = reverse("ticket-comments", args=[ticket.id])
     data = {"text": "This is a second comment"}
 
@@ -270,7 +320,14 @@ def test_user_can_add_comment(authenticated_admin_client, section, facility, use
     assert len(comments_response.data["comments"]) == 2
 
 
-def test_admin_and_technician_can_view_comments(authenticated_admin_client, authenticated_technician_client, section, facility, user_factory, technician_factory):
+def test_admin_and_technician_can_view_comments(
+    authenticated_admin_client,
+    authenticated_technician_client,
+    section,
+    facility,
+    user_factory,
+    technician_factory,
+):
     """Test that admins and technicians can view ticket comments"""
     user = user_factory()
     technician = technician_factory()
@@ -286,15 +343,13 @@ def test_admin_and_technician_can_view_comments(authenticated_admin_client, auth
         status="in_progress",
     )
 
-    Comment.objects.create(
-        ticket=ticket, text="Comment from user", author=user
-    )
+    Comment.objects.create(ticket=ticket, text="Comment from user", author=user)
     Comment.objects.create(
         ticket=ticket, text="Comment from technician", author=technician
     )
 
     # Test admin can view comments
-    admin_client = authenticated_admin_client['client']
+    admin_client = authenticated_admin_client["client"]
     url = reverse("ticket-detail", args=[ticket.id])
     response = admin_client.get(url)
 
@@ -305,6 +360,7 @@ def test_admin_and_technician_can_view_comments(authenticated_admin_client, auth
 # ============================================================================
 # TICKET DELETION TESTS
 # ============================================================================
+
 
 def test_delete_ticket(authenticated_admin_client, section, facility, user_factory):
     """Test ticket deletion functionality"""
@@ -317,7 +373,7 @@ def test_delete_ticket(authenticated_admin_client, section, facility, user_facto
         raised_by=user,
     )
 
-    client = authenticated_admin_client['client']
+    client = authenticated_admin_client["client"]
     url = reverse("ticket-detail", args=[ticket.id])
     response = client.delete(url)
 
@@ -335,7 +391,10 @@ def test_delete_ticket(authenticated_admin_client, section, facility, user_facto
 # TICKET FILTERING TESTS
 # ============================================================================
 
-def test_filter_tickets_by_status(authenticated_admin_client, section, facility, user_factory, technician_factory):
+
+def test_filter_tickets_by_status(
+    authenticated_admin_client, section, facility, user_factory, technician_factory
+):
     """Test filtering tickets by status"""
     user = user_factory()
     technician = technician_factory()
@@ -361,7 +420,7 @@ def test_filter_tickets_by_status(authenticated_admin_client, section, facility,
         status="open",
     )
 
-    client = authenticated_admin_client['client']
+    client = authenticated_admin_client["client"]
 
     # Test filtering by assigned status
     url = reverse("ticket-list") + "?status=assigned"
@@ -385,13 +444,17 @@ def test_filter_tickets_by_status(authenticated_admin_client, section, facility,
         assert ticket["status"] == "open"
 
 
-def test_filter_tickets_by_section(authenticated_admin_client, section, facility, user_factory):
+def test_filter_tickets_by_section(
+    authenticated_admin_client, section, facility, user_factory
+):
     """Test filtering tickets by section"""
     user = user_factory()
 
     # Create a new section
     plumbing = Section.objects.create(
-        name="Plumbing", description="Water systems and pipes", department=section.department
+        name="Plumbing",
+        description="Water systems and pipes",
+        department=section.department,
     )
 
     # Create tickets for different sections
@@ -413,7 +476,7 @@ def test_filter_tickets_by_section(authenticated_admin_client, section, facility
         status="open",
     )
 
-    client = authenticated_admin_client['client']
+    client = authenticated_admin_client["client"]
 
     # Test filtering by IT section
     url = reverse("ticket-list") + f"?section={section.id}"
@@ -424,7 +487,7 @@ def test_filter_tickets_by_section(authenticated_admin_client, section, facility
     results = response.data["results"]
     assert len(results) >= 1
     for ticket in results:
-        assert ticket["section_id_value"] == section.id
+        assert ticket["section"]["id"] == section.id
 
     # Test filtering by Plumbing section
     url = reverse("ticket-list") + f"?section={plumbing.id}"
@@ -444,10 +507,17 @@ def test_filter_tickets_by_section(authenticated_admin_client, section, facility
 # TICKET LIFECYCLE WORKFLOW TESTS
 # ============================================================================
 
-def test_ticket_lifecycle_workflow(authenticated_admin_client, authenticated_technician_client, section, facility, user_factory):
+
+def test_ticket_lifecycle_workflow(
+    authenticated_admin_client,
+    authenticated_technician_client,
+    section,
+    facility,
+    user_factory,
+):
     """Test the complete ticket lifecycle from open to resolved"""
     user = user_factory()
-    technician = authenticated_technician_client['user']
+    technician = authenticated_technician_client["user"]
     technician.sections.add(section)
 
     lifecycle_ticket = Ticket.objects.create(
@@ -460,7 +530,7 @@ def test_ticket_lifecycle_workflow(authenticated_admin_client, authenticated_tec
     )
 
     # Step 1: Admin assigns ticket
-    admin_client = authenticated_admin_client['client']
+    admin_client = authenticated_admin_client["client"]
     url = reverse("ticket-detail", args=[lifecycle_ticket.id])
     data = {"assigned_to_id": technician.id}
 
@@ -469,7 +539,7 @@ def test_ticket_lifecycle_workflow(authenticated_admin_client, authenticated_tec
     assert response.data["status"] == "assigned"
 
     # Step 2: Technician updates status to in_progress
-    tech_client = authenticated_technician_client['client']
+    tech_client = authenticated_technician_client["client"]
     data = {"status": "in_progress"}
 
     response = tech_client.patch(url, data, format="json")
@@ -484,7 +554,14 @@ def test_ticket_lifecycle_workflow(authenticated_admin_client, authenticated_tec
     assert response.data["status"] == "resolved"
 
 
-def test_changing_ticket_status(authenticated_admin_client, authenticated_technician_client, section, facility, user_factory, technician_factory):
+def test_changing_ticket_status(
+    authenticated_admin_client,
+    authenticated_technician_client,
+    section,
+    facility,
+    user_factory,
+    technician_factory,
+):
     """Test that admin and technician can update ticket status appropriately"""
     user = user_factory()
     technician = technician_factory()
@@ -501,7 +578,7 @@ def test_changing_ticket_status(authenticated_admin_client, authenticated_techni
     )
 
     # Test technician can update to in_progress
-    tech_client = authenticated_technician_client['client']
+    tech_client = authenticated_technician_client["client"]
     url = reverse("ticket-detail", args=[ticket.id])
     data = {"status": "in_progress"}
 
@@ -516,10 +593,12 @@ def test_changing_ticket_status(authenticated_admin_client, authenticated_techni
     assert response.data["status"] == "resolved"
 
 
-def test_resolve_ticket_technician(authenticated_technician_client, section, facility, user_factory):
+def test_resolve_ticket_technician(
+    authenticated_technician_client, section, facility, user_factory
+):
     """Test that technician can mark a ticket as resolved"""
     user = user_factory()
-    technician = authenticated_technician_client['user']
+    technician = authenticated_technician_client["user"]
     technician.sections.add(section)
 
     ticket = Ticket.objects.create(
@@ -535,7 +614,7 @@ def test_resolve_ticket_technician(authenticated_technician_client, section, fac
     # Update to in_progress first
     ticket.change_status("in_progress", performed_by=technician)
 
-    tech_client = authenticated_technician_client['client']
+    tech_client = authenticated_technician_client["client"]
     url = reverse("ticket-detail", args=[ticket.id])
     data = {"status": "resolved"}
 
@@ -544,10 +623,7 @@ def test_resolve_ticket_technician(authenticated_technician_client, section, fac
     assert response.data["status"] == "resolved"
 
     # Verify that a ticket log was created for this status change
-    latest_log = (
-        TicketLog.objects.filter(
-            ticket=ticket).order_by("-timestamp").first()
-    )
+    latest_log = TicketLog.objects.filter(ticket=ticket).order_by("-timestamp").first()
     assert latest_log is not None
     assert latest_log.performed_by == technician
 
@@ -556,7 +632,10 @@ def test_resolve_ticket_technician(authenticated_technician_client, section, fac
 # EDGE CASE TESTS
 # ============================================================================
 
-def test_assign_resolved_ticket_fails(authenticated_admin_client, section, facility, user_factory, technician_factory):
+
+def test_assign_resolved_ticket_fails(
+    authenticated_admin_client, section, facility, user_factory, technician_factory
+):
     """Test that a resolved ticket cannot be reassigned"""
     user = user_factory()
     tech1 = technician_factory(username="tech1")
@@ -573,7 +652,7 @@ def test_assign_resolved_ticket_fails(authenticated_admin_client, section, facil
         status="resolved",
     )
 
-    client = authenticated_admin_client['client']
+    client = authenticated_admin_client["client"]
     url = reverse("ticket-detail", args=[resolved_ticket.id])
     data = {"assigned_to_id": tech2.id}
 
@@ -587,7 +666,7 @@ def test_assign_resolved_ticket_fails(authenticated_admin_client, section, facil
 
 def test_feedback_on_unresolved_ticket(authenticated_client, section, facility):
     """Test that feedback can only be submitted on resolved tickets"""
-    auth_user = authenticated_client['user']
+    auth_user = authenticated_client["user"]
 
     statuses = ["open", "assigned", "in_progress", "pending"]
 
@@ -602,7 +681,7 @@ def test_feedback_on_unresolved_ticket(authenticated_client, section, facility):
         )
 
         # Try to submit feedback
-        client = authenticated_client['client']
+        client = authenticated_client["client"]
         url = reverse("ticket-feedback", args=[ticket.id])
         data = {"rating": 5, "comment": "Great service!"}
 
@@ -612,13 +691,11 @@ def test_feedback_on_unresolved_ticket(authenticated_client, section, facility):
 
 def test_invalid_data_handling(authenticated_client, section, facility):
     """Test handling of invalid data when creating tickets"""
-    client = authenticated_client['client']
+    client = authenticated_client["client"]
     url = reverse("ticket-list")
 
     # Test with missing required fields
-    data = {
-        "title": "Incomplete Ticket"
-    }
+    data = {"title": "Incomplete Ticket"}
 
     response = client.post(url, data, format="json")
     assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -664,10 +741,17 @@ def test_anonymous_user_cannot_create_ticket(api_client, section, facility):
 # STATUS TRANSITION TESTS
 # ============================================================================
 
-def test_status_transition_validation(authenticated_admin_client, authenticated_technician_client, section, facility, user_factory):
+
+def test_status_transition_validation(
+    authenticated_admin_client,
+    authenticated_technician_client,
+    section,
+    facility,
+    user_factory,
+):
     """Test status transition validations for tickets"""
     user = user_factory()
-    technician = authenticated_technician_client['user']
+    technician = authenticated_technician_client["user"]
     technician.sections.add(section)
     # Set organizational context for technician
     technician.primary_campus = section.department.campus
@@ -683,7 +767,7 @@ def test_status_transition_validation(authenticated_admin_client, authenticated_
         status="open",
     )
 
-    client = authenticated_admin_client['client']
+    client = authenticated_admin_client["client"]
     url = reverse("ticket-detail", args=[open_ticket.id])
     data = {"assigned_to_id": technician.id}
 
@@ -692,10 +776,16 @@ def test_status_transition_validation(authenticated_admin_client, authenticated_
     assert response.data["status"] == "assigned"
 
 
-def test_valid_status_transitions(authenticated_admin_client, authenticated_technician_client, section, facility, user_factory):
+def test_valid_status_transitions(
+    authenticated_admin_client,
+    authenticated_technician_client,
+    section,
+    facility,
+    user_factory,
+):
     """Test the valid status transitions for a ticket"""
     user = user_factory()
-    technician = authenticated_technician_client['user']
+    technician = authenticated_technician_client["user"]
     technician.sections.add(section)
 
     ticket = Ticket.objects.create(
@@ -707,8 +797,8 @@ def test_valid_status_transitions(authenticated_admin_client, authenticated_tech
         status="open",
     )
 
-    admin_client = authenticated_admin_client['client']
-    tech_client = authenticated_technician_client['client']
+    admin_client = authenticated_admin_client["client"]
+    tech_client = authenticated_technician_client["client"]
     url = reverse("ticket-detail", args=[ticket.id])
 
     # Test invalid transition: open → resolved (should fail)
@@ -740,7 +830,10 @@ def test_valid_status_transitions(authenticated_admin_client, authenticated_tech
 # CLOSED TICKET TESTS
 # ============================================================================
 
-def test_admin_can_close_resolved_ticket(authenticated_admin_client, section, facility, user_factory, technician_factory):
+
+def test_admin_can_close_resolved_ticket(
+    authenticated_admin_client, section, facility, user_factory, technician_factory
+):
     """Test that admin can close resolved tickets"""
     user = user_factory()
     technician = technician_factory()
@@ -755,7 +848,7 @@ def test_admin_can_close_resolved_ticket(authenticated_admin_client, section, fa
         status="resolved",
     )
 
-    client = authenticated_admin_client['client']
+    client = authenticated_admin_client["client"]
     url = reverse("ticket-detail", args=[resolved_ticket.id])
     data = {"status": "closed"}
 
@@ -764,7 +857,9 @@ def test_admin_can_close_resolved_ticket(authenticated_admin_client, section, fa
     assert response.data["status"] == "closed"
 
 
-def test_cannot_close_unresolved_ticket(authenticated_admin_client, section, facility, user_factory, technician_factory):
+def test_cannot_close_unresolved_ticket(
+    authenticated_admin_client, section, facility, user_factory, technician_factory
+):
     """Test that tickets can only be closed if they are resolved first"""
     user = user_factory()
     technician = technician_factory()
@@ -784,7 +879,7 @@ def test_cannot_close_unresolved_ticket(authenticated_admin_client, section, fac
         )
         tickets.append(ticket)
 
-    client = authenticated_admin_client['client']
+    client = authenticated_admin_client["client"]
 
     # Try to close each ticket that's not resolved
     for ticket in tickets:
@@ -800,7 +895,9 @@ def test_cannot_close_unresolved_ticket(authenticated_admin_client, section, fac
         assert ticket.status != "closed"
 
 
-def test_cannot_modify_closed_ticket(authenticated_admin_client, section, facility, user_factory, technician_factory):
+def test_cannot_modify_closed_ticket(
+    authenticated_admin_client, section, facility, user_factory, technician_factory
+):
     """Test that closed tickets cannot be modified"""
     user = user_factory()
     technician = technician_factory()
@@ -815,7 +912,7 @@ def test_cannot_modify_closed_ticket(authenticated_admin_client, section, facili
         status="closed",
     )
 
-    client = authenticated_admin_client['client']
+    client = authenticated_admin_client["client"]
     url = reverse("ticket-detail", args=[closed_ticket.id])
 
     # Try to change title
@@ -831,7 +928,9 @@ def test_cannot_modify_closed_ticket(authenticated_admin_client, section, facili
     assert "Closed tickets cannot be modified" in str(response.data)
 
 
-def test_comment_on_closed_ticket(authenticated_client, section, facility, user_factory, technician_factory):
+def test_comment_on_closed_ticket(
+    authenticated_client, section, facility, user_factory, technician_factory
+):
     """Test that comments cannot be added to closed tickets"""
     user = user_factory()
     technician = technician_factory()
@@ -846,7 +945,7 @@ def test_comment_on_closed_ticket(authenticated_client, section, facility, user_
         status="closed",
     )
 
-    client = authenticated_client['client']
+    client = authenticated_client["client"]
     url = reverse("ticket-comments", args=[closed_ticket.id])
     data = {"text": "This is a comment on a closed ticket."}
 
@@ -859,7 +958,10 @@ def test_comment_on_closed_ticket(authenticated_client, section, facility, user_
 # BULK OPERATIONS TESTS
 # ============================================================================
 
-def test_bulk_status_update_requires_authentication(api_client, section, facility, user_factory):
+
+def test_bulk_status_update_requires_authentication(
+    api_client, section, facility, user_factory
+):
     """Test that bulk status update requires authentication"""
     user = user_factory()
     ticket = Ticket.objects.create(
@@ -881,7 +983,9 @@ def test_bulk_status_update_requires_authentication(api_client, section, facilit
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
-def test_bulk_status_update_requires_permission(authenticated_client, section, facility, user_factory):
+def test_bulk_status_update_requires_permission(
+    authenticated_client, section, facility, user_factory
+):
     """Test that regular users cannot perform bulk operations"""
     user = user_factory()
     ticket = Ticket.objects.create(
@@ -893,7 +997,7 @@ def test_bulk_status_update_requires_permission(authenticated_client, section, f
         status="open",
     )
 
-    client = authenticated_client['client']
+    client = authenticated_client["client"]
     url = reverse("bulk-status-update")
     data = {
         "ticket_ids": [ticket.id],
@@ -906,7 +1010,7 @@ def test_bulk_status_update_requires_permission(authenticated_client, section, f
 
 def test_bulk_status_update_missing_ticket_ids(authenticated_admin_client):
     """Test that ticket_ids is required"""
-    client = authenticated_admin_client['client']
+    client = authenticated_admin_client["client"]
     url = reverse("bulk-status-update")
     data = {
         "new_status": "resolved",
@@ -917,7 +1021,9 @@ def test_bulk_status_update_missing_ticket_ids(authenticated_admin_client):
     assert "ticket_ids" in response.data["error"]
 
 
-def test_bulk_status_update_missing_new_status(authenticated_admin_client, section, facility, user_factory):
+def test_bulk_status_update_missing_new_status(
+    authenticated_admin_client, section, facility, user_factory
+):
     """Test that new_status is required"""
     user = user_factory()
     ticket = Ticket.objects.create(
@@ -929,7 +1035,7 @@ def test_bulk_status_update_missing_new_status(authenticated_admin_client, secti
         status="open",
     )
 
-    client = authenticated_admin_client['client']
+    client = authenticated_admin_client["client"]
     url = reverse("bulk-status-update")
     data = {
         "ticket_ids": [ticket.id],
@@ -940,7 +1046,9 @@ def test_bulk_status_update_missing_new_status(authenticated_admin_client, secti
     assert "new_status" in response.data["error"]
 
 
-def test_bulk_status_update_invalid_ticket_ids_type(authenticated_admin_client, section, facility, user_factory):
+def test_bulk_status_update_invalid_ticket_ids_type(
+    authenticated_admin_client, section, facility, user_factory
+):
     """Test that ticket_ids must be a list"""
     user = user_factory()
     ticket = Ticket.objects.create(
@@ -952,7 +1060,7 @@ def test_bulk_status_update_invalid_ticket_ids_type(authenticated_admin_client, 
         status="open",
     )
 
-    client = authenticated_admin_client['client']
+    client = authenticated_admin_client["client"]
     url = reverse("bulk-status-update")
     data = {
         "ticket_ids": ticket.id,  # Should be a list
@@ -964,7 +1072,9 @@ def test_bulk_status_update_invalid_ticket_ids_type(authenticated_admin_client, 
     assert "ticket_ids must be a list" in response.data["error"]
 
 
-def test_bulk_status_update_admin_success(authenticated_admin_client, section, facility, user_factory, technician_factory):
+def test_bulk_status_update_admin_success(
+    authenticated_admin_client, section, facility, user_factory, technician_factory
+):
     """Test successful bulk status update by admin"""
     user = user_factory()
     technician = technician_factory()
@@ -983,7 +1093,7 @@ def test_bulk_status_update_admin_success(authenticated_admin_client, section, f
         )
         tickets.append(ticket)
 
-    client = authenticated_admin_client['client']
+    client = authenticated_admin_client["client"]
     url = reverse("bulk-status-update")
     ticket_ids = [t.id for t in tickets]
 
@@ -1007,7 +1117,7 @@ def test_bulk_status_update_admin_success(authenticated_admin_client, section, f
 
 def test_bulk_status_update_empty_list(authenticated_admin_client):
     """Test bulk update with empty ticket list"""
-    client = authenticated_admin_client['client']
+    client = authenticated_admin_client["client"]
     url = reverse("bulk-status-update")
     data = {
         "ticket_ids": [],
@@ -1016,14 +1126,17 @@ def test_bulk_status_update_empty_list(authenticated_admin_client):
 
     response = client.post(url, data, format="json")
     assert response.status_code == status.HTTP_200_OK
-    assert response.data['updated'] == 0
+    assert response.data["updated"] == 0
 
 
 # ============================================================================
 # EDGE CASE & ADVANCED ASSIGNMENT TESTS (from test_ticket_operations)
 # ============================================================================
 
-def test_can_assign_multi_section_technician(authenticated_admin_client, section, facility, user_factory, technician_factory):
+
+def test_can_assign_multi_section_technician(
+    authenticated_admin_client, section, facility, user_factory, technician_factory
+):
     """Test that technician with multiple sections can be assigned to any of their sections"""
     from tickets.models import Section, Department
 
@@ -1053,7 +1166,7 @@ def test_can_assign_multi_section_technician(authenticated_admin_client, section
         status="open",
     )
 
-    client = authenticated_admin_client['client']
+    client = authenticated_admin_client["client"]
     url = reverse("ticket-detail", args=[ticket.id])
     data = {"assigned_to_id": tech.id, "status": "assigned"}
 
@@ -1062,7 +1175,9 @@ def test_can_assign_multi_section_technician(authenticated_admin_client, section
     assert response.data["assigned_to"]["id"] == tech.id
 
 
-def test_assign_same_technician_multiple_tickets(authenticated_admin_client, section, facility, user_factory, technician_factory):
+def test_assign_same_technician_multiple_tickets(
+    authenticated_admin_client, section, facility, user_factory, technician_factory
+):
     """Test assigning same technician to multiple tickets"""
     tech = technician_factory()
     tech.primary_campus = section.department.campus
@@ -1073,7 +1188,7 @@ def test_assign_same_technician_multiple_tickets(authenticated_admin_client, sec
     user.primary_campus = section.department.campus
     user.save()
 
-    client = authenticated_admin_client['client']
+    client = authenticated_admin_client["client"]
 
     # Create and assign 3 tickets to same technician
     for i in range(3):
@@ -1094,7 +1209,9 @@ def test_assign_same_technician_multiple_tickets(authenticated_admin_client, sec
         assert response.data["assigned_to"]["id"] == tech.id
 
 
-def test_unassign_technician_from_ticket(authenticated_admin_client, section, facility, user_factory, technician_factory):
+def test_unassign_technician_from_ticket(
+    authenticated_admin_client, section, facility, user_factory, technician_factory
+):
     """Test clearing assignment from a ticket"""
     tech = technician_factory()
     tech.primary_campus = section.department.campus
@@ -1115,12 +1232,11 @@ def test_unassign_technician_from_ticket(authenticated_admin_client, section, fa
         status="assigned",
     )
 
-    client = authenticated_admin_client['client']
+    client = authenticated_admin_client["client"]
     url = reverse("ticket-detail", args=[ticket.id])
     # Clear assignment by setting to null
     data = {"assigned_to_id": None}
 
     response = client.patch(url, data, format="json")
     # API may return 200 with null or 400 depending on implementation
-    assert response.status_code in [
-        status.HTTP_200_OK, status.HTTP_400_BAD_REQUEST]
+    assert response.status_code in [status.HTTP_200_OK, status.HTTP_400_BAD_REQUEST]

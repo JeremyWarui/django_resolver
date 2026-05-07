@@ -37,7 +37,7 @@ def test_organizational_structure_created(organization, campus, department, sect
     assert section.department == department
 
 
-def test_director_access_all_tickets(
+def test_manager_has_no_ticket_access(
     organization,
     campus,
     department,
@@ -47,10 +47,10 @@ def test_director_access_all_tickets(
     user_factory,
     technician_factory,
 ):
-    """Test that directors can access all tickets in their organization"""
-    director = director_factory()
-    director.primary_campus = campus
-    director.save()
+    """Test that managers have analytics-only access — no individual ticket visibility"""
+    manager = director_factory()
+    manager.primary_campus = campus
+    manager.save()
 
     user = user_factory()
     user.primary_campus = campus
@@ -61,32 +61,21 @@ def test_director_access_all_tickets(
     technician.sections.add(section)
     technician.save()
 
-    # Create tickets by different users
-    ticket1 = Ticket.objects.create(
-        title="Director Test Ticket 1",
-        description="Test ticket 1",
+    Ticket.objects.create(
+        title="Manager Scope Test Ticket",
+        description="Manager should not see this via get_accessible_tickets",
         section=section,
         facility=facility,
         raised_by=user,
         assigned_to=technician,
     )
 
-    ticket2 = Ticket.objects.create(
-        title="Director Test Ticket 2",
-        description="Test ticket 2",
-        section=section,
-        facility=facility,
-        raised_by=technician,
-    )
+    # Manager scope is organization-wide for analytics only
+    assert manager.organizational_scope == "organization"
 
-    # Directors should have access to all tickets
-    assert director.organizational_scope == "organization"
-
-    # Test through TicketService
-    accessible_tickets = TicketService.get_accessible_tickets(director)
-    assert ticket1 in accessible_tickets or ticket1.id in [
-        t.id for t in accessible_tickets
-    ]
+    # Managers get no individual tickets — analytics-only role
+    accessible_tickets = TicketService.get_accessible_tickets(manager)
+    assert accessible_tickets.count() == 0
 
 
 def test_hod_campus_scoped_access(
@@ -650,7 +639,7 @@ def test_director_dashboard_aggregates_metrics(
         )
 
     # Director should be able to see aggregated metrics
-    assert director.role == "director"
+    assert director.role == "manager"
 
 
 def test_hod_dashboard_campus_scoped(

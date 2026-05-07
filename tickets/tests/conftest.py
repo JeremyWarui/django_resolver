@@ -93,14 +93,14 @@ def section_head_factory(db):
 
     def create_section_head(username=None, email=None, password="headpass", **kwargs):
         if username is None:
-            username = f"section_head_{uuid.uuid4().hex[:8]}"
+            username = f"head_of_section_{uuid.uuid4().hex[:8]}"
         if email is None:
-            email = f"head_{uuid.uuid4().hex[:8]}@example.com"
+            email = f"head_of_section_{uuid.uuid4().hex[:8]}@example.com"
         return get_user_model().objects.create_user(
             username=username,
             email=email,
             password=password,
-            role="section_head",
+            role="head_of_section",
             **kwargs,
         )
 
@@ -125,15 +125,15 @@ def hod_factory(db):
 
 @pytest.fixture
 def director_factory(db):
-    """Factory for creating director users"""
+    """Factory for creating manager (director) users"""
 
     def create_director(username=None, email=None, password="dirpass", **kwargs):
         if username is None:
-            username = f"director_{uuid.uuid4().hex[:8]}"
+            username = f"manager_{uuid.uuid4().hex[:8]}"
         if email is None:
-            email = f"director_{uuid.uuid4().hex[:8]}@example.com"
+            email = f"manager_{uuid.uuid4().hex[:8]}@example.com"
         return get_user_model().objects.create_user(
-            username=username, email=email, password=password, role="director", **kwargs
+            username=username, email=email, password=password, role="manager", **kwargs
         )
 
     return create_director
@@ -242,9 +242,9 @@ def section(db, department, section_head_factory):
         name="Network Section",
         code="NETWORK",
         department=department,
-        section_head=section_head,
+        head_of_section=section_head,
     )
-    sec.section_head.sections.add(sec)
+    sec.head_of_section.sections.add(sec)
     return sec
 
 
@@ -260,9 +260,9 @@ def section_hvac(db, department_hvac, section_head_factory):
         name="HVAC Section",
         code="HVAC",
         department=department_hvac,
-        section_head=section_head,
+        head_of_section=section_head,
     )
-    sec.section_head.sections.add(sec)
+    sec.head_of_section.sections.add(sec)
     return sec
 
 
@@ -338,7 +338,8 @@ def ticket_factory(db, section, facility, user_factory, technician_factory):
             # Auto-set assigned_at to now if ticket is assigned and assigned_at not explicitly set to None
             from django.utils import timezone
 
-            Ticket.objects.filter(id=ticket.id).update(assigned_at=timezone.now())
+            Ticket.objects.filter(id=ticket.id).update(
+                assigned_at=timezone.now())
             ticket.refresh_from_db()
 
         return ticket
@@ -467,5 +468,6 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "slow: marks tests as slow (deselect with '-m \"not slow\"')"
     )
-    config.addinivalue_line("markers", "integration: marks tests as integration tests")
+    config.addinivalue_line(
+        "markers", "integration: marks tests as integration tests")
     config.addinivalue_line("markers", "unit: marks tests as unit tests")

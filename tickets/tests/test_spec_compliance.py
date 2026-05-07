@@ -349,7 +349,7 @@ def test_escalation_triggers_after_threshold_from_assigned_at(
     technician.sections.add(section)
     technician.save()
 
-    section_head = section.section_head
+    section_head = section.head_of_section
     section_head.primary_campus = section.department.campus
     section_head.primary_department = section.department
     section_head.save()
@@ -580,7 +580,7 @@ def test_assigned_at_integration_old_assignment_escalates(
     technician.save()
 
     # Use the section's existing section_head (from fixtures)
-    section_head = section.section_head
+    section_head = section.head_of_section
     section_head.primary_campus = section.department.campus
     section_head.primary_department = section.department
     section_head.save()

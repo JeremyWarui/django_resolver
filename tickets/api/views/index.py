@@ -42,6 +42,15 @@ from .views import (
     OrganizationalAnalyticsView,
     AnalyticsTicketsView,
     AnalyticsTechniciansView,
+    # Phase 4: Service Catalogue
+    DepartmentTypeListView,
+    SectionTypeDetailView,
+    ServiceCategoryListView,
+    ServiceItemListView,
+    # Section Technician Management
+    SectionTechniciansView,
+    AddTechnicianToSectionView,
+    RemoveTechnicianFromSectionView,
 )
 
 __all__ = [
@@ -80,4 +89,13 @@ __all__ = [
     "OrganizationalAnalyticsView",
     "AnalyticsTicketsView",
     "AnalyticsTechniciansView",
+    # Phase 4: Service Catalogue
+    "DepartmentTypeListView",
+    "SectionTypeDetailView",
+    "ServiceCategoryListView",
+    "ServiceItemListView",
+    # Section Technician Management
+    "SectionTechniciansView",
+    "AddTechnicianToSectionView",
+    "RemoveTechnicianFromSectionView",
 ]

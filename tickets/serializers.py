@@ -122,7 +122,7 @@ class FacilitySerializer(serializers.ModelSerializer):
     def get_fields(self):
         fields = super().get_fields()
         request = self.context.get("request")
-        if request and request.user.role not in ("hod", "director", "admin"):
+        if request and request.user.role not in ("hod", "manager", "admin"):
             for f in ("purchase_date", "warranty_expiry", "asset_value"):
                 fields.pop(f, None)
         return fields
@@ -150,15 +150,15 @@ class SectionSerializer(serializers.ModelSerializer):
             "campus",
             "department",
             "department_id",
-            "section_head",
+            "head_of_section",
             "technicians",
             "is_active",
         ]
 
     def get_section_head(self, obj):
-        if not obj.section_head:
+        if not obj.head_of_section:
             return None
-        u = obj.section_head
+        u = obj.head_of_section
         return {
             "id": u.id,
             "username": u.username,
@@ -320,7 +320,7 @@ class TicketListSerializer(serializers.ModelSerializer):
     def get_escalation_status(self, obj):
         mapping = {
             0: {"code": "none", "label": "Not escalated"},
-            1: {"code": "section_head", "label": "Escalated to Section Head"},
+            1: {"code": "head_of_section", "label": "Escalated to Section Head"},
             2: {"code": "hod", "label": "Escalated to HOD (Maximum Level)"},
         }
         return mapping.get(
@@ -470,7 +470,7 @@ class TicketSerializer(serializers.ModelSerializer):
         )
         mapping = {
             0: {"code": "none", "label": "Not escalated"},
-            1: {"code": "section_head", "label": "Escalated to Section Head"},
+            1: {"code": "head_of_section", "label": "Escalated to Section Head"},
             2: {"code": "hod", "label": "Escalated to HOD (Maximum Level)"},
         }
         return mapping.get(escalation_level, {"code": "unknown", "label": "Unknown"})
@@ -518,7 +518,7 @@ class TicketSerializer(serializers.ModelSerializer):
             return fields
         role = request.user.role
         # available_technicians: only needed by those who can assign tickets
-        if role not in ("section_head", "hod", "admin"):
+        if role not in ("head_of_section", "hod", "admin"):
             fields.pop("available_technicians", None)
         # Detailed escalation fields: not actionable for regular users
         if role == "user":
@@ -543,3 +543,77 @@ class TicketSerializer(serializers.ModelSerializer):
         atomic state changes and logging.
         """
         return super().update(instance, validated_data)
+
+
+# PHASE 4: SERVICE CATALOGUE SERIALIZERS
+
+
+class ServiceItemSerializer(serializers.ModelSerializer):
+    section_type_code = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ServiceItem
+        fields = [
+            "id",
+            "category_id",
+            "name",
+            "description",
+            "sla_hours",
+            "requires_approval",
+            "form_schema",
+            "is_active",
+            "section_type_code",
+        ]
+
+    def get_section_type_code(self, obj):
+        return obj.category.section_type.code if obj.category else None
+
+
+class ServiceCategorySerializer(serializers.ModelSerializer):
+    service_items = ServiceItemSerializer(many=True, read_only=True)
+    section_type_code = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ServiceCategory
+        fields = [
+            "id",
+            "section_type_id",
+            "name",
+            "description",
+            "icon",
+            "color",
+            "service_items",
+            "section_type_code",
+        ]
+
+    def get_section_type_code(self, obj):
+        return obj.section_type.code if obj.section_type else None
+
+
+class SectionTypeSerializer(serializers.ModelSerializer):
+    service_categories = ServiceCategorySerializer(many=True, read_only=True)
+    department_type_code = serializers.SerializerMethodField()
+
+    class Meta:
+        model = SectionType
+        fields = [
+            "id",
+            "department_type_id",
+            "name",
+            "code",
+            "staff_label",
+            "default_sla_hours",
+            "service_categories",
+            "department_type_code",
+        ]
+
+    def get_department_type_code(self, obj):
+        return obj.department_type.code if obj.department_type else None
+
+
+class DepartmentTypeSerializer(serializers.ModelSerializer):
+    section_types = SectionTypeSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = DepartmentType
+        fields = ["id", "name", "code", "description", "section_types"]

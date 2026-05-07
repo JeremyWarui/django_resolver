@@ -38,6 +38,13 @@ from tickets.api.views.index import (
     AssignableUsersView,
     OrganizationalAnalyticsView,
     EscalateTicketView,
+    DepartmentTypeListView,
+    ServiceCategoryListView,
+    ServiceItemListView,
+    SectionTypeDetailView,
+    SectionTechniciansView,
+    AddTechnicianToSectionView,
+    RemoveTechnicianFromSectionView,
 )
 
 # Import analytics views
@@ -45,6 +52,7 @@ from tickets.api.analytics.index import (
     TicketAnalyticsView,
     TechnicianAnalyticsView,
     AdminDashboardAnalyticsView,
+    ManagerDashboardView,
     DirectorDashboardView,
     HODDashboardView,
     SectionHeadDashboardView,
@@ -167,6 +175,11 @@ urlpatterns = [
     ),
     # ORGANIZATIONAL ANALYTICS ENDPOINTS
     path(
+        "analytics/manager/",
+        ManagerDashboardView.as_view(),
+        name="analytics-manager",
+    ),
+    path(
         "analytics/director/",
         DirectorDashboardView.as_view(),
         name="analytics-director",
@@ -184,4 +197,41 @@ urlpatterns = [
     # REPORT ENDPOINTS
     path("reports/generate/", GenerateReportView.as_view(), name="report-generate"),
     path("reports/types/", ReportTypesView.as_view(), name="report-types"),
+    # SECTION TECHNICIAN MANAGEMENT
+    path(
+        "sections/<int:pk>/technicians/",
+        SectionTechniciansView.as_view(),
+        name="section-technicians",
+    ),
+    path(
+        "sections/<int:pk>/add-technician/",
+        AddTechnicianToSectionView.as_view(),
+        name="section-add-technician",
+    ),
+    path(
+        "sections/<int:pk>/remove-technician/",
+        RemoveTechnicianFromSectionView.as_view(),
+        name="section-remove-technician",
+    ),
+    # PHASE 4: SERVICE CATALOGUE ENDPOINTS
+    path(
+        "service-catalogue/department-types/",
+        DepartmentTypeListView.as_view(),
+        name="department-types-list",
+    ),
+    path(
+        "service-catalogue/section-types/<int:pk>/",
+        SectionTypeDetailView.as_view(),
+        name="section-type-detail",
+    ),
+    path(
+        "service-catalogue/service-categories/",
+        ServiceCategoryListView.as_view(),
+        name="service-categories-list",
+    ),
+    path(
+        "service-catalogue/service-items/",
+        ServiceItemListView.as_view(),
+        name="service-items-list",
+    ),
 ]

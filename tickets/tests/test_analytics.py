@@ -112,13 +112,12 @@ def organizational_analytics_setup(
         status="active",
         location="Main Campus",
         campus=campus1,
-        department=dept_it,
     )
 
     # Create roles
     # Director - org-wide access
     director = director_factory(
-        username="director",
+        username="manager",
         first_name="Director",
         last_name="User",
         primary_campus=campus1,
@@ -136,7 +135,7 @@ def organizational_analytics_setup(
 
     # Section Head - department level
     section_head = section_head_factory(
-        username="section_head",
+        username="head_of_section",
         first_name="Section",
         last_name="Head",
         primary_campus=campus1,
@@ -177,9 +176,9 @@ def organizational_analytics_setup(
         "section_network": section_network,
         "section_electrical": section_electrical,
         "facility_main": facility_main,
-        "director": director,
+        "manager": director,
         "hod": hod,
-        "section_head": section_head,
+        "head_of_section": section_head,
         "tech1": tech1,
         "tech2": tech2,
         "user": user,
@@ -418,7 +417,7 @@ def test_analytics_date_range(db, analytics_setup, ticket_factory):
 
 def test_director_dashboard(db, organizational_analytics_setup, ticket_factory):
     """Test director dashboard showing organization-wide metrics"""
-    director = organizational_analytics_setup["director"]
+    director = organizational_analytics_setup["manager"]
     tech1 = organizational_analytics_setup["tech1"]
     user = organizational_analytics_setup["user"]
     section_network = organizational_analytics_setup["section_network"]
@@ -478,7 +477,7 @@ def test_hod_dashboard(db, organizational_analytics_setup, ticket_factory):
 
 def test_section_head_dashboard(db, organizational_analytics_setup, ticket_factory):
     """Test Section Head dashboard showing department-level metrics"""
-    section_head = organizational_analytics_setup["section_head"]
+    section_head = organizational_analytics_setup["head_of_section"]
     tech2 = organizational_analytics_setup["tech2"]
     user = organizational_analytics_setup["user"]
     section_electrical = organizational_analytics_setup["section_electrical"]
@@ -495,7 +494,7 @@ def test_section_head_dashboard(db, organizational_analytics_setup, ticket_facto
         )
 
     # Get section head dashboard
-    dashboard = OrganizationalAnalytics.section_head_dashboard(section_head, days=30)
+    dashboard = OrganizationalAnalytics.head_of_section_dashboard(section_head, days=30)
 
     # Should have department-level metrics
     assert "department" in dashboard
@@ -509,7 +508,7 @@ def test_director_dashboard_escalation_trends(
     db, organizational_analytics_setup, ticket_factory
 ):
     """Test director dashboard includes escalation trends"""
-    director = organizational_analytics_setup["director"]
+    director = organizational_analytics_setup["manager"]
     tech1 = organizational_analytics_setup["tech1"]
     user = organizational_analytics_setup["user"]
     section_network = organizational_analytics_setup["section_network"]
@@ -536,7 +535,7 @@ def test_director_dashboard_top_technicians(
     db, organizational_analytics_setup, ticket_factory
 ):
     """Test director dashboard shows top technicians"""
-    director = organizational_analytics_setup["director"]
+    director = organizational_analytics_setup["manager"]
     tech1 = organizational_analytics_setup["tech1"]
     user = organizational_analytics_setup["user"]
     section_network = organizational_analytics_setup["section_network"]
@@ -598,7 +597,7 @@ def test_director_dashboard_facility_metrics(
     db, organizational_analytics_setup, ticket_factory
 ):
     """Test director dashboard includes facility-level metrics"""
-    director = organizational_analytics_setup["director"]
+    director = organizational_analytics_setup["manager"]
     tech1 = organizational_analytics_setup["tech1"]
     user = organizational_analytics_setup["user"]
     section_network = organizational_analytics_setup["section_network"]
@@ -630,7 +629,6 @@ def test_director_dashboard_facility_metrics(
     assert "type" in facility["facility"]
     assert "status" in facility["facility"]
     assert "campus" in facility["facility"]
-    assert "department" in facility["facility"]
 
     # Facility metrics validation
     assert "total_tickets" in facility
@@ -651,7 +649,7 @@ def test_director_dashboard_section_metrics(
     db, organizational_analytics_setup, ticket_factory
 ):
     """Test director dashboard includes organization-wide section metrics"""
-    director = organizational_analytics_setup["director"]
+    director = organizational_analytics_setup["manager"]
     tech1 = organizational_analytics_setup["tech1"]
     user = organizational_analytics_setup["user"]
     section_network = organizational_analytics_setup["section_network"]
@@ -683,7 +681,7 @@ def test_director_dashboard_section_metrics(
     assert "code" in section["section"]
     assert "department" in section["section"]
     assert "campus" in section["section"]
-    assert "section_head" in section["section"]
+    assert "head_of_section" in section["section"]
 
     # Section metrics validation
     assert "total_tickets" in section
@@ -764,7 +762,7 @@ def test_director_dashboard_facilities_sorted(
     db, organizational_analytics_setup, ticket_factory
 ):
     """Test director dashboard facilities are sorted by ticket count descending"""
-    director = organizational_analytics_setup["director"]
+    director = organizational_analytics_setup["manager"]
     tech1 = organizational_analytics_setup["tech1"]
     user = organizational_analytics_setup["user"]
     section_network = organizational_analytics_setup["section_network"]
@@ -777,7 +775,6 @@ def test_director_dashboard_facilities_sorted(
         status="active",
         location="Downtown",
         campus=campus1,
-        department=section_network.department,
     )
 
     # Create more tickets for facility_main
@@ -819,7 +816,7 @@ def test_director_dashboard_sections_sorted(
     db, organizational_analytics_setup, ticket_factory
 ):
     """Test director dashboard sections are sorted by ticket count descending"""
-    director = organizational_analytics_setup["director"]
+    director = organizational_analytics_setup["manager"]
     tech1 = organizational_analytics_setup["tech1"]
     user = organizational_analytics_setup["user"]
     campus1 = organizational_analytics_setup["campus1"]
@@ -865,3 +862,64 @@ def test_director_dashboard_sections_sorted(
     sections = dashboard["sections"]
     for i in range(len(sections) - 1):
         assert sections[i]["total_tickets"] >= sections[i + 1]["total_tickets"]
+
+
+def test_manager_dashboard(db, organizational_analytics_setup, ticket_factory):
+    """Test manager dashboard shows cross-campus department metrics"""
+    manager = organizational_analytics_setup["manager"]
+    tech1 = organizational_analytics_setup["tech1"]
+    user = organizational_analytics_setup["user"]
+    section_network = organizational_analytics_setup["section_network"]
+    facility_main = organizational_analytics_setup["facility_main"]
+    dept_it = organizational_analytics_setup["dept_it"]
+
+    # Give manager a primary_department so manager_dashboard works
+    manager.primary_department = dept_it
+    manager.save()
+
+    # Create tickets in the manager's department
+    for i in range(4):
+        ticket_factory(
+            title=f"Manager Test Ticket {i}",
+            assigned_to=tech1,
+            section=section_network,
+            facility=facility_main,
+            raised_by=user,
+        )
+
+    dashboard = OrganizationalAnalytics.manager_dashboard(manager, days=30)
+
+    assert "department" in dashboard
+    assert dashboard["department"]["code"] == dept_it.code
+    assert "overview" in dashboard
+    assert dashboard["overview"]["total_tickets"] >= 4
+    assert "campuses" in dashboard
+    assert "sections" in dashboard
+    assert "technicians" in dashboard
+    assert "status_distribution" in dashboard
+    assert "escalation_trends" in dashboard
+
+
+def test_manager_dashboard_no_department_returns_empty(db, director_factory):
+    """Test manager_dashboard returns empty dict when manager has no primary_department"""
+    manager = director_factory(username="mgr_nodept")
+    # No primary_department set
+    result = OrganizationalAnalytics.manager_dashboard(manager, days=30)
+    assert result == {}
+
+
+def test_manager_dashboard_endpoint(db, organizational_analytics_setup, api_client):
+    """Test manager can access /analytics/manager/ endpoint"""
+    manager = organizational_analytics_setup["manager"]
+    dept_it = organizational_analytics_setup["dept_it"]
+    manager.primary_department = dept_it
+    manager.save()
+
+    from rest_framework.authtoken.models import Token
+
+    token, _ = Token.objects.get_or_create(user=manager)
+    api_client.credentials(HTTP_AUTHORIZATION=f"Token {token.key}")
+
+    response = api_client.get(reverse("analytics-manager"))
+    assert response.status_code == 200
+    assert "department" in response.data

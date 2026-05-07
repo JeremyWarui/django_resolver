@@ -17,6 +17,10 @@ from tickets.api.analytics.analytics import (
     OrganizationalAnalytics,
 )
 
+# ============================================================================
+# MANAGER DASHBOARD VIEW
+# ============================================================================
+
 
 class TicketAnalyticsView(generics.GenericAPIView):
     """
@@ -139,6 +143,26 @@ class AdminDashboardAnalyticsView(generics.GenericAPIView):
 # ============================================================================
 
 
+class ManagerDashboardView(APIView):
+    """
+    Manager dashboard: department metrics across all campuses.
+    Manager sees their department aggregated across every campus in the org.
+    Only accessible to managers and system administrators.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role not in ["manager", "admin"]:
+            return Response(
+                {"error": "Only managers and admins can access this endpoint"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        days = int(request.query_params.get("days", 30))
+        dashboard = OrganizationalAnalytics.manager_dashboard(request.user, days=days)
+        return Response(dashboard)
+
+
 class DirectorDashboardView(APIView):
     """
     Director dashboard showing organization-wide analytics.
@@ -154,7 +178,7 @@ class DirectorDashboardView(APIView):
     def get(self, request):
         """Get organization-wide dashboard for directors"""
         # Verify user is director
-        if request.user.role not in ["director", "admin"]:
+        if request.user.role not in ["manager", "admin"]:
             return Response(
                 {"error": "Only directors and admins can access this endpoint"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -214,7 +238,7 @@ class SectionHeadDashboardView(APIView):
     def get(self, request):
         """Get department-level dashboard for section heads"""
         # Verify user is section head
-        if request.user.role not in ["section_head", "admin"]:
+        if request.user.role not in ["head_of_section", "admin"]:
             return Response(
                 {"error": "Only section heads and admins can access this endpoint"},
                 status=status.HTTP_403_FORBIDDEN,
@@ -224,8 +248,6 @@ class SectionHeadDashboardView(APIView):
         days = int(request.query_params.get("days", 30))
 
         # Get dashboard data
-        dashboard = OrganizationalAnalytics.section_head_dashboard(
-            request.user, days=days
-        )
+        dashboard = OrganizationalAnalytics.head_of_section_dashboard(request.user, days=days)
 
         return Response(dashboard)

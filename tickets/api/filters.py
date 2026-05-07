@@ -24,13 +24,13 @@ class OrganizationalScopeFilterMixin:
         # Apply role-based filtering
         if user.role == "admin":
             return queryset
-        elif user.role == "director":
+        elif user.role == "manager":
             # Director sees items in their organization
             return self._filter_by_organization(queryset, user)
         elif user.role == "hod":
             # HOD sees items in their campus
             return self._filter_by_campus(queryset, user)
-        elif user.role == "section_head":
+        elif user.role == "head_of_section":
             # Section head sees items in their department
             return self._filter_by_department(queryset, user)
         elif user.role in ["technician", "user"]:

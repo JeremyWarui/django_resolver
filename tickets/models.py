@@ -86,13 +86,14 @@ class CustomUser(AbstractUser):
     ROLE_CHOICES = [
         ("user", "User"),
         ("technician", "Technician"),
-        ("section_head", "Section Head"),  # Previously maintenance_officer
+        ("head_of_section", "Head of Section"),
         ("hod", "Head of Department"),
-        ("director", "Director"),
-        ("admin", "System Administrator"),  # Technical admin role
+        ("manager", "Manager"),
+        ("admin", "System Administrator"),
     ]
 
-    role = models.CharField(max_length=15, choices=ROLE_CHOICES, default="user")
+    role = models.CharField(
+        max_length=15, choices=ROLE_CHOICES, default="user")
 
     # Organizational assignments - temporarily nullable for migration
     primary_campus = models.ForeignKey(
@@ -139,9 +140,9 @@ class CustomUser(AbstractUser):
         scopes = {
             "user": "section",
             "technician": "section",
-            "section_head": "section",
+            "head_of_section": "section",
             "hod": "department",
-            "director": "organization",
+            "manager": "organization",
             "admin": "system",
         }
         return scopes.get(self.role, "none")
@@ -151,7 +152,7 @@ class CustomUser(AbstractUser):
         if not self.primary_campus:
             return Campus.objects.none()
 
-        if self.role == "director":
+        if self.role == "manager":
             return Campus.objects.filter(organization=self.primary_campus.organization)
         elif self.role == "hod":
             return Campus.objects.filter(id=self.primary_campus.id)
@@ -164,7 +165,7 @@ class CustomUser(AbstractUser):
             return Department.objects.none()
 
         accessible_campuses = self.get_accessible_campuses()
-        if self.role == "director":
+        if self.role == "manager":
             return Department.objects.filter(campus__in=accessible_campuses)
         elif self.role == "hod":
             return Department.objects.filter(campus=self.primary_campus)
@@ -191,7 +192,7 @@ class Section(models.Model):
         max_length=10, null=True, blank=True
     )  # Temporary for migration
     description = models.TextField(max_length=200, blank=True)
-    section_head = models.ForeignKey(
+    head_of_section = models.ForeignKey(
         "CustomUser",
         on_delete=models.SET_NULL,
         null=True,
@@ -243,7 +244,8 @@ class Facility(models.Model):
     facility_code = models.CharField(
         max_length=20, null=True, blank=True
     )  # Temporary for migration
-    type = models.CharField(max_length=50, choices=FACILITY_CHOICES, default="building")
+    type = models.CharField(
+        max_length=50, choices=FACILITY_CHOICES, default="building")
 
     # Organizational location - temporarily nullable for migration
     campus = models.ForeignKey(
@@ -350,7 +352,8 @@ class Ticket(models.Model):
     )
 
     # Status and lifecycle
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="open")
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default="open")
     priority = models.CharField(
         max_length=10,
         choices=PRIORITY_CHOICES,
@@ -382,7 +385,8 @@ class Ticket(models.Model):
 
     # Auto-escalation timing
     auto_escalation_enabled = models.BooleanField(default=True)
-    next_escalation_due = models.DateTimeField(null=True, blank=True, editable=False)
+    next_escalation_due = models.DateTimeField(
+        null=True, blank=True, editable=False)
     escalation_threshold_hours = models.IntegerField(
         default=48
     )  # Hours before auto-escalation
@@ -406,7 +410,15 @@ class Ticket(models.Model):
     # Room, building, etc.
     location_details = models.CharField(max_length=200, blank=True)
     estimated_resolution_hours = models.IntegerField(null=True, blank=True)
-    actual_resolution_hours = models.IntegerField(null=True, blank=True, editable=False)
+    actual_resolution_hours = models.IntegerField(
+        null=True, blank=True, editable=False)
+
+    # Service catalogue integration
+    form_data = models.JSONField(
+        null=True,
+        blank=True,
+        help_text="Form submission data from ServiceItem"
+    )
 
     class Meta:
         ordering = ["-updated_at"]
@@ -457,12 +469,14 @@ class Ticket(models.Model):
 
                 # Get next sequence number for this department
                 last_ticket = (
-                    Ticket.objects.filter(section__department=self.section.department)
+                    Ticket.objects.filter(
+                        section__department=self.section.department)
                     .order_by("-id")
                     .first()
                 )
 
-                next_id = 1 if not last_ticket else (last_ticket.id % 99999) + 1
+                next_id = 1 if not last_ticket else (
+                    last_ticket.id % 99999) + 1
                 self.ticket_no = f"{campus_code}-{dept_code}-{next_id:05d}"
             else:
                 # Fallback for migration/testing
@@ -513,10 +527,12 @@ class Ticket(models.Model):
         elif self.escalation_level == 1:
             # Schedule escalation to HOD 24 hours after first escalation
             if self.escalated_at:
-                self.next_escalation_due = self.escalated_at + timedelta(hours=24)
+                self.next_escalation_due = self.escalated_at + \
+                    timedelta(hours=24)
             else:
                 # Fallback to assigned_at if escalated_at not set
-                self.next_escalation_due = self.assigned_at + timedelta(hours=24)
+                self.next_escalation_due = self.assigned_at + \
+                    timedelta(hours=24)
         else:
             # No further escalation beyond HOD
             self.next_escalation_due = None
@@ -526,13 +542,14 @@ class Ticket(models.Model):
         from django.db import transaction
 
         escalation_paths = {
-            0: self._find_section_head(),  # To section head
+            0: self._find_head_of_section(),  # To section head
             1: self._find_hod(),  # To HOD (final level)
         }
 
         # Check if already at maximum escalation level
         if self.escalation_level >= 2:
-            raise ValueError("Ticket is already at maximum escalation level (HOD)")
+            raise ValueError(
+                "Ticket is already at maximum escalation level (HOD)")
 
         next_escalation_level = self.escalation_level + 1
         escalated_to = escalation_paths.get(self.escalation_level)
@@ -607,9 +624,9 @@ class Ticket(models.Model):
                 performed_by=disabled_by,
             )
 
-    def _find_section_head(self):
+    def _find_head_of_section(self):
         """Find section head for escalation"""
-        return self.section.section_head if self.section else None
+        return self.section.head_of_section if self.section else None
 
     def _find_hod(self):
         """Find HOD for escalation"""
@@ -626,7 +643,8 @@ class Ticket(models.Model):
         # Standard 7-day SLA for all tickets
         sla_hours = 7 * 24  # 7 days
 
-        hours_since_creation = (timezone.now() - self.created_at).total_seconds() / 3600
+        hours_since_creation = (
+            timezone.now() - self.created_at).total_seconds() / 3600
         return hours_since_creation > sla_hours
 
     @property
@@ -651,7 +669,8 @@ class Ticket(models.Model):
         if self.status in ["resolved", "closed"]:
             return False
 
-        hours_since_creation = (timezone.now() - self.created_at).total_seconds() / 3600
+        hours_since_creation = (
+            timezone.now() - self.created_at).total_seconds() / 3600
 
         # Mark CRITICAL if >72 hours without resolution
         if hours_since_creation > 72 and self.priority != "critical":
@@ -676,7 +695,7 @@ class Ticket(models.Model):
         from django.db import transaction
 
         # Directors have analytics-only access
-        if performed_by and performed_by.role == "director":
+        if performed_by and performed_by.role == "manager":
             raise PermissionError(
                 "Directors have analytics-only access and cannot modify tickets"
             )
@@ -754,7 +773,8 @@ class Comment(models.Model):
     ticket = models.ForeignKey(
         Ticket, on_delete=models.CASCADE, related_name="comments"
     )
-    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -770,7 +790,8 @@ class Feedback(models.Model):
     ticket = models.OneToOneField(
         Ticket, on_delete=models.CASCADE, related_name="feedback"
     )
-    rated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    rated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     rating = models.FloatField()
     comment = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -786,7 +807,8 @@ class Feedback(models.Model):
 class TicketLog(models.Model):
     """Logs every action on a ticket for auditing purposes"""
 
-    ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name="logs")
+    ticket = models.ForeignKey(
+        Ticket, on_delete=models.CASCADE, related_name="logs")
     # e.g., "Assigned to John", "Status changed to Pending"
     action = models.CharField(max_length=255)
     performed_by = models.ForeignKey(
@@ -796,6 +818,89 @@ class TicketLog(models.Model):
 
     def __str__(self):
         return f"{self.timestamp}: {self.action} (Ticket: {self.ticket.title})"
+
+
+# PHASE 4: SERVICE CATALOGUE MODELS
+
+
+class DepartmentType(models.Model):
+    """Blueprint template for departments - reusable across organizations"""
+
+    name = models.CharField(max_length=100)
+    code = models.CharField(max_length=10, unique=True)
+    description = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["code"]
+
+    def __str__(self):
+        return f"{self.code}: {self.name}"
+
+
+class SectionType(models.Model):
+    """Blueprint template for sections within a department type"""
+
+    department_type = models.ForeignKey(
+        DepartmentType, on_delete=models.CASCADE, related_name="section_types"
+    )
+    name = models.CharField(max_length=100)
+    code = models.CharField(max_length=10)
+    staff_label = models.CharField(
+        max_length=50,
+        help_text="Display label for staff in this section (e.g., 'Technician', 'Artisan', 'Officer')"
+    )
+    default_sla_hours = models.IntegerField(default=72)
+
+    class Meta:
+        ordering = ["department_type", "code"]
+        unique_together = [["department_type", "code"]]
+
+    def __str__(self):
+        return f"{self.department_type.code}-{self.code}: {self.name} ({self.staff_label})"
+
+
+class ServiceCategory(models.Model):
+    """Categories of services offered within a section type"""
+
+    section_type = models.ForeignKey(
+        SectionType, on_delete=models.CASCADE, related_name="service_categories"
+    )
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    icon = models.CharField(max_length=50, blank=True, help_text="Icon name or emoji for UI")
+    color = models.CharField(max_length=20, blank=True, help_text="Color code for UI")
+
+    class Meta:
+        ordering = ["section_type", "name"]
+        verbose_name_plural = "Service Categories"
+
+    def __str__(self):
+        return f"{self.section_type.code}: {self.name}"
+
+
+class ServiceItem(models.Model):
+    """Individual service offerings with form definitions and approval workflows"""
+
+    category = models.ForeignKey(
+        ServiceCategory, on_delete=models.CASCADE, related_name="service_items"
+    )
+    name = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    sla_hours = models.IntegerField(null=True, blank=True, help_text="Overrides SectionType default")
+    requires_approval = models.BooleanField(
+        default=False, help_text="Ticket created as pending_approval if True"
+    )
+    form_schema = models.JSONField(
+        default=list,
+        help_text="Array of form field definitions for dynamic form rendering"
+    )
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["category", "name"]
+
+    def __str__(self):
+        return f"{self.category.name}: {self.name}"
 
 
 # Import authentication models

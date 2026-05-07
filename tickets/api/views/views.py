@@ -45,6 +45,7 @@ from tickets.api.permissions import (
     CanViewAnalytics,
     IsAdminOrReadOnly,
     CanViewAndEditTickets,
+    CanManageSectionTechnicians,
 )
 from tickets.serializers import (
     OrganizationSerializer,
@@ -57,9 +58,14 @@ from tickets.serializers import (
     CommentSerializer,
     FeedbackSerializer,
     UserSerializer,
+    DepartmentTypeSerializer,
+    SectionTypeSerializer,
+    ServiceCategorySerializer,
+    ServiceItemSerializer,
 )
 from tickets.api.services import (
     TicketService,
+    TechnicianService,
     validate_status_transition,
     InsufficientScopeException,
     InvalidAssignmentException,
@@ -76,6 +82,10 @@ from tickets.models import (
     Comment,
     Feedback,
     CustomUser,
+    DepartmentType,
+    SectionType,
+    ServiceCategory,
+    ServiceItem,
 )
 from tickets.pagination import TicketPagination
 
@@ -124,10 +134,10 @@ class CampusListCreateView(ListCreateAPIView):
 
         if user.role == "admin":
             return queryset
-        elif user.role == "director" and user.primary_campus:
+        elif user.role == "manager" and user.primary_campus:
             return queryset.filter(organization=user.primary_campus.organization)
         elif (
-            user.role in ["hod", "section_head", "technician", "user"]
+            user.role in ["hod", "head_of_section", "technician", "user"]
             and user.primary_campus
         ):
             return queryset.filter(id=user.primary_campus.id)
@@ -163,14 +173,14 @@ class DepartmentListCreateView(ListCreateAPIView):
 
         if user.role == "admin":
             return queryset
-        elif user.role == "director" and user.primary_campus:
+        elif user.role == "manager" and user.primary_campus:
             return queryset.filter(
                 campus__organization=user.primary_campus.organization
             )
         elif user.role == "hod" and user.primary_campus:
             return queryset.filter(campus=user.primary_campus)
         elif (
-            user.role in ["section_head", "technician", "user"]
+            user.role in ["head_of_section", "technician", "user"]
             and user.primary_department
         ):
             return queryset.filter(id=user.primary_department.id)
@@ -208,7 +218,7 @@ class SectionListCreateView(ListCreateAPIView):
     def get_queryset(self):
         """Filter sections based on user's organizational scope"""
         queryset = (
-            Section.objects.select_related("department__campus", "section_head")
+            Section.objects.select_related("department__campus", "head_of_section")
             .prefetch_related(
                 Prefetch(
                     "technicians",
@@ -221,7 +231,7 @@ class SectionListCreateView(ListCreateAPIView):
 
         if user.role == "admin":
             return queryset
-        elif user.role == "director":
+        elif user.role == "manager":
             # Director sees sections in their organization
             return queryset.filter(
                 department__campus__organization=user.primary_campus.organization
@@ -229,7 +239,7 @@ class SectionListCreateView(ListCreateAPIView):
         elif user.role == "hod":
             # HOD sees sections in their campus
             return queryset.filter(department__campus=user.primary_campus)
-        elif user.role == "section_head":
+        elif user.role == "head_of_section":
             # Section head sees sections in their department
             return queryset.filter(department=user.primary_department)
         elif user.role in ["technician", "user"]:
@@ -270,11 +280,11 @@ class FacilityListCreateView(ListCreateAPIView):
 
         if user.role == "admin":
             return queryset
-        elif user.role == "director":
+        elif user.role == "manager":
             return queryset.filter(
                 campus__organization=user.primary_campus.organization
             )
-        elif user.role in ["hod", "section_head", "technician", "user"]:
+        elif user.role in ["hod", "head_of_section", "technician", "user"]:
             return queryset.filter(campus=user.primary_campus)
 
         return queryset.none()
@@ -947,12 +957,12 @@ class OrganizationalAnalyticsView(APIView):
         timeframe = request.query_params.get("timeframe", "month")
 
         try:
-            if user.role == "director":
-                data = OrganizationalAnalytics.director_dashboard(user, days=days)
+            if user.role == "manager":
+                data = OrganizationalAnalytics.manager_dashboard(user, days=days)
             elif user.role == "hod":
                 data = OrganizationalAnalytics.hod_dashboard(user, days=days)
-            elif user.role == "section_head":
-                data = OrganizationalAnalytics.section_head_dashboard(user, days=days)
+            elif user.role == "head_of_section":
+                data = OrganizationalAnalytics.head_of_section_dashboard(user, days=days)
             else:
                 return Response(
                     {"error": "User role does not have access to analytics dashboard"},
@@ -1025,3 +1035,137 @@ class AnalyticsTechniciansView(APIView):
                 {"error": f"Failed to retrieve technician analytics: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
+# PHASE 4: SERVICE CATALOGUE ENDPOINTS
+
+
+class DepartmentTypeListView(ListAPIView):
+    """List all department type blueprints with nested section types and service catalogue"""
+
+    queryset = DepartmentType.objects.prefetch_related(
+        Prefetch(
+            "section_types",
+            SectionType.objects.prefetch_related(
+                Prefetch(
+                    "service_categories",
+                    ServiceCategory.objects.prefetch_related(
+                        "service_items"
+                    ),
+                )
+            ),
+        )
+    )
+    serializer_class = DepartmentTypeSerializer
+    permission_classes = [IsAuthenticated]
+
+
+class ServiceCategoryListView(ListAPIView):
+    """List all service categories with their service items"""
+
+    queryset = ServiceCategory.objects.prefetch_related("service_items")
+    serializer_class = ServiceCategorySerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filterset_fields = ["section_type_id"]
+    ordering_fields = ["name"]
+    ordering = ["name"]
+
+
+class ServiceItemListView(ListAPIView):
+    """List all service items with optional filtering by section type or category"""
+
+    queryset = ServiceItem.objects.filter(is_active=True)
+    serializer_class = ServiceItemSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filterset_fields = ["category_id", "category__section_type_id"]
+    ordering_fields = ["name", "sla_hours"]
+    ordering = ["category", "name"]
+
+
+class SectionTypeDetailView(generics.RetrieveAPIView):
+    """Retrieve a specific section type with all its service categories and items"""
+
+    queryset = SectionType.objects.prefetch_related(
+        Prefetch(
+            "service_categories",
+            ServiceCategory.objects.prefetch_related("service_items"),
+        )
+    )
+    serializer_class = SectionTypeSerializer
+    permission_classes = [IsAuthenticated]
+
+
+# ============================================================================
+# SECTION TECHNICIAN MANAGEMENT
+# ============================================================================
+
+
+class SectionTechniciansView(ListAPIView):
+    """
+    GET /sections/<pk>/technicians/
+    Return technicians assignable to this section, scoped by the requesting user's role.
+    """
+
+    serializer_class = UserSerializer
+    pagination_class = None
+    permission_classes = [IsAuthenticated, CanManageSectionTechnicians]
+
+    def get_queryset(self):
+        section = generics.get_object_or_404(Section, pk=self.kwargs["pk"])
+        return TechnicianService.get_assignable_technicians(self.request.user, section)
+
+
+class AddTechnicianToSectionView(APIView):
+    """
+    POST /sections/<pk>/add-technician/
+    Body: { "user_id": <int> }
+    Add a technician to a section.
+    """
+
+    permission_classes = [IsAuthenticated, CanManageSectionTechnicians]
+
+    def post(self, request, pk):
+        section = generics.get_object_or_404(Section, pk=pk)
+        user_id = request.data.get("user_id")
+        if not user_id:
+            return Response(
+                {"error": "user_id is required."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        technician = generics.get_object_or_404(CustomUser, pk=user_id)
+        try:
+            TechnicianService.add_technician_to_section(request.user, technician, section)
+        except (InsufficientScopeException, InvalidAssignmentException) as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {"message": f"Technician '{technician.username}' added to section '{section.name}'."},
+            status=status.HTTP_200_OK,
+        )
+
+
+class RemoveTechnicianFromSectionView(APIView):
+    """
+    DELETE /sections/<pk>/remove-technician/?user_id=<int>
+    Remove a technician from a section.
+    """
+
+    permission_classes = [IsAuthenticated, CanManageSectionTechnicians]
+
+    def delete(self, request, pk):
+        section = generics.get_object_or_404(Section, pk=pk)
+        user_id = request.query_params.get("user_id")
+        if not user_id:
+            return Response(
+                {"error": "user_id query parameter is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        technician = generics.get_object_or_404(CustomUser, pk=user_id)
+        try:
+            TechnicianService.remove_technician_from_section(request.user, technician, section)
+        except (InsufficientScopeException, InvalidAssignmentException) as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {"message": f"Technician '{technician.username}' removed from section '{section.name}'."},
+            status=status.HTTP_200_OK,
+        )

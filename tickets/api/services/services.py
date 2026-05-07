@@ -42,6 +42,7 @@ from tickets.models import (
 )
 from typing import List, Optional, Dict, Tuple, Any
 from datetime import timedelta
+from django.db.models import QuerySet
 
 # ============================================================================
 # EXCEPTIONS
@@ -112,7 +113,7 @@ def validate_status_transition(
             "resolved",
             "escalated",
         ],
-        "section_head": ["in_progress", "pending", "resolved", "escalated"],
+        "head_of_section": ["in_progress", "pending", "resolved", "escalated"],
         "hod": ["in_progress", "pending", "resolved", "escalated"],
         "admin": [
             "open",
@@ -123,15 +124,7 @@ def validate_status_transition(
             "closed",
             "escalated",
         ],
-        "manager": [
-            "open",
-            "assigned",
-            "in_progress",
-            "pending",
-            "resolved",
-            "closed",
-            "escalated",
-        ],
+        "manager": [],  # Analytics-only role — cannot modify ticket status
         "user": [],  # Regular users can't change status
     }
 
@@ -193,9 +186,9 @@ class TicketService:
     Central service for ticket operations with organizational hierarchy validation.
 
     Enforces:
-    - Role-based access control (user, technician, section_head, hod, director, admin)
+    - Role-based access control (user, technician, head_of_section, hod, manager, admin)
     - Organizational scope boundaries (section → department → campus → organization)
-    - Escalation rules (configurable threshold hours to section_head, then to hod max)
+    - Escalation rules (configurable threshold hours to head_of_section, then to hod max)
     - Ticket state transitions (open → assigned → in_progress → pending → resolved → closed)
     - Assignment rules (technician must be in ticket's section and accessible campus)
     """
@@ -289,9 +282,9 @@ class TicketService:
         """
         # Check assigner has permission
         if assigned_by.role not in [
-            "section_head",
+            "head_of_section",
             "hod",
-            "director",
+            "manager",
             "admin",
             "technician",
         ]:
@@ -355,8 +348,8 @@ class TicketService:
         Escalate a ticket to the next level in approval chain.
 
         Escalation chain:
-        - Level 0 (technician) → Level 1 (section_head)
-        - Level 1 (section_head) → Level 2 (hod) [MAXIMUM]
+        - Level 0 (technician) → Level 1 (head_of_section)
+        - Level 1 (head_of_section) → Level 2 (hod) [MAXIMUM]
         - Cannot escalate beyond hod
 
         Args:
@@ -373,7 +366,7 @@ class TicketService:
             DRFValidationError: Ticket cannot be escalated
         """
         # Check permission to escalate - allow technician, section_head, hod, admin
-        if escalated_by.role not in ["technician", "section_head", "hod", "admin"]:
+        if escalated_by.role not in ["technician", "head_of_section", "hod", "admin"]:
             raise DRFPermissionDenied(
                 f"User {escalated_by.username} (role: {escalated_by.role}) cannot escalate tickets"
             )
@@ -503,7 +496,8 @@ class TicketService:
         }
 
         tickets = list(
-            Ticket.objects.filter(id__in=ticket_ids).only("id", "ticket_no", "status")
+            Ticket.objects.filter(id__in=ticket_ids).only(
+                "id", "ticket_no", "status")
         )
 
         found_ids = {t.id for t in tickets}
@@ -713,14 +707,9 @@ class TicketService:
         if user.role == "admin":
             # Admin can see all tickets
             queryset = Ticket.objects.all()
-        elif user.role == "director":
-            # Director can see all tickets in organization
-            if user.primary_campus:
-                queryset = Ticket.objects.filter(
-                    section__department__campus__organization=user.primary_campus.organization
-                )
-            else:
-                queryset = Ticket.objects.none()
+        elif user.role == "manager":
+            # Manager has analytics-only access — no individual ticket access
+            queryset = Ticket.objects.none()
         elif user.role == "hod":
             # HOD can see all tickets in their department
             if user.primary_department:
@@ -729,10 +718,10 @@ class TicketService:
                 )
             else:
                 queryset = Ticket.objects.none()
-        elif user.role == "section_head":
+        elif user.role == "head_of_section":
             # Section head can see all tickets in sections they manage
-            # They manage sections via Section.section_head FK
-            queryset = Ticket.objects.filter(section__section_head=user)
+            # They manage sections via Section.head_of_section FK
+            queryset = Ticket.objects.filter(section__head_of_section=user)
         elif user.role == "technician":
             # Technician can see tickets in their sections or assigned to them
             queryset = (
@@ -753,7 +742,8 @@ class TicketService:
             if "facility_id" in filters:
                 queryset = queryset.filter(facility_id=filters["facility_id"])
             if "escalation_level" in filters:
-                queryset = queryset.filter(escalation_level=filters["escalation_level"])
+                queryset = queryset.filter(
+                    escalation_level=filters["escalation_level"])
 
         return (
             queryset.select_related(
@@ -800,14 +790,17 @@ class TicketService:
         ticket = get_object_or_404(Ticket, id=ticket_id)
 
         if ticket.raised_by != user:
-            raise DRFPermissionDenied("Only the ticket raiser can give feedback.")
+            raise DRFPermissionDenied(
+                "Only the ticket raiser can give feedback.")
 
         # Feedback can be provided on resolved tickets, but not on closed tickets
         if ticket.status == "closed":
-            raise DRFValidationError("Cannot provide feedback on a closed ticket.")
+            raise DRFValidationError(
+                "Cannot provide feedback on a closed ticket.")
 
         if ticket.status != "resolved":
-            raise DRFValidationError("The ticket has to be resolved to rate the job.")
+            raise DRFValidationError(
+                "The ticket has to be resolved to rate the job.")
 
         # Prevent duplicate feedback for the same ticket
         if Feedback.objects.filter(ticket=ticket).exists():
@@ -838,14 +831,14 @@ class TicketService:
         if not section or not section.department or not section.department.campus:
             return False
 
-        if user.role == "director":
+        if user.role == "manager":
             return (
                 section.department.campus.organization
                 == user.primary_campus.organization
             )
         elif user.role == "hod":
             return section.department.campus == user.primary_campus
-        elif user.role == "section_head":
+        elif user.role == "head_of_section":
             return section.department == user.primary_department
         elif user.role in ["technician", "user"]:
             return section in user.sections.all()
@@ -861,9 +854,9 @@ class TicketService:
         if not facility.campus:
             return False
 
-        if user.role == "director":
+        if user.role == "manager":
             return facility.campus.organization == user.primary_campus.organization
-        elif user.role in ["hod", "section_head"]:
+        elif user.role in ["hod", "head_of_section"]:
             return facility.campus == user.primary_campus
         elif user.role in ["technician", "user"]:
             return facility.campus == user.primary_campus
@@ -898,7 +891,7 @@ class TicketService:
             ticket: Newly created ticket
         """
         try:
-            if ticket.section and ticket.section.section_head:
+            if ticket.section and ticket.section.head_of_section:
                 # Log notification event (actual email sending handled elsewhere)
                 TicketLog.objects.create(
                     ticket=ticket,
@@ -940,6 +933,110 @@ class TicketService:
             logger.error(
                 f"Failed to notify on ticket escalation {ticket.ticket_no}: {str(e)}"
             )
+
+
+# ============================================================================
+# TECHNICIAN SERVICE
+# ============================================================================
+
+
+class TechnicianService:
+    """Service for managing technician-section assignments with org scope validation."""
+
+    @staticmethod
+    def _check_can_manage(user: CustomUser, section: Section) -> None:
+        """Raise InsufficientScopeException if user cannot manage technicians in section."""
+        if user.role == "admin":
+            return
+        if user.role in ["user", "technician", "manager"]:
+            raise InsufficientScopeException(
+                f"Role '{user.role}' cannot manage section technicians."
+            )
+        if not section.department or not section.department.campus:
+            raise InsufficientScopeException(
+                "Section has no valid department/campus.")
+        if user.role == "hod":
+            if section.department.campus != user.primary_campus:
+                raise InsufficientScopeException(
+                    "HoD can only manage technicians within their campus."
+                )
+            if user.primary_department and section.department != user.primary_department:
+                raise InsufficientScopeException(
+                    "HoD can only manage technicians within their department."
+                )
+        elif user.role == "head_of_section":
+            if section.department.campus != user.primary_campus:
+                raise InsufficientScopeException(
+                    "Head of Section can only manage technicians within their campus."
+                )
+            if user.primary_department and section.department != user.primary_department:
+                raise InsufficientScopeException(
+                    "Head of Section can only manage technicians within their department."
+                )
+
+    @staticmethod
+    def add_technician_to_section(
+        user: CustomUser, technician: CustomUser, section: Section
+    ) -> None:
+        """Add a technician to a section. Validates scope for both the acting user and the technician."""
+        TechnicianService._check_can_manage(user, section)
+        if technician.role != "technician":
+            raise InvalidAssignmentException(
+                f"User '{technician.username}' is not a technician."
+            )
+        if not section.department or not section.department.campus:
+            raise InvalidAssignmentException(
+                "Section has no valid department/campus.")
+        if (
+            user.role != "admin"
+            and technician.primary_campus
+            and technician.primary_campus != section.department.campus
+        ):
+            raise InvalidAssignmentException(
+                "Technician must be on the same campus as the section."
+            )
+        technician.sections.add(section)
+
+    @staticmethod
+    def remove_technician_from_section(
+        user: CustomUser, technician: CustomUser, section: Section
+    ) -> None:
+        """Remove a technician from a section."""
+        TechnicianService._check_can_manage(user, section)
+        if not technician.sections.filter(pk=section.pk).exists():
+            raise InvalidAssignmentException(
+                f"Technician '{technician.username}' is not assigned to this section."
+            )
+        technician.sections.remove(section)
+
+    @staticmethod
+    def get_assignable_technicians(
+        user: CustomUser, section: Section
+    ) -> QuerySet:
+        """Return technicians that can be assigned to the given section, scoped by role."""
+
+        if user.role == "admin":
+            return CustomUser.objects.filter(role="technician")
+        if user.role == "manager":
+            raise InsufficientScopeException(
+                "Manager role cannot manage technicians.")
+        if not section.department or not section.department.campus:
+            return CustomUser.objects.none()
+        campus = section.department.campus
+        dept = section.department
+        if user.role == "hod":
+            return CustomUser.objects.filter(
+                role="technician",
+                primary_campus=campus,
+                primary_department=dept,
+            )
+        if user.role == "head_of_section":
+            # head_of_section can only manage technicians in their specific section
+            return CustomUser.objects.filter(
+                role="technician",
+                sections__id=section.id,
+            )
+        return CustomUser.objects.none()
 
 
 # ============================================================================

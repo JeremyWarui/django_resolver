@@ -13,6 +13,7 @@ Legacy aliases are maintained for backwards compatibility.
 
 from .services import (
     TicketService,
+    TechnicianService,
     validate_status_transition,
     manual_escalation_allowed,
     # Exceptions
@@ -28,8 +29,9 @@ OrganizationalTicketServiceException = TicketServiceException
 
 
 __all__ = [
-    # Main service class
+    # Main service classes
     "TicketService",
+    "TechnicianService",
     # Validators
     "validate_status_transition",
     "manual_escalation_allowed",

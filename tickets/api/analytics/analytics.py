@@ -201,6 +201,17 @@ class TechnicianAnalytics:
             ),
         )
 
+        # Fetch per-status breakdown in one query for all techs in the queryset
+        tech_ids = [t.id for t in techs]
+        status_rows = (
+            Ticket.objects.filter(assigned_to_id__in=tech_ids)
+            .values("assigned_to_id", "status")
+            .annotate(count=Count("id"))
+        )
+        status_by_tech: Dict[int, Dict[str, int]] = {}
+        for row in status_rows:
+            status_by_tech.setdefault(row["assigned_to_id"], {})[row["status"]] = row["count"]
+
         performance_data = []
         for tech in techs:
             avg_res = (
@@ -227,6 +238,7 @@ class TechnicianAnalytics:
                         ),
                         2,
                     ),
+                    "tickets_by_status": status_by_tech.get(tech.id, {}),
                 }
             )
 
@@ -314,6 +326,161 @@ class OrganizationalAnalytics:
         }
 
     @staticmethod
+    def manager_dashboard(user: CustomUser, days: int = 30) -> Dict:
+        """
+        Cross-campus department dashboard for managers.
+        Shows metrics for the manager's department across ALL campuses.
+
+        Manager scope: same department code across every campus in the organization.
+        Manager has no primary_campus; scoped via primary_department.
+        """
+        if user.role != "manager" or not user.primary_department:
+            return {}
+
+        dept = user.primary_department
+        org = dept.campus.organization
+        dept_code = dept.code
+
+        cache_key = f"analytics_manager_{org.id}_{dept_code}_{days}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        # All departments with the same code across every campus in the org
+        same_depts = Department.objects.filter(code=dept_code, campus__organization=org)
+        time_threshold = timezone.now() - timedelta(days=days)
+
+        all_tickets = Ticket.objects.filter(section__department__in=same_depts)
+        recent_tickets = all_tickets.filter(created_at__gte=time_threshold)
+
+        total_tickets = all_tickets.count()
+        total_open = all_tickets.filter(status__in=["open", "assigned"]).count()
+        overdue_count = all_tickets.filter(
+            created_at__lt=timezone.now() - timedelta(days=7),
+            status__in=["open", "assigned", "in_progress", "pending", "escalated"],
+        ).count()
+        escalated_count = all_tickets.filter(escalation_level__gt=0).count()
+
+        # Per-campus breakdown
+        campus_stats = []
+        for dept_instance in same_depts.select_related("campus"):
+            campus = dept_instance.campus
+            campus_tickets = all_tickets.filter(section__department=dept_instance)
+            campus_stats.append(
+                {
+                    "campus": {"id": campus.id, "name": campus.name, "code": campus.code},
+                    "department_id": dept_instance.id,
+                    "total_tickets": campus_tickets.count(),
+                    "open_tickets": campus_tickets.filter(
+                        status__in=["open", "assigned"]
+                    ).count(),
+                    "escalated_tickets": campus_tickets.filter(
+                        escalation_level__gt=0
+                    ).count(),
+                    "avg_resolution_hours": OrganizationalAnalytics._calculate_avg_resolution_time(
+                        campus_tickets
+                    ),
+                    "sla_compliance": OrganizationalAnalytics._calculate_sla_compliance(
+                        campus_tickets
+                    ),
+                }
+            )
+
+        # Section performance across campuses
+        section_stats = []
+        for section in Section.objects.filter(department__in=same_depts, is_active=True):
+            section_tickets = all_tickets.filter(section=section)
+            section_stats.append(
+                {
+                    "section": {
+                        "id": section.id,
+                        "name": section.name,
+                        "code": section.code,
+                        "campus": (
+                            section.department.campus.name
+                            if section.department and section.department.campus
+                            else None
+                        ),
+                        "head_of_section": (
+                            section.head_of_section.username
+                            if section.head_of_section
+                            else None
+                        ),
+                    },
+                    "total_tickets": section_tickets.count(),
+                    "open_tickets": section_tickets.filter(
+                        status__in=["open", "assigned"]
+                    ).count(),
+                    "escalated_tickets": section_tickets.filter(
+                        escalation_level__gt=0
+                    ).count(),
+                    "avg_resolution_hours": OrganizationalAnalytics._calculate_avg_resolution_time(
+                        section_tickets
+                    ),
+                    "technician_count": section.technicians.count(),
+                }
+            )
+
+        # Technician performance
+        technicians = CustomUser.objects.filter(
+            role="technician", sections__department__in=same_depts
+        ).distinct()
+        tech_performance = []
+        for tech in technicians:
+            tech_tickets = all_tickets.filter(assigned_to=tech)
+            tech_performance.append(
+                {
+                    "technician": {
+                        "id": tech.id,
+                        "name": f"{tech.first_name} {tech.last_name}",
+                        "username": tech.username,
+                    },
+                    "total_assigned": tech_tickets.count(),
+                    "resolved": tech_tickets.filter(
+                        status__in=["resolved", "closed"]
+                    ).count(),
+                    "avg_resolution_hours": OrganizationalAnalytics._calculate_avg_resolution_time(
+                        tech_tickets
+                    ),
+                }
+            )
+
+        status_dist = (
+            recent_tickets.values("status").annotate(count=Count("id")).order_by("-count")
+        )
+        escalation_trends = OrganizationalAnalytics._get_escalation_trends(all_tickets, days=7)
+
+        result = {
+            "department": {
+                "name": dept.name,
+                "code": dept_code,
+                "campuses_count": same_depts.count(),
+            },
+            "overview": {
+                "total_tickets": total_tickets,
+                "open_tickets": total_open,
+                "overdue_tickets": overdue_count,
+                "escalated_tickets": escalated_count,
+                "avg_resolution_hours": OrganizationalAnalytics._calculate_avg_resolution_time(
+                    all_tickets
+                ),
+                "sla_compliance": OrganizationalAnalytics._calculate_sla_compliance(
+                    all_tickets
+                ),
+            },
+            "campuses": sorted(campus_stats, key=lambda x: x["total_tickets"], reverse=True),
+            "sections": sorted(section_stats, key=lambda x: x["total_tickets"], reverse=True),
+            "technicians": sorted(
+                tech_performance, key=lambda x: x["total_assigned"], reverse=True
+            ),
+            "status_distribution": list(status_dist),
+            "escalation_trends": escalation_trends,
+            "period_days": days,
+        }
+        cache.set(cache_key, result, ANALYTICS_CACHE_TTL)
+        return result
+
+    @staticmethod
     def director_dashboard(user: CustomUser, days: int = 30) -> Dict:
         """
         Organization-wide dashboard for directors.
@@ -326,7 +493,7 @@ class OrganizationalAnalytics:
         Returns:
             Dictionary with dashboard metrics
         """
-        if user.role != "director" or not user.primary_campus:
+        if user.role != "manager" or not user.primary_campus:
             return {}
 
         cache_key = f"analytics_director_{user.primary_campus.organization_id}_{days}"
@@ -476,9 +643,6 @@ class OrganizationalAnalytics:
                         "type": facility.type,
                         "status": facility.status,
                         "campus": facility.campus.name if facility.campus else None,
-                        "department": (
-                            facility.department.name if facility.department else None
-                        ),
                     },
                     "total_tickets": facility_tickets.count(),
                     "open_tickets": facility_tickets.filter(
@@ -513,9 +677,9 @@ class OrganizationalAnalytics:
                             if section.department and section.department.campus
                             else None
                         ),
-                        "section_head": (
-                            section.section_head.username
-                            if section.section_head
+                        "head_of_section": (
+                            section.head_of_section.username
+                            if section.head_of_section
                             else None
                         ),
                     },
@@ -658,9 +822,9 @@ class OrganizationalAnalytics:
                             "name": section.name,
                             "code": section.code,
                             "department": dept.name,
-                            "section_head": (
-                                section.section_head.username
-                                if section.section_head
+                            "head_of_section": (
+                                section.head_of_section.username
+                                if section.head_of_section
                                 else None
                             ),
                         },
@@ -758,7 +922,7 @@ class OrganizationalAnalytics:
         return result
 
     @staticmethod
-    def section_head_dashboard(user: CustomUser, days: int = 30) -> Dict:
+    def head_of_section_dashboard(user: CustomUser, days: int = 30) -> Dict:
         """
         Department-level dashboard for Section Heads.
         Shows metrics for their department and sections.
@@ -770,7 +934,7 @@ class OrganizationalAnalytics:
         Returns:
             Dictionary with dashboard metrics
         """
-        if user.role != "section_head" or not user.primary_department:
+        if user.role != "head_of_section" or not user.primary_department:
             return {}
 
         cache_key = f"analytics_section_head_{user.primary_department_id}_{days}"
@@ -804,9 +968,9 @@ class OrganizationalAnalytics:
                         "id": section.id,
                         "name": section.name,
                         "code": section.code,
-                        "section_head": (
-                            section.section_head.username
-                            if section.section_head
+                        "head_of_section": (
+                            section.head_of_section.username
+                            if section.head_of_section
                             else None
                         ),
                     },

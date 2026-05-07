@@ -5,11 +5,9 @@ These endpoints provide various statistics for dashboards and reporting.
 
 from rest_framework import generics, status
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
-from tickets.api.permissions import IsTechnicianOrAdmin, IsAdminOrManager
-
-from tickets.models import Ticket, CustomUser, Feedback, Section, Facility
+# permissions and model imports not required in this module
 from tickets.api.analytics.analytics import (
     TicketAnalytics,
     TechnicianAnalytics,
@@ -27,7 +25,8 @@ class TicketAnalyticsView(generics.GenericAPIView):
     API view for ticket analytics data.
     """
 
-    permission_classes = [IsAuthenticated]  # All authenticated users can view analytics
+    # All authenticated users can view analytics
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, format=None):
         """
@@ -54,14 +53,19 @@ class TicketAnalyticsView(generics.GenericAPIView):
 
         # Get analytics data
         ticket_counts = TicketAnalytics.get_ticket_counts_by_timeframe(
-            days=time_days, facility_id=facility_id, section_id=section_id
+            days=time_days,
+            facility_id=facility_id,
+            section_id=section_id,
         )
 
         status_counts = TicketAnalytics.get_ticket_counts_by_status(
-            facility_id=facility_id, section_id=section_id
+            facility_id=facility_id,
+            section_id=section_id,
         )
 
-        trend_data = TicketAnalytics.get_ticket_trend_data(days=days, group_by=group_by)
+        trend_data = TicketAnalytics.get_ticket_trend_data(
+            days=days, group_by=group_by
+        )
 
         facility_distribution = TicketAnalytics.get_tickets_by_facility()
         section_distribution = TicketAnalytics.get_tickets_by_section()
@@ -100,12 +104,22 @@ class TechnicianAnalyticsView(generics.GenericAPIView):
         # Admins and managers can specify any technician_id
 
         # Get analytics data
-        performance_data = TechnicianAnalytics.get_technician_performance(technician_id)
+        performance_data = (
+            TechnicianAnalytics.get_technician_performance(
+                technician_id
+            )
+        )
 
-        # Get section ratings if requesting all technicians and user is admin/manager
+        # Get section ratings if requesting all technicians and user is
+        # admin/manager
         section_ratings = None
-        if not technician_id and request.user.role in ["admin", "manager"]:
-            section_ratings = TechnicianAnalytics.get_technician_ratings_by_section()
+        if (
+            not technician_id
+            and request.user.role in ["admin", "manager"]
+        ):
+            section_ratings = (
+                TechnicianAnalytics.get_technician_ratings_by_section()
+            )
 
         response_data = {"technician_performance": performance_data}
 
@@ -133,7 +147,10 @@ class AdminDashboardAnalyticsView(generics.GenericAPIView):
         if request.user.role in ["admin", "manager", "technician"]:
             overdue_tickets = AdminAnalytics.get_overdue_tickets()
 
-        data = {"system_overview": system_overview, "overdue_tickets": overdue_tickets}
+        data = {
+            "system_overview": system_overview,
+            "overdue_tickets": overdue_tickets,
+        }
 
         return Response(data)
 
@@ -143,111 +160,57 @@ class AdminDashboardAnalyticsView(generics.GenericAPIView):
 # ============================================================================
 
 
-class ManagerDashboardView(APIView):
-    """
-    Manager dashboard: department metrics across all campuses.
-    Manager sees their department aggregated across every campus in the org.
-    Only accessible to managers and system administrators.
-    """
+class RoleBasedDashboardView(APIView):
+    """Base class for small role-scoped organizational dashboards.
 
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        if request.user.role not in ["manager", "admin"]:
-            return Response(
-                {"error": "Only managers and admins can access this endpoint"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-        days = int(request.query_params.get("days", 30))
-        dashboard = OrganizationalAnalytics.manager_dashboard(request.user, days=days)
-        return Response(dashboard)
-
-
-class DirectorDashboardView(APIView):
-    """
-    Director dashboard showing organization-wide analytics.
-
-    Only accessible to directors and system administrators.
-
-    Query Parameters:
-    - days: Number of days to analyze (default: 30)
+    Subclasses should set `required_roles` (list of allowed role strings)
+    and `analytics_method` (callable taking `(user, days=...)`).
     """
 
     permission_classes = [IsAuthenticated]
+    required_roles = []
+    analytics_method = None
 
     def get(self, request):
-        """Get organization-wide dashboard for directors"""
-        # Verify user is director
-        if request.user.role not in ["manager", "admin"]:
+        # basic configuration checks
+        if not self.required_roles:
             return Response(
-                {"error": "Only directors and admins can access this endpoint"},
+                {"error": "No roles configured"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        if not callable(self.analytics_method):
+            return Response(
+                {"error": "Analytics method not configured"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        # permission check
+        if request.user.role not in self.required_roles:
+            return Response(
+                {"error": "Insufficient permissions for this endpoint"},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        # Get query parameters
         days = int(request.query_params.get("days", 30))
-
-        # Get dashboard data
-        dashboard = OrganizationalAnalytics.director_dashboard(request.user, days=days)
-
+        dashboard = self.analytics_method(request.user, days=days)
         return Response(dashboard)
 
 
-class HODDashboardView(APIView):
-    """
-    Head of Department dashboard showing campus-level analytics.
-
-    Only accessible to HODs and system administrators.
-
-    Query Parameters:
-    - days: Number of days to analyze (default: 30)
-    """
-
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        """Get campus-level dashboard for HODs"""
-        # Verify user is HOD
-        if request.user.role not in ["hod", "admin"]:
-            return Response(
-                {"error": "Only HODs and admins can access this endpoint"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        # Get query parameters
-        days = int(request.query_params.get("days", 30))
-
-        # Get dashboard data
-        dashboard = OrganizationalAnalytics.hod_dashboard(request.user, days=days)
-
-        return Response(dashboard)
+class ManagerDashboardView(RoleBasedDashboardView):
+    required_roles = ["manager", "admin"]
+    analytics_method = OrganizationalAnalytics.manager_dashboard
 
 
-class SectionHeadDashboardView(APIView):
-    """
-    Section Head dashboard showing department-level analytics.
+class DirectorDashboardView(RoleBasedDashboardView):
+    required_roles = ["manager", "admin"]
+    analytics_method = OrganizationalAnalytics.director_dashboard
 
-    Only accessible to section heads and system administrators.
 
-    Query Parameters:
-    - days: Number of days to analyze (default: 30)
-    """
+class HODDashboardView(RoleBasedDashboardView):
+    required_roles = ["hod", "admin"]
+    analytics_method = OrganizationalAnalytics.hod_dashboard
 
-    permission_classes = [IsAuthenticated]
 
-    def get(self, request):
-        """Get department-level dashboard for section heads"""
-        # Verify user is section head
-        if request.user.role not in ["head_of_section", "admin"]:
-            return Response(
-                {"error": "Only section heads and admins can access this endpoint"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        # Get query parameters
-        days = int(request.query_params.get("days", 30))
-
-        # Get dashboard data
-        dashboard = OrganizationalAnalytics.head_of_section_dashboard(request.user, days=days)
-
-        return Response(dashboard)
+class SectionHeadDashboardView(RoleBasedDashboardView):
+    required_roles = ["head_of_section", "admin"]
+    analytics_method = OrganizationalAnalytics.head_of_section_dashboard

@@ -298,7 +298,9 @@ class Ticket(models.Model):
         ("pending", "Pending"),
         ("resolved", "Resolved"),
         ("closed", "Closed"),
-        ("escalated", "Escalated"),  # New status
+        ("escalated", "Escalated"),
+        ("pending_approval", "Pending Approval"),
+        ("rejected", "Rejected"),
     ]
 
     PRIORITY_CHOICES = [
@@ -414,10 +416,18 @@ class Ticket(models.Model):
         null=True, blank=True, editable=False)
 
     # Service catalogue integration
+    service_item = models.ForeignKey(
+        "ServiceItem",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="tickets",
+        help_text="Service item this ticket was raised against",
+    )
     form_data = models.JSONField(
         null=True,
         blank=True,
-        help_text="Form submission data from ServiceItem"
+        help_text="Form submission data from ServiceItem",
     )
 
     class Meta:

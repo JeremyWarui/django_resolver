@@ -66,8 +66,10 @@ urlpatterns = [
     # Simple authentication endpoints (password-based for all roles)
     path("auth/check-method/", check_auth_method, name="check_auth_method"),
     path("auth/login/", simple_auth_login, name="simple_auth_login"),
-    # Magic link endpoints temporarily disabled - uncomment when email is configured
-    # path("auth/magic-link/request/", request_magic_link, name="request_magic_link"),
+    # Magic link endpoints temporarily disabled.
+    # Uncomment when email is configured:
+    # path("auth/magic-link/request/", request_magic_link,
+    #      name="request_magic_link"),
     # path("auth/magic-link/<str:token>/",
     #      magic_link_login, name="magic_link_login"),
     path("auth/logout/", simple_logout, name="simple_logout"),
@@ -75,30 +77,68 @@ urlpatterns = [
     path("auth/register/", register_user, name="register_user"),
     # ORGANIZATION HIERARCHY
     path(
-        "organizations/", OrganizationListCreateView.as_view(), name="organization-list"
+        "organizations/",
+        OrganizationListCreateView.as_view(),
+        name="organization-list",
     ),
     path(
         "organizations/<int:pk>/",
         OrganizationDetailView.as_view(),
         name="organization-detail",
     ),
-    path("campuses/", CampusListCreateView.as_view(), name="campus-list"),
-    path("campuses/<int:pk>/", CampusDetailView.as_view(), name="campus-detail"),
-    path("departments/", DepartmentListCreateView.as_view(), name="department-list"),
+    path(
+        "campuses/",
+        CampusListCreateView.as_view(),
+        name="campus-list",
+    ),
+    path(
+        "campuses/<int:pk>/",
+        CampusDetailView.as_view(),
+        name="campus-detail",
+    ),
+    path(
+        "departments/",
+        DepartmentListCreateView.as_view(),
+        name="department-list",
+    ),
     path(
         "departments/<int:pk>/",
         DepartmentDetailView.as_view(),
         name="department-detail",
     ),
     # SECTION
-    path("sections/", SectionListCreateView.as_view(), name="section-list"),
-    path("sections/<int:pk>/", SectionDetailView.as_view(), name="section-detail"),
+    path(
+        "sections/",
+        SectionListCreateView.as_view(),
+        name="section-list",
+    ),
+    path(
+        "sections/<int:pk>/",
+        SectionDetailView.as_view(),
+        name="section-detail",
+    ),
     # FACILITY
-    path("facilities/", FacilityListCreateView.as_view(), name="facility-list"),
-    path("facilities/<int:pk>/", FacilityDetailView.as_view(), name="facility-detail"),
+    path(
+        "facilities/",
+        FacilityListCreateView.as_view(),
+        name="facility-list",
+    ),
+    path(
+        "facilities/<int:pk>/",
+        FacilityDetailView.as_view(),
+        name="facility-detail",
+    ),
     # TICKET
-    path("tickets/", TicketListCreateView.as_view(), name="ticket-list"),
-    path("tickets/<int:pk>/", TicketDetailView.as_view(), name="ticket-detail"),
+    path(
+        "tickets/",
+        TicketListCreateView.as_view(),
+        name="ticket-list",
+    ),
+    path(
+        "tickets/<int:pk>/",
+        TicketDetailView.as_view(),
+        name="ticket-detail",
+    ),
     # TICKET ESCALATION
     path(
         "tickets/<int:ticket_id>/escalate/",
@@ -107,7 +147,9 @@ urlpatterns = [
     ),
     # TICKET CLOSURE
     path(
-        "tickets/<int:ticket_id>/close/", TicketCloseView.as_view(), name="ticket-close"
+        "tickets/<int:ticket_id>/close/",
+        TicketCloseView.as_view(),
+        name="ticket-close",
     ),
     # BULK OPERATIONS
     path(
@@ -137,13 +179,33 @@ urlpatterns = [
         name="analytics-organizational",
     ),
     # COMMENT
-    path("comments/", CommentListCreateView.as_view(), name="comment-list"),
+    path(
+        "comments/",
+        CommentListCreateView.as_view(),
+        name="comment-list",
+    ),
     # FEEDBACK
-    path("feedback/", FeedbackListCreateView.as_view(), name="feedback-list"),
+    path(
+        "feedback/",
+        FeedbackListCreateView.as_view(),
+        name="feedback-list",
+    ),
     # USER
-    path("users/me/", user_profile, name="user-me"),
-    path("users/", UserListCreateView.as_view(), name="user-list"),
-    path("users/<int:pk>/", UserDetailView.as_view(), name="user-detail"),
+    path(
+        "users/me/",
+        user_profile,
+        name="user-me",
+    ),
+    path(
+        "users/",
+        UserListCreateView.as_view(),
+        name="user-list",
+    ),
+    path(
+        "users/<int:pk>/",
+        UserDetailView.as_view(),
+        name="user-detail",
+    ),
     # TECHNICIANS BY SECTION
     path(
         "technicians/",
@@ -162,7 +224,11 @@ urlpatterns = [
         name="ticket-feedback",
     ),
     # ANALYTICS ENDPOINTS
-    path("analytics/tickets/", TicketAnalyticsView.as_view(), name="analytics-tickets"),
+    path(
+        "analytics/tickets/",
+        TicketAnalyticsView.as_view(),
+        name="analytics-tickets",
+    ),
     path(
         "analytics/technicians/",
         TechnicianAnalyticsView.as_view(),
@@ -195,8 +261,16 @@ urlpatterns = [
         name="analytics-section-head",
     ),
     # REPORT ENDPOINTS
-    path("reports/generate/", GenerateReportView.as_view(), name="report-generate"),
-    path("reports/types/", ReportTypesView.as_view(), name="report-types"),
+    path(
+        "reports/generate/",
+        GenerateReportView.as_view(),
+        name="report-generate",
+    ),
+    path(
+        "reports/types/",
+        ReportTypesView.as_view(),
+        name="report-types",
+    ),
     # SECTION TECHNICIAN MANAGEMENT
     path(
         "sections/<int:pk>/technicians/",

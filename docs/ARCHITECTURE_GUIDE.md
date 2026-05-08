@@ -75,10 +75,10 @@ Django Resolver uses a **4-layer architecture** separating concerns:
 Organization (name, type: gov/education/healthcare/corporate)
   ├─ Campus (code, location)
   │   ├─ Department (head_of_department FK)
-  │   │   ├─ Section (section_head FK)
+  │   │   ├─ Section (head_of_section FK)
   │   │   └─ Facility (for section)
   │   └─ Ticket (created by campus users)
-CustomUser (role: user/tech/section_head/hod/director/admin)
+CustomUser (role: user/tech/head_of_section/hod/manager/admin)
 Ticket (status, priority, escalation_level, pending_reason/comment)
 ```
 
@@ -244,14 +244,14 @@ Level 2 (HOD Escalation)
 Organization (e.g., "Government Institution")
   ├─ Campus MAIN (Nairobi)
   │   ├─ Department IT (Head: hod_alex)
-  │   │   ├─ Section Network (Leader: section_head_ben)
+  │   │   ├─ Section Network (Leader: head_of_section_ben)
   │   │   │   ├─ Technician: tech_alex
   │   │   │   └─ Technician: tech_john
-  │   │   └─ Section OSS (Leader: section_head_mike)
+  │   │   └─ Section OSS (Leader: head_of_section_mike)
   │   │
   │   └─ Department Operations (Head: hod_maria)
-  │       ├─ Section Plumbing (Leader: section_head_linda)
-  │       └─ Section Electrical (Leader: section_head_david)
+  │       ├─ Section Plumbing (Leader: head_of_section_linda)
+  │       └─ Section Electrical (Leader: head_of_section_david)
   │
   ├─ Campus WEST (Mombasa)
   │   └─ [Similar Department/Section structure]
@@ -286,9 +286,9 @@ Automatic derivation:
 |------|-------|-------------|
 | `user` | Section | Create tickets, comment own, submit feedback |
 | `technician` | Section | + Update status, assign within section |
-| `section_head` | Section | + Escalate, manage escalations |
+| `head_of_section` | Section | + Escalate, manage escalations |
 | `hod` | Department | View all dept tickets, final escalation point |
-| `director` | Organization | Analytics only, no ticket management |
+| `manager` | Own department, all campuses in org | Analytics only, no ticket list/detail |
 | `admin` | System | Full access, bypass all checks |
 
 ### Scope Enforcement
@@ -318,7 +318,7 @@ def view_function(...):
 
 **User Models**:
 - `CustomUser` - Extended Django User with roles and scope
-  - Roles: user, technician, section_head, hod, director, admin
+  - Roles: user, technician, head_of_section, hod, manager, admin
   - Fields: primary_campus, primary_department, sections (M2M)
 
 **Ticket Models**:
@@ -390,7 +390,7 @@ For each ticket:
   3. Check escalation_level < 2
   
   If all true:
-    - Level 1: Notify section_head, set priority=MEDIUM
+    - Level 1: Notify head_of_section, set priority=MEDIUM
     - Level 2: Notify HOD, set priority=HIGH
     - After 72h: Auto-mark priority=CRITICAL
     - Create notification record

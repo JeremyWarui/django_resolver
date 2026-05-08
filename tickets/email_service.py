@@ -100,3 +100,133 @@ class EmailService:
         except Exception as e:
             logger.error(f"Failed to send login notification to {user.email}: {str(e)}")
             return False
+
+    # -------------------------------------------------------------------------
+    # TICKET LIFECYCLE NOTIFICATIONS
+    # -------------------------------------------------------------------------
+
+    @classmethod
+    def _ticket_url(cls, ticket) -> str:
+        base = getattr(settings, "FRONTEND_URL", "http://localhost:5173")
+        return f"{base}/tickets/{ticket.id}"
+
+    @classmethod
+    def _company_name(cls) -> str:
+        return getattr(settings, "COMPANY_NAME", "Resolver")
+
+    @classmethod
+    def send_ticket_assigned(cls, ticket, technician) -> bool:
+        """Notify the assigned technician that a ticket has been given to them."""
+        if not technician.email:
+            return False
+        try:
+            context = {
+                "ticket": ticket,
+                "technician": technician,
+                "ticket_url": cls._ticket_url(ticket),
+                "company_name": cls._company_name(),
+            }
+            message = render_to_string("emails/ticket_assigned.txt", context)
+            send_mail(
+                subject=f"[{cls._company_name()}] Ticket {ticket.ticket_no} assigned to you",
+                message=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[technician.email],
+                fail_silently=True,
+            )
+            logger.info(f"Assignment notification sent to {technician.email} for {ticket.ticket_no}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to send assignment notification for {ticket.ticket_no}: {e}")
+            return False
+
+    @classmethod
+    def send_ticket_resolved(cls, ticket) -> bool:
+        """Notify the requester that their ticket has been resolved."""
+        requester = ticket.raised_by
+        if not requester.email:
+            return False
+        try:
+            base = getattr(settings, "FRONTEND_URL", "http://localhost:5173")
+            context = {
+                "ticket": ticket,
+                "requester": requester,
+                "ticket_url": cls._ticket_url(ticket),
+                "feedback_url": f"{base}/tickets/{ticket.id}/feedback",
+                "company_name": cls._company_name(),
+            }
+            message = render_to_string("emails/ticket_resolved.txt", context)
+            send_mail(
+                subject=f"[{cls._company_name()}] Your request {ticket.ticket_no} has been resolved",
+                message=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[requester.email],
+                fail_silently=True,
+            )
+            logger.info(f"Resolved notification sent to {requester.email} for {ticket.ticket_no}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to send resolved notification for {ticket.ticket_no}: {e}")
+            return False
+
+    @classmethod
+    def send_ticket_rejected(cls, ticket, reason: str) -> bool:
+        """Notify the requester that their ticket has been rejected, with the reason."""
+        requester = ticket.raised_by
+        if not requester.email:
+            return False
+        try:
+            context = {
+                "ticket": ticket,
+                "requester": requester,
+                "reason": reason,
+                "company_name": cls._company_name(),
+            }
+            message = render_to_string("emails/ticket_rejected.txt", context)
+            send_mail(
+                subject=f"[{cls._company_name()}] Your request {ticket.ticket_no} has been declined",
+                message=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[requester.email],
+                fail_silently=True,
+            )
+            logger.info(f"Rejection notification sent to {requester.email} for {ticket.ticket_no}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to send rejection notification for {ticket.ticket_no}: {e}")
+            return False
+
+    @classmethod
+    def send_ticket_pending_approval(cls, ticket) -> bool:
+        """Notify the department HOD that a ticket is awaiting their approval."""
+        try:
+            hod = (
+                ticket.section.department.head_of_department
+                if ticket.section and ticket.section.department
+                else None
+            )
+            if not hod or not hod.email:
+                logger.warning(
+                    f"No HOD email found for {ticket.ticket_no}; skipping approval notification"
+                )
+                return False
+
+            context = {
+                "ticket": ticket,
+                "approver": hod,
+                "ticket_url": cls._ticket_url(ticket),
+                "company_name": cls._company_name(),
+            }
+            message = render_to_string("emails/ticket_pending_approval.txt", context)
+            send_mail(
+                subject=f"[{cls._company_name()}] Approval required: {ticket.ticket_no}",
+                message=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[hod.email],
+                fail_silently=True,
+            )
+            logger.info(f"Approval notification sent to {hod.email} for {ticket.ticket_no}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to send approval notification for {ticket.ticket_no}: {e}")
+            return False

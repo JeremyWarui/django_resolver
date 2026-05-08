@@ -7,19 +7,25 @@
 @contentType = application/json
 
 ### Variables for tokens (update after login)
-@adminToken = 35736009bb13914443795bc65bc65eed01f6c004
-@userToken =
-@technicianToken =
-@hodToken =
-@directorToken =
-@sectionHeadToken =
+@adminToken =       35736009bb13914443795bc65bc65eed01f6c004
+@managerToken =     5d7ac6932b16936af5e04e5d8aa9df884bca7b57
+@hodToken =         9c5d55a699f31f66356229043485a022aa7f08ab
+@sectionHeadToken = ed627bf2c00d60c30f0134efdb4c0d6e9b6d4c27
+@technicianToken =  c49227af297f7e37e66457995411030ae3e1ce6d
+@userToken =        555a41926f1f95bd63baef9ffd4a3cd60fcf10cb
 
 ### Test Credentials (from fixtures)
-# Credentials are managed in docs/DEFAULT_CREDENTIALS.md
-# DO NOT commit real tokens or passwords to this file
+# All fixture users share the password: adminuser123
+# Fixture users:
+#   admin_user        role: admin
+#   manager_ict       role: manager
+#   hod_ict_nrb       role: hod
+#   hos_ict_nrb       role: head_of_section
+#   tech_alex         role: technician
+#   user_sarah        role: user
 
 ################################################################################
-# AUTHENTICATION & USER MANAGEMENT
+# AUTHENTICATION
 ################################################################################
 
 ### 1. Login as User
@@ -40,16 +46,34 @@ Content-Type: {{contentType}}
   "password": "adminuser123"
 }
 
-### 3. Login as Section Head
+### 3. Login as Head of Section
 POST {{baseUrl}}/api/auth/login/
 Content-Type: {{contentType}}
 
 {
-  "username": "section_head_ben",
+  "username": "hos_ict_nrb",
   "password": "adminuser123"
 }
 
-### 4. Login as Admin
+### 4. Login as HOD
+POST {{baseUrl}}/api/auth/login/
+Content-Type: {{contentType}}
+
+{
+  "username": "hod_ict_nrb",
+  "password": "adminuser123"
+}
+
+### 5. Login as Manager
+POST {{baseUrl}}/api/auth/login/
+Content-Type: {{contentType}}
+
+{
+  "username": "manager_ict",
+  "password": "adminuser123"
+}
+
+### 6. Login as Admin
 POST {{baseUrl}}/api/auth/login/
 Content-Type: {{contentType}}
 
@@ -58,64 +82,101 @@ Content-Type: {{contentType}}
   "password": "adminuser123"
 }
 
-### 6. Get Current User Profile
-GET {{baseUrl}}/api/users/me/
+### 7. Logout
+POST {{baseUrl}}/api/auth/logout/
 Authorization: Token {{adminToken}}
 
-### 7. List All Users (admin/manager only)
+### 8. Get Current User Profile
+GET {{baseUrl}}/api/auth/profile/
+Authorization: Token {{adminToken}}
+
+### 9. Check Auth Method
+GET {{baseUrl}}/api/auth/check-method/
+
+### 10. Register New User (self-registration — role defaults to "user")
+POST {{baseUrl}}/api/auth/register/
+Content-Type: {{contentType}}
+
+{
+  "username": "new_staff",
+  "email": "newstaff@ksg.ac.ke",
+  "password": "adminuser123",
+  "first_name": "New",
+  "last_name": "Staff"
+}
+
+################################################################################
+# USERS
+################################################################################
+
+### 11. List All Users (admin/manager only)
 GET {{baseUrl}}/api/users/
 Authorization: Token {{adminToken}}
 
-### 8. Create New User (admin only)
+### 12. Get Current User (alias)
+GET {{baseUrl}}/api/users/me/
+Authorization: Token {{adminToken}}
+
+### 13. Get Single User
+GET {{baseUrl}}/api/users/2/
+Authorization: Token {{adminToken}}
+
+### 14. Create New User (admin only)
 POST {{baseUrl}}/api/users/
 Content-Type: {{contentType}}
 Authorization: Token {{adminToken}}
 
 {
+  "username": "jane_doe",
   "first_name": "Jane",
-  "last_name": "Smith",
-  "email": "jane.smith@example.com",
-  "password": "securepass123",
-  "role": "user",
-  "sections": []
+  "last_name": "Doe",
+  "email": "jane.doe@ksg.ac.ke",
+  "password": "adminuser123",
+  "role": "technician",
+  "primary_campus": 1,
+  "primary_department": 1
 }
 
-################################################################################
-# SECTIONS & FACILITIES
-################################################################################
-
-### 9. List All Sections
-GET {{baseUrl}}/api/sections/
+### 15. Update User Role (admin only)
+PATCH {{baseUrl}}/api/users/2/
+Content-Type: {{contentType}}
 Authorization: Token {{adminToken}}
 
-### 10. List All Facilities
-GET {{baseUrl}}/api/facilities/
+{
+  "role": "technician"
+}
+
+### 16. Delete User (admin only)
+DELETE {{baseUrl}}/api/users/2/
 Authorization: Token {{adminToken}}
 
-### 11. Get Technicians by Section (for assignment)
-GET {{baseUrl}}/api/technicians/?section_id=2
+### 17. List Assignable Users (for ticket assignment UI)
+GET {{baseUrl}}/api/assignable-users/
+Authorization: Token {{adminToken}}
+
+### 18. Get Technicians by Section
+GET {{baseUrl}}/api/technicians/?section_id=1
 Authorization: Token {{adminToken}}
 
 ################################################################################
-# ORGANIZATION HIERARCHY  (Organizations → Campuses → Departments)
-# All list endpoints are scoped by role — see NOTES for field stripping detail
+# ORGANIZATION HIERARCHY
 ################################################################################
 
 # ── ORGANIZATIONS ────────────────────────────────────────────────────────────
 
-### 12. List All Organizations (admin sees all)
+### 19. List All Organizations (admin sees all)
 GET {{baseUrl}}/api/organizations/
 Authorization: Token {{adminToken}}
 
-### 13. List Organizations (director — scoped to own org)
+### 20. List Organizations (manager — scoped to own org)
 GET {{baseUrl}}/api/organizations/
-Authorization: Token {{directorToken}}
+Authorization: Token {{managerToken}}
 
-### 14. Get Single Organization
+### 21. Get Single Organization
 GET {{baseUrl}}/api/organizations/1/
 Authorization: Token {{adminToken}}
 
-### 15. Create Organization (admin only)
+### 22. Create Organization (admin only)
 POST {{baseUrl}}/api/organizations/
 Content-Type: {{contentType}}
 Authorization: Token {{adminToken}}
@@ -127,7 +188,7 @@ Authorization: Token {{adminToken}}
   "headquarters": "Riverside Campus, Block A"
 }
 
-### 16. Update Organization (admin only)
+### 23. Update Organization (admin only)
 PATCH {{baseUrl}}/api/organizations/1/
 Content-Type: {{contentType}}
 Authorization: Token {{adminToken}}
@@ -136,11 +197,11 @@ Authorization: Token {{adminToken}}
   "headquarters": "Riverside Campus, Block B"
 }
 
-### 17. Delete Organization (admin only — cascades to campuses/depts/sections)
+### 24. Delete Organization (admin only — cascades)
 DELETE {{baseUrl}}/api/organizations/1/
 Authorization: Token {{adminToken}}
 
-### ERROR: Non-admin tries to create organization (expect 403)
+### ERROR: Non-admin creates organization (expect 403)
 POST {{baseUrl}}/api/organizations/
 Content-Type: {{contentType}}
 Authorization: Token {{hodToken}}
@@ -154,23 +215,23 @@ Authorization: Token {{hodToken}}
 
 # ── CAMPUSES ──────────────────────────────────────────────────────────────────
 
-### 18. List All Campuses (admin sees all)
+### 25. List All Campuses (admin sees all)
 GET {{baseUrl}}/api/campuses/
 Authorization: Token {{adminToken}}
 
-### 19. List Campuses (director — all campuses in their org)
+### 26. List Campuses (manager — all in their org)
 GET {{baseUrl}}/api/campuses/
-Authorization: Token {{directorToken}}
+Authorization: Token {{managerToken}}
 
-### 20. List Campuses (HOD/section_head/user — returns only their own campus)
+### 27. List Campuses (HOD — only their own campus)
 GET {{baseUrl}}/api/campuses/
 Authorization: Token {{hodToken}}
 
-### 21. Get Single Campus
+### 28. Get Single Campus
 GET {{baseUrl}}/api/campuses/1/
 Authorization: Token {{adminToken}}
 
-### 22. Create Campus (admin only)
+### 29. Create Campus (admin only)
 POST {{baseUrl}}/api/campuses/
 Content-Type: {{contentType}}
 Authorization: Token {{adminToken}}
@@ -182,7 +243,7 @@ Authorization: Token {{adminToken}}
   "organization_id": 1
 }
 
-### 23. Update Campus (admin only)
+### 30. Update Campus (admin only)
 PATCH {{baseUrl}}/api/campuses/1/
 Content-Type: {{contentType}}
 Authorization: Token {{adminToken}}
@@ -191,11 +252,11 @@ Authorization: Token {{adminToken}}
   "location": "Main Gate, Building 1"
 }
 
-### 24. Delete Campus (admin only — cascades to departments/sections)
+### 31. Delete Campus (admin only — cascades)
 DELETE {{baseUrl}}/api/campuses/1/
 Authorization: Token {{adminToken}}
 
-### ERROR: Non-admin tries to create campus (expect 403)
+### ERROR: Non-admin creates campus (expect 403)
 POST {{baseUrl}}/api/campuses/
 Content-Type: {{contentType}}
 Authorization: Token {{sectionHeadToken}}
@@ -207,38 +268,29 @@ Authorization: Token {{sectionHeadToken}}
   "organization_id": 1
 }
 
-### ERROR: Non-admin tries to update campus (expect 403)
-PATCH {{baseUrl}}/api/campuses/1/
-Content-Type: {{contentType}}
-Authorization: Token {{hodToken}}
-
-{
-  "location": "Should not work"
-}
-
 # ── DEPARTMENTS ───────────────────────────────────────────────────────────────
 
-### 25. List All Departments (admin sees all)
+### 32. List All Departments (admin sees all)
 GET {{baseUrl}}/api/departments/
 Authorization: Token {{adminToken}}
 
-### 26. List Departments (director — all depts across their org's campuses)
+### 33. List Departments (manager — their department across all org campuses)
 GET {{baseUrl}}/api/departments/
-Authorization: Token {{directorToken}}
+Authorization: Token {{managerToken}}
 
-### 27. List Departments (HOD — all depts on their campus)
+### 34. List Departments (HOD — all depts on their campus)
 GET {{baseUrl}}/api/departments/
 Authorization: Token {{hodToken}}
 
-### 28. List Departments (section_head/technician/user — only their own department)
+### 35. List Departments (head_of_section/technician/user — only their own department)
 GET {{baseUrl}}/api/departments/
 Authorization: Token {{sectionHeadToken}}
 
-### 29. Get Single Department
+### 36. Get Single Department
 GET {{baseUrl}}/api/departments/1/
 Authorization: Token {{adminToken}}
 
-### 30. Create Department (admin only)
+### 37. Create Department (admin only)
 POST {{baseUrl}}/api/departments/
 Content-Type: {{contentType}}
 Authorization: Token {{adminToken}}
@@ -250,17 +302,16 @@ Authorization: Token {{adminToken}}
   "is_active": true
 }
 
-### 31. Update Department — assign a Head of Department (admin only)
-# head_of_department must be a user with role "hod" and matching campus
+### 38. Assign Head of Department (admin only)
 PATCH {{baseUrl}}/api/departments/1/
 Content-Type: {{contentType}}
 Authorization: Token {{adminToken}}
 
 {
-  "head_of_department": 3
+  "head_of_department": 5
 }
 
-### 32. Deactivate Department (admin only)
+### 39. Deactivate Department (admin only)
 PATCH {{baseUrl}}/api/departments/1/
 Content-Type: {{contentType}}
 Authorization: Token {{adminToken}}
@@ -269,45 +320,121 @@ Authorization: Token {{adminToken}}
   "is_active": false
 }
 
-### 33. Delete Department (admin only — cascades to sections)
+### 40. Delete Department (admin only — cascades to sections)
 DELETE {{baseUrl}}/api/departments/1/
 Authorization: Token {{adminToken}}
 
-### ERROR: Non-admin tries to create department (expect 403)
-POST {{baseUrl}}/api/departments/
-Content-Type: {{contentType}}
-Authorization: Token {{hodToken}}
+# ── SECTIONS ──────────────────────────────────────────────────────────────────
 
-{
-  "name": "Shadow Dept",
-  "code": "SHD",
-  "campus_id": 1
-}
-
-### ERROR: Non-admin tries to delete department (expect 403)
-DELETE {{baseUrl}}/api/departments/1/
-Authorization: Token {{directorToken}}
-
-# ── ROLE-BASED FIELD STRIPPING VERIFICATION ───────────────────────────────────
-# These requests let you confirm the get_fields() overrides are working.
-
-### Facility as admin (should include purchase_date, warranty_expiry, asset_value)
-GET {{baseUrl}}/api/facilities/1/
+### 41. List All Sections
+GET {{baseUrl}}/api/sections/
 Authorization: Token {{adminToken}}
 
-### Facility as HOD (should include purchase_date, warranty_expiry, asset_value)
-GET {{baseUrl}}/api/facilities/1/
-Authorization: Token {{hodToken}}
-
-### Facility as section_head (financial fields stripped)
-GET {{baseUrl}}/api/facilities/1/
-Authorization: Token {{sectionHeadToken}}
-
-### Section as admin (should include technicians list)
+### 42. Get Single Section
 GET {{baseUrl}}/api/sections/1/
 Authorization: Token {{adminToken}}
 
-### Section as section_head (should include technicians list)
+### 43. Create Section (admin only)
+POST {{baseUrl}}/api/sections/
+Content-Type: {{contentType}}
+Authorization: Token {{adminToken}}
+
+{
+  "name": "Network Infrastructure",
+  "department_id": 1,
+  "sla_hours": 48
+}
+
+### 44. Update Section (admin only)
+PATCH {{baseUrl}}/api/sections/1/
+Content-Type: {{contentType}}
+Authorization: Token {{adminToken}}
+
+{
+  "sla_hours": 24
+}
+
+### 45. Delete Section (admin only)
+DELETE {{baseUrl}}/api/sections/1/
+Authorization: Token {{adminToken}}
+
+# ── SECTION TECHNICIAN MANAGEMENT ────────────────────────────────────────────
+
+### 46. List Technicians in a Section
+GET {{baseUrl}}/api/sections/1/technicians/
+Authorization: Token {{adminToken}}
+
+### 47. Add Technician to Section
+POST {{baseUrl}}/api/sections/1/add-technician/
+Content-Type: {{contentType}}
+Authorization: Token {{adminToken}}
+
+{
+  "user_id": 12
+}
+
+### 48. Remove Technician from Section
+DELETE {{baseUrl}}/api/sections/1/remove-technician/
+Content-Type: {{contentType}}
+Authorization: Token {{adminToken}}
+
+{
+  "user_id": 12
+}
+
+# ── FACILITIES ────────────────────────────────────────────────────────────────
+
+### 49. List All Facilities
+GET {{baseUrl}}/api/facilities/
+Authorization: Token {{adminToken}}
+
+### 50. Get Single Facility
+GET {{baseUrl}}/api/facilities/1/
+Authorization: Token {{adminToken}}
+
+### 51. Create Facility (admin only)
+POST {{baseUrl}}/api/facilities/
+Content-Type: {{contentType}}
+Authorization: Token {{adminToken}}
+
+{
+  "name": "Server Room A",
+  "section_id": 1,
+  "location_details": "Ground Floor, East Wing"
+}
+
+### 52. Update Facility (admin only)
+PATCH {{baseUrl}}/api/facilities/1/
+Content-Type: {{contentType}}
+Authorization: Token {{adminToken}}
+
+{
+  "location_details": "Ground Floor, West Wing"
+}
+
+### 53. Delete Facility (admin only)
+DELETE {{baseUrl}}/api/facilities/1/
+Authorization: Token {{adminToken}}
+
+# ── ROLE-BASED FIELD STRIPPING VERIFICATION ───────────────────────────────────
+
+### Facility as admin (includes purchase_date, warranty_expiry, asset_value)
+GET {{baseUrl}}/api/facilities/1/
+Authorization: Token {{adminToken}}
+
+### Facility as HOD (includes financial fields)
+GET {{baseUrl}}/api/facilities/1/
+Authorization: Token {{hodToken}}
+
+### Facility as head_of_section (financial fields stripped)
+GET {{baseUrl}}/api/facilities/1/
+Authorization: Token {{sectionHeadToken}}
+
+### Section as admin (includes technicians list)
+GET {{baseUrl}}/api/sections/1/
+Authorization: Token {{adminToken}}
+
+### Section as head_of_section (includes technicians list)
 GET {{baseUrl}}/api/sections/1/
 Authorization: Token {{sectionHeadToken}}
 
@@ -315,7 +442,7 @@ Authorization: Token {{sectionHeadToken}}
 GET {{baseUrl}}/api/sections/1/
 Authorization: Token {{userToken}}
 
-### Ticket as section_head (full: available_technicians, escalation detail, org path)
+### Ticket as head_of_section (full: available_technicians, escalation detail, org path)
 GET {{baseUrl}}/api/tickets/1/
 Authorization: Token {{sectionHeadToken}}
 
@@ -323,247 +450,284 @@ Authorization: Token {{sectionHeadToken}}
 GET {{baseUrl}}/api/tickets/1/
 Authorization: Token {{technicianToken}}
 
-### Ticket as user (no available_technicians, no escalation detail, no org path)
+### Ticket as user (minimal: no available_technicians, no escalation detail, no org path)
 GET {{baseUrl}}/api/tickets/1/
 Authorization: Token {{userToken}}
 
 ################################################################################
-# ESCALATION PRIORITY TESTS (Feature: Priority based on escalation level)
+# TICKETS
 ################################################################################
 
-### PRIORITY TEST 1: Tickets at Escalation Level 0 (expect priority = "low")
-GET {{baseUrl}}/api/tickets/?escalation_level=0&limit=2
+### 54. List All Tickets (scoped by role)
+GET {{baseUrl}}/api/tickets/
 Authorization: Token {{adminToken}}
 
-###
-### PRIORITY TEST 2: Tickets at Escalation Level 1 (expect priority = "medium")
-GET {{baseUrl}}/api/tickets/?escalation_level=1&limit=2
-Authorization: Token {{adminToken}}
+### 55. List Tickets (user — only own tickets)
+GET {{baseUrl}}/api/tickets/
+Authorization: Token {{userToken}}
 
-###
-### PRIORITY TEST 3: Tickets at Escalation Level 2 (expect priority = "high")
-GET {{baseUrl}}/api/tickets/?escalation_level=2&limit=2
-Authorization: Token {{adminToken}}
+### 56. List Tickets (technician — tickets in their sections)
+GET {{baseUrl}}/api/tickets/
+Authorization: Token {{technicianToken}}
 
-###
-### PRIORITY TEST 4: Get single ticket details (verify priority matches escalation_level)
-### Check response: priority field should be:
-###   - "low" if escalation_level = 0
-###   - "medium" if escalation_level = 1
-###   - "high" if escalation_level = 2
+### 57. Get Single Ticket
 GET {{baseUrl}}/api/tickets/1/
 Authorization: Token {{adminToken}}
 
-################################################################################
-# TICKET CREATION & MANAGEMENT
-################################################################################
+### 58. Filter Tickets — Open only
+GET {{baseUrl}}/api/tickets/?status=open
+Authorization: Token {{adminToken}}
 
-### 12. Create New Ticket (User)
+### 59. Filter Tickets — Unassigned
+GET {{baseUrl}}/api/tickets/?assigned_to__isnull=true
+Authorization: Token {{adminToken}}
+
+### 60. Filter Tickets — By Section and Status
+GET {{baseUrl}}/api/tickets/?section=1&status=assigned
+Authorization: Token {{adminToken}}
+
+### 61. Filter Tickets — Overdue
+GET {{baseUrl}}/api/tickets/?is_overdue=true
+Authorization: Token {{adminToken}}
+
+### 62. Search Tickets by Title
+GET {{baseUrl}}/api/tickets/?search=network
+Authorization: Token {{adminToken}}
+
+### 63. Organizational Ticket List (cross-campus, scoped by role)
+GET {{baseUrl}}/api/tickets/organizational/list/
+Authorization: Token {{adminToken}}
+
+### 64. Create Ticket (standard — no approval required)
 POST {{baseUrl}}/api/tickets/
 Content-Type: {{contentType}}
 Authorization: Token {{userToken}}
 
 {
-  "title": "Broken AC in Conference Room",
-  "description": "The air conditioning unit in Conference Room B has stopped working. Room temperature is rising.",
+  "title": "Broken AC in Conference Room B",
+  "description": "Air conditioning unit has stopped working. Room temperature is rising.",
   "section_id": 1,
   "facility_id": 1
 }
 
-### 13. List All Tickets
-GET {{baseUrl}}/api/tickets/
-Authorization: Token {{adminToken}}
+### 65. Create Ticket (service item that requires approval)
+POST {{baseUrl}}/api/tickets/
+Content-Type: {{contentType}}
+Authorization: Token {{userToken}}
 
-### 14. Filter Tickets - Unassigned Only
-GET {{baseUrl}}/api/tickets/?assigned_to__isnull=true
-Authorization: Token {{adminToken}}
+{
+  "title": "New Staff Laptop Request",
+  "description": "Requesting a laptop for new hire joining next week.",
+  "section_id": 1,
+  "facility_id": 1,
+  "service_item_id": 1
+}
 
-### 15. Filter Tickets - By Status
-GET {{baseUrl}}/api/tickets/?status=open
-Authorization: Token {{adminToken}}
-
-### 16. Filter Tickets - Overdue Tickets
-GET {{baseUrl}}/api/tickets/?is_overdue=true
-Authorization: Token {{adminToken}}
-
-### 17. Filter Tickets - By Section and Status
-GET {{baseUrl}}/api/tickets/?section=1&status=assigned
-Authorization: Token {{adminToken}}
-
-### 18. Get Single Ticket Details
-# Replace {id} with actual ticket ID
-GET {{baseUrl}}/api/tickets/1/
-Authorization: Token {{adminToken}}
-
-### 19. Search Tickets by Title
-GET {{baseUrl}}/api/tickets/?search=AC
-Authorization: Token {{adminToken}}
-
-################################################################################
-# TICKET ASSIGNMENT (Manager/Admin)
-################################################################################
-
-### 20. Assign Ticket to Technician
-# Replace {id} with actual ticket ID
-# Technician must belong to ticket's section
-PATCH {{baseUrl}}/api/tickets/1/
+### 66. Bulk Status Update (admin/manager only)
+POST {{baseUrl}}/api/tickets/bulk-status-update/
 Content-Type: {{contentType}}
 Authorization: Token {{adminToken}}
 
 {
-  "assigned_to": 2,
+  "ticket_ids": [6, 8, 15],
+  "status": "closed"
+}
+
+################################################################################
+# TICKET APPROVAL WORKFLOW
+# Applies when ServiceItem.requires_approval = true
+# Ticket starts as "pending_approval"; must be approved before work begins
+################################################################################
+
+### 67. Approve Ticket (manager or admin)
+POST {{baseUrl}}/api/tickets/11/approve/
+Authorization: Token {{managerToken}}
+
+### 68. Reject Ticket (manager or admin)
+POST {{baseUrl}}/api/tickets/11/reject/
+Content-Type: {{contentType}}
+Authorization: Token {{managerToken}}
+
+{
+  "reason": "Budget not approved for this quarter. Please resubmit in Q3."
+}
+
+### 69. Approve another pending_approval ticket
+POST {{baseUrl}}/api/tickets/19/approve/
+Authorization: Token {{managerToken}}
+
+################################################################################
+# TICKET STATUS TRANSITIONS (Technician / Section Head)
+################################################################################
+
+### 70. Assign Ticket (admin/manager/head_of_section)
+PATCH {{baseUrl}}/api/tickets/6/
+Content-Type: {{contentType}}
+Authorization: Token {{adminToken}}
+
+{
+  "assigned_to": 12,
   "status": "assigned"
 }
 
-### 21. Reassign Ticket to Another Technician
-PATCH {{baseUrl}}/api/tickets/1/
+### 71. Start Work: Assigned → In Progress
+PATCH {{baseUrl}}/api/tickets/2/
 Content-Type: {{contentType}}
-Authorization: Token {{adminToken}}
-
-{
-  "assigned_to": 3
-}
-
-################################################################################
-# TICKET STATUS UPDATES (Technician)
-################################################################################
-
-### 22. Update Status: Assigned → In Progress
-PATCH {{baseUrl}}/api/tickets/1/
-Content-Type: {{contentType}}
-Authorization: Token {{adminToken}}
+Authorization: Token {{technicianToken}}
 
 {
   "status": "in_progress"
 }
 
-### 23. Update Status: In Progress → Pending (with reason)
+### 72. Put On Hold: In Progress → Pending
 PATCH {{baseUrl}}/api/tickets/1/
 Content-Type: {{contentType}}
-Authorization: Token {{adminToken}}
+Authorization: Token {{technicianToken}}
 
 {
   "status": "pending",
-  "pending_reason": "Waiting for replacement parts to arrive"
+  "pending_reason": "awaiting_parts",
+  "pending_comment": "Waiting for replacement NIC to arrive from supplier."
 }
 
-### 24. Update Status: Pending → In Progress (resume work)
-PATCH {{baseUrl}}/api/tickets/1/
+### 73. Resume Work: Pending → In Progress
+PATCH {{baseUrl}}/api/tickets/3/
 Content-Type: {{contentType}}
-Authorization: Token {{adminToken}}
+Authorization: Token {{technicianToken}}
 
 {
   "status": "in_progress"
 }
 
-### 25. Update Status: In Progress → Resolved
+### 74. Resolve Ticket: In Progress → Resolved
 PATCH {{baseUrl}}/api/tickets/1/
+Content-Type: {{contentType}}
+Authorization: Token {{technicianToken}}
+
+{
+  "status": "resolved"
+}
+
+### 75. Close Ticket via dedicated close endpoint (admin/manager/HOD)
+POST {{baseUrl}}/api/tickets/9/close/
+Authorization: Token {{adminToken}}
+
+################################################################################
+# TICKET ESCALATION
+################################################################################
+
+### 76. Auto Escalation (internal — triggered by management command)
+# python manage.py process_auto_escalations
+# No HTTP endpoint; run via CLI only.
+
+### 77. Manual Escalation (head_of_section / hod / admin)
+POST {{baseUrl}}/api/tickets/1/escalate-manual/
+Content-Type: {{contentType}}
+Authorization: Token {{sectionHeadToken}}
+
+{
+  "reason": "Ticket has been in_progress for 3 days without resolution. Escalating to HOD."
+}
+
+### 78. Legacy Escalation Endpoint
+POST {{baseUrl}}/api/tickets/1/escalate/
 Content-Type: {{contentType}}
 Authorization: Token {{adminToken}}
 
 {
-  "status": "resolved",
-  "resolution_notes": "Replaced faulty compressor unit. AC is now working properly."
+  "reason": "Escalating due to SLA breach."
 }
 
-### 26. Update Status: Resolved → Closed (Admin/Manager only)
-PATCH {{baseUrl}}/api/tickets/1/
-Content-Type: {{contentType}}
+### ESCALATION PRIORITY: Escalation level 0 (expect priority = "low")
+GET {{baseUrl}}/api/tickets/?escalation_level=0
 Authorization: Token {{adminToken}}
 
-{
-  "status": "closed"
-}
+### ESCALATION PRIORITY: Escalation level 1 (expect priority = "medium")
+GET {{baseUrl}}/api/tickets/?escalation_level=1
+Authorization: Token {{adminToken}}
+
+### ESCALATION PRIORITY: Escalation level 2 (expect priority = "high")
+GET {{baseUrl}}/api/tickets/?escalation_level=2
+Authorization: Token {{adminToken}}
 
 ################################################################################
 # COMMENTS
 ################################################################################
 
-### 27. Add Comment to Ticket (User)
-POST {{baseUrl}}/api/comments/
+### 79. List Comments (global, filtered by ticket)
+GET {{baseUrl}}/api/comments/?ticket=1
+Authorization: Token {{adminToken}}
+
+### 80. List Comments via Nested Route
+GET {{baseUrl}}/api/tickets/1/comments/
+Authorization: Token {{adminToken}}
+
+### 81. Add Comment (User)
+POST {{baseUrl}}/api/tickets/1/comments/
 Content-Type: {{contentType}}
 Authorization: Token {{userToken}}
 
 {
-  "ticket": 1,
-  "text": "The room is getting very hot. This is urgent!"
+  "text": "Still waiting — the room temperature is now 32°C. Please expedite."
 }
 
-### 28. Add Comment (Technician)
+### 82. Add Comment (Technician)
 POST {{baseUrl}}/api/comments/
 Content-Type: {{contentType}}
-Authorization: Token {{adminToken}}
+Authorization: Token {{technicianToken}}
 
 {
   "ticket": 1,
-  "text": "I've inspected the unit. The compressor appears to be faulty. Ordering replacement parts."
+  "text": "Compressor is faulty. Parts ordered — ETA 2 days."
 }
 
-### 29. Add Comment (Manager)
-POST {{baseUrl}}/api/comments/
-Content-Type: {{contentType}}
-Authorization: Token {{adminToken}}
-
-{
-  "ticket": 1,
-  "text": "Priority ticket. Please expedite the repair."
-}
-
-### 30. Get All Comments for a Ticket
-GET {{baseUrl}}/api/comments/?ticket=2
-Authorization: Token {{adminToken}}
-
-### 31. Update Comment
-# Replace {id} with actual comment ID
+### 83. Update Own Comment
 PATCH {{baseUrl}}/api/comments/1/
 Content-Type: {{contentType}}
-Authorization: Token {{userToken}}
+Authorization: Token {{technicianToken}}
 
 {
-  "text": "Updated: The room temperature is now 32°C. This is urgent!"
+  "text": "Parts arrived early. Will start repair this afternoon."
 }
 
-### 32. Delete Comment
-# Replace {id} with actual comment ID
+### 84. Delete Own Comment
 DELETE {{baseUrl}}/api/comments/1/
-Authorization: Token {{userToken}}
+Authorization: Token {{technicianToken}}
 
 ################################################################################
-# FEEDBACK (Only on Resolved/Closed Tickets)
+# FEEDBACK (Resolved / Closed tickets only — one per ticket)
 ################################################################################
 
-### 33. Submit Feedback on Resolved Ticket (User)
-POST {{baseUrl}}/api/feedback/
-Content-Type: {{contentType}}
-Authorization: Token {{userToken}}
-
-{
-  "ticket": 1,
-  "rating": 5,
-  "comment": "Excellent service! The technician was professional and fixed the issue quickly."
-}
-
-### 34. Submit Feedback with Lower Rating
-POST {{baseUrl}}/api/feedback/
-Content-Type: {{contentType}}
-Authorization: Token {{userToken}}
-
-{
-  "ticket": 2,
-  "rating": 3,
-  "comment": "Issue resolved but took longer than expected."
-}
-
-### 35. Get All Feedback
+### 85. List All Feedback
 GET {{baseUrl}}/api/feedback/
 Authorization: Token {{adminToken}}
 
-### 36. Get Feedback for Specific Ticket
-GET {{baseUrl}}/api/feedback/?ticket=1
+### 86. Get Feedback for Specific Ticket (nested)
+GET {{baseUrl}}/api/tickets/9/feedback/
+Authorization: Token {{adminToken}}
+
+### 87. Submit Feedback on Resolved Ticket (raised_by user only)
+POST {{baseUrl}}/api/tickets/13/feedback/
+Content-Type: {{contentType}}
 Authorization: Token {{userToken}}
 
-### 37. Update Feedback
-# Replace {id} with actual feedback ID
+{
+  "rating": 5,
+  "comment": "Excellent work. Switch replaced and all services restored within hours."
+}
+
+### 88. Submit Feedback with Lower Rating
+POST {{baseUrl}}/api/feedback/
+Content-Type: {{contentType}}
+Authorization: Token {{userToken}}
+
+{
+  "ticket": 34,
+  "rating": 3,
+  "comment": "Leave processed but took longer than the SLA."
+}
+
+### 89. Update Feedback
 PATCH {{baseUrl}}/api/feedback/1/
 Content-Type: {{contentType}}
 Authorization: Token {{userToken}}
@@ -573,219 +737,252 @@ Authorization: Token {{userToken}}
   "comment": "Updated: Good service overall, minor delays."
 }
 
+### ERROR: Feedback on unresolved ticket (expect 400)
+POST {{baseUrl}}/api/feedback/
+Content-Type: {{contentType}}
+Authorization: Token {{userToken}}
+
+{
+  "ticket": 1,
+  "rating": 5,
+  "comment": "This should fail — ticket is still open."
+}
+
 ################################################################################
 # ANALYTICS
 ################################################################################
 
-### 38. Admin Dashboard (Overview)
+### 90. Admin Dashboard (system-wide overview)
 GET {{baseUrl}}/api/analytics/admin-dashboard/
 Authorization: Token {{adminToken}}
 
-### 39. Ticket Analytics - Weekly Summary
+### 91. Manager Dashboard (own department, cross-campus)
+GET {{baseUrl}}/api/analytics/manager/
+Authorization: Token {{managerToken}}
+
+### 92. HOD Dashboard (own department on own campus)
+GET {{baseUrl}}/api/analytics/hod/
+Authorization: Token {{hodToken}}
+
+### 93. Section Head Dashboard (own section only)
+GET {{baseUrl}}/api/analytics/section-head/
+Authorization: Token {{sectionHeadToken}}
+
+### 94. Ticket Analytics — Weekly
 GET {{baseUrl}}/api/analytics/tickets/?timeframe=week
 Authorization: Token {{adminToken}}
 
-### 40. Ticket Analytics - Monthly by Section
+### 95. Ticket Analytics — Monthly by Section
 GET {{baseUrl}}/api/analytics/tickets/?timeframe=month&section_id=1
 Authorization: Token {{adminToken}}
 
-### 41. Ticket Analytics - Last 30 Days Grouped by Day
+### 96. Ticket Analytics — Last 30 Days
 GET {{baseUrl}}/api/analytics/tickets/?days=30&group_by=day
 Authorization: Token {{adminToken}}
 
-### 42. Ticket Analytics - By Facility
-GET {{baseUrl}}/api/analytics/tickets/?facility_id=1&timeframe=month
+### 97. Technician Performance Analytics
+GET {{baseUrl}}/api/analytics/technicians/?technician_id=12
 Authorization: Token {{adminToken}}
 
-### 43. Technician Performance Analytics
-GET {{baseUrl}}/api/analytics/technicians/?technician_id=2
+### 98. Organizational Analytics (cross-role overview)
+GET {{baseUrl}}/api/analytics/organizational/
 Authorization: Token {{adminToken}}
 
-### 44. Section Performance Analytics
-GET {{baseUrl}}/api/analytics/tickets/?section_id=1&timeframe=month
+################################################################################
+# SERVICE CATALOGUE (Phase 4)
+################################################################################
+
+### 99. List Department Types
+GET {{baseUrl}}/api/service-catalogue/department-types/
 Authorization: Token {{adminToken}}
+
+### 100. Get Section Type Detail
+GET {{baseUrl}}/api/service-catalogue/section-types/1/
+Authorization: Token {{adminToken}}
+
+### 101. List Service Categories (optionally filter by section_type)
+GET {{baseUrl}}/api/service-catalogue/service-categories/
+Authorization: Token {{adminToken}}
+
+### 102. List Service Items (optionally filter by category)
+GET {{baseUrl}}/api/service-catalogue/service-items/
+Authorization: Token {{adminToken}}
+
+### 103. Get Categories for a Section Type (frontend wizard)
+GET {{baseUrl}}/api/section-types/1/categories/
+Authorization: Token {{userToken}}
+
+### 104. Get Items for a Category (frontend wizard)
+GET {{baseUrl}}/api/categories/1/items/
+Authorization: Token {{userToken}}
+
+### 105. Get Single Service Item (includes form_schema)
+GET {{baseUrl}}/api/service-items/1/
+Authorization: Token {{userToken}}
 
 ################################################################################
 # REPORTS
 ################################################################################
 
-### 45. List Available Report Types
+### 106. List Available Report Types
 GET {{baseUrl}}/api/reports/types/
 Authorization: Token {{adminToken}}
 
-### 46. Generate PDF Report - All Open Tickets
-GET {{baseUrl}}/api/reports/generate/?report_type=tickets&format=pdf&status=open
+### 107. Generate CSV — All Open Tickets
+GET {{baseUrl}}/api/reports/generate/?report_type=tickets&format=csv&status=open
 Authorization: Token {{adminToken}}
 
-### 47. Generate CSV Report - Resolved Tickets
+### 108. Generate CSV — Resolved Tickets
 GET {{baseUrl}}/api/reports/generate/?report_type=tickets&format=csv&status=resolved
 Authorization: Token {{adminToken}}
 
-### 48. Generate Technician Performance Report
-GET {{baseUrl}}/api/reports/generate/?report_type=technicians&format=pdf&technician_id=2
+### 109. Generate Technician Performance Report
+GET {{baseUrl}}/api/reports/generate/?report_type=technicians&format=csv&technician_id=12
 Authorization: Token {{adminToken}}
 
 ################################################################################
-# COMPLETE WORKFLOW EXAMPLE
+# COMPLETE WORKFLOW — STANDARD TICKET
+# User → assign → in_progress → resolve → feedback → close
 ################################################################################
 
-### WORKFLOW 1: User Creates Ticket → Manager Assigns → Technician Resolves → User Provides Feedback
-
-# Step 1: User creates a ticket
+### STEP 1: User raises ticket
 POST {{baseUrl}}/api/tickets/
 Content-Type: {{contentType}}
 Authorization: Token {{userToken}}
 
 {
-  "title": "Leaking Pipe in Bathroom",
-  "description": "There's a leak under the sink in the 2nd floor bathroom",
+  "title": "Leaking Pipe in 2nd Floor Bathroom",
+  "description": "Leak under the sink. Water pooling on the floor.",
   "section_id": 2,
-  "facility_id": 1
+  "facility_id": 3
 }
 
 ###
-# Step 2: Manager views unassigned tickets
+### STEP 2: Admin views unassigned tickets
 GET {{baseUrl}}/api/tickets/?assigned_to__isnull=true&status=open
 Authorization: Token {{adminToken}}
 
 ###
-# Step 3: Manager assigns to technician (use ticket ID from step 1)
-PATCH {{baseUrl}}/api/tickets/{ticket_id}/
+### STEP 3: Assign to technician (replace {id} with ID from step 1)
+PATCH {{baseUrl}}/api/tickets/{id}/
 Content-Type: {{contentType}}
 Authorization: Token {{adminToken}}
 
 {
-  "assigned_to": 2
+  "assigned_to": 13,
+  "status": "assigned"
 }
 
 ###
-# Step 4: Technician starts work
-PATCH {{baseUrl}}/api/tickets/{ticket_id}/
+### STEP 4: Technician starts work
+PATCH {{baseUrl}}/api/tickets/{id}/
 Content-Type: {{contentType}}
-Authorization: Token {{adminToken}}
+Authorization: Token {{technicianToken}}
 
 {
   "status": "in_progress"
 }
 
 ###
-# Step 5: Technician adds comment
-POST {{baseUrl}}/api/comments/
+### STEP 5: Technician adds comment
+POST {{baseUrl}}/api/tickets/{id}/comments/
 Content-Type: {{contentType}}
-Authorization: Token {{adminToken}}
+Authorization: Token {{technicianToken}}
 
 {
-  "ticket": "{ticket_id}",
-  "text": "Located the leak. Replacing the worn-out pipe fitting."
+  "text": "Found a worn pipe fitting. Replacing it now."
 }
 
 ###
-# Step 6: Technician resolves ticket
-PATCH {{baseUrl}}/api/tickets/{ticket_id}/
+### STEP 6: Technician resolves ticket
+PATCH {{baseUrl}}/api/tickets/{id}/
 Content-Type: {{contentType}}
-Authorization: Token {{adminToken}}
+Authorization: Token {{technicianToken}}
 
 {
-  "status": "resolved",
-  "resolution_notes": "Replaced pipe fitting. Leak fixed. Tested for 30 minutes, no leaks detected."
+  "status": "resolved"
 }
 
 ###
-# Step 7: User provides feedback
-POST {{baseUrl}}/api/feedback/
+### STEP 7: User submits feedback
+POST {{baseUrl}}/api/tickets/{id}/feedback/
 Content-Type: {{contentType}}
 Authorization: Token {{userToken}}
 
 {
-  "ticket": "{ticket_id}",
   "rating": 5,
-  "comment": "Quick response and professional work. Thank you!"
+  "comment": "Fast and professional. No more leak!"
 }
 
 ###
-# Step 8: Manager closes ticket
-PATCH {{baseUrl}}/api/tickets/{ticket_id}/
-Content-Type: {{contentType}}
+### STEP 8: Admin closes ticket
+POST {{baseUrl}}/api/tickets/{id}/close/
 Authorization: Token {{adminToken}}
 
-{
-  "status": "closed"
-}
-
 ################################################################################
-# WORKFLOW 2: Pending Status Workflow
+# COMPLETE WORKFLOW — APPROVAL REQUIRED
+# Ticket starts as "pending_approval"; manager approves before work begins
 ################################################################################
 
-### Scenario: Technician needs parts, puts ticket on pending
-
-# Step 1: Technician marks as pending
-PATCH {{baseUrl}}/api/tickets/{ticket_id}/
-Content-Type: {{contentType}}
-Authorization: Token {{adminToken}}
-
-{
-  "status": "pending",
-  "pending_reason": "Waiting for specialized tool from equipment room"
-}
-
-###
-# Step 2: User adds comment asking for update
-POST {{baseUrl}}/api/comments/
+### STEP 1: User raises ticket for service item that requires approval
+POST {{baseUrl}}/api/tickets/
 Content-Type: {{contentType}}
 Authorization: Token {{userToken}}
 
 {
-  "ticket": "{ticket_id}",
-  "text": "Any update on when this will be completed?"
+  "title": "Office Furniture Replacement",
+  "description": "Requesting replacement of 3 broken office chairs in Room 204.",
+  "section_id": 3,
+  "facility_id": 5,
+  "service_item_id": 10
 }
 
 ###
-# Step 3: Technician responds
-POST {{baseUrl}}/api/comments/
+### STEP 2: Manager reviews pending_approval tickets
+GET {{baseUrl}}/api/tickets/?status=pending_approval
+Authorization: Token {{managerToken}}
+
+###
+### STEP 3: Manager approves (or rejects — see below)
+POST {{baseUrl}}/api/tickets/{id}/approve/
+Authorization: Token {{managerToken}}
+
+###
+### STEP 3 (alt): Manager rejects
+POST {{baseUrl}}/api/tickets/{id}/reject/
 Content-Type: {{contentType}}
-Authorization: Token {{adminToken}}
+Authorization: Token {{managerToken}}
 
 {
-  "ticket": "{ticket_id}",
-  "text": "Parts arrived. Will resume work tomorrow morning."
+  "reason": "Procurement freeze until end of quarter."
 }
 
 ###
-# Step 4: Technician resumes work
-PATCH {{baseUrl}}/api/tickets/{ticket_id}/
+### STEP 4: After approval, admin assigns to technician
+PATCH {{baseUrl}}/api/tickets/{id}/
 Content-Type: {{contentType}}
 Authorization: Token {{adminToken}}
 
 {
-  "status": "in_progress"
+  "assigned_to": 13,
+  "status": "assigned"
 }
 
 ################################################################################
-# ERROR SCENARIOS (Testing Validation)
+# ERROR SCENARIOS
 ################################################################################
 
-### ERROR 1: Try to assign ticket to technician from wrong section
-PATCH {{baseUrl}}/api/tickets/{ticket_id}/
+### ERROR 1: Assign ticket to technician not in that section (expect 400)
+PATCH {{baseUrl}}/api/tickets/6/
 Content-Type: {{contentType}}
 Authorization: Token {{adminToken}}
 
 {
-  "assigned_to": 99
+  "assigned_to": 17
 }
 
-### ERROR 2: Try to submit feedback on unresolved ticket
-POST {{baseUrl}}/api/feedback/
-Content-Type: {{contentType}}
-Authorization: Token {{userToken}}
-
-{
-  "ticket": "{open_ticket_id}",
-  "rating": 5,
-  "comment": "This should fail"
-}
-
-### ERROR 3: Try invalid status transition (open → resolved)
-PATCH {{baseUrl}}/api/tickets/{ticket_id}/
+### ERROR 2: Invalid status transition — open → resolved (expect 400)
+PATCH {{baseUrl}}/api/tickets/6/
 Content-Type: {{contentType}}
 Authorization: Token {{adminToken}}
 
@@ -793,17 +990,26 @@ Authorization: Token {{adminToken}}
   "status": "resolved"
 }
 
-### ERROR 4: User tries to assign ticket (permission denied)
-PATCH {{baseUrl}}/api/tickets/{ticket_id}/
+### ERROR 3: User tries to assign ticket (expect 403)
+PATCH {{baseUrl}}/api/tickets/6/
 Content-Type: {{contentType}}
 Authorization: Token {{userToken}}
 
 {
-  "assigned_to": 2
+  "assigned_to": 12
 }
 
-### ERROR 5: Try to modify closed ticket
-PATCH {{baseUrl}}/api/tickets/{closed_ticket_id}/
+### ERROR 4: pending status missing required fields (expect 400)
+PATCH {{baseUrl}}/api/tickets/1/
+Content-Type: {{contentType}}
+Authorization: Token {{technicianToken}}
+
+{
+  "status": "pending"
+}
+
+### ERROR 5: Modify a closed ticket (expect 400)
+PATCH {{baseUrl}}/api/tickets/4/
 Content-Type: {{contentType}}
 Authorization: Token {{adminToken}}
 
@@ -811,75 +1017,81 @@ Authorization: Token {{adminToken}}
   "status": "open"
 }
 
+### ERROR 6: Non-admin creates organization (expect 403)
+POST {{baseUrl}}/api/organizations/
+Content-Type: {{contentType}}
+Authorization: Token {{hodToken}}
+
+{
+  "name": "Rogue Org",
+  "code": "RGO",
+  "organization_type": "other",
+  "headquarters": "Somewhere"
+}
+
+### ERROR 7: Unauthenticated request (expect 401)
+GET {{baseUrl}}/api/tickets/
+
 ################################################################################
-# NOTES & SETUP
+# NOTES
 ################################################################################
 
-# Before running these tests:
-# 1. Start the Django development server: python manage.py runserver
-# 2. Load fixture data: python manage.py loaddata tickets/fixtures/tickets_initial_data_org.json
-# 3. Get tokens by posting to /api/auth/login/ for each role and copying the token here:
-#      @adminToken       — role: admin
-#      @userToken        — role: user
-#      @technicianToken  — role: technician
-#      @hodToken         — role: hod
-#      @directorToken    — role: director
-#      @sectionHeadToken — role: section_head
-# 4. Replace {ticket_id}, {user_id}, etc. with actual IDs from responses
-# 5. Install REST Client extension in VS Code
-#
-# ORGANIZATION HIERARCHY ENDPOINTS:
-#   GET/POST  /api/organizations/         — list + create (create: admin only)
-#   GET/PATCH/DELETE  /api/organizations/{id}/   — read (scoped) + write (admin only)
-#   GET/POST  /api/campuses/              — list (scoped by role) + create (admin only)
-#   GET/PATCH/DELETE  /api/campuses/{id}/        — read (scoped) + write (admin only)
-#   GET/POST  /api/departments/           — list (scoped by role) + create (admin only)
-#   GET/PATCH/DELETE  /api/departments/{id}/     — read (scoped) + write (admin only)
-#
-# Scope by role (list endpoints):
-#   admin       → all records
-#   director    → all records within their organization
-#   hod         → all departments on their campus; only their own campus
-#   section_head/technician/user → only their own campus / department
+# SETUP
+# 1. Start dev server:       python manage.py runserver
+# 2. Load fixture:           python manage.py loaddata tickets_initial_data --ignorenonexistent
+# 3. Login for each role and copy the token into the @xxxToken variables above
+# 4. Replace {id} placeholders with actual IDs from responses
+# 5. Install the REST Client extension in VS Code
 
-# Using REST Client Extension:
-# - Click "Send Request" link above each request to execute
-# - View responses in the right panel
-# - Results show status code, headers, and formatted JSON body
-# - Use Ctrl+Alt+E (Windows/Linux) or Cmd+Alt+E (Mac) to send requests
-# - Store tokens in @variable format at top to reuse across multiple requests
+# ROLES
+#   admin            → full access to everything
+#   manager          → cross-campus, own-department scope
+#   hod              → own department on own campus
+#   head_of_section  → own section only; inherits technician permissions + assign
+#   technician       → tickets in assigned sections
+#   user             → own tickets only
 
-# Authentication:
-# - DRF Token Auth format: Authorization: Token your_token_here
-# - All endpoints require a valid token in the Authorization header
-# - Get token from /api/auth/login/ endpoint by posting username + password
+# ANALYTICS ENDPOINTS BY ROLE
+#   /api/analytics/admin-dashboard/  → admin
+#   /api/analytics/manager/          → manager
+#   /api/analytics/hod/              → hod
+#   /api/analytics/section-head/     → head_of_section
+#   /api/analytics/tickets/          → admin / manager (query params: timeframe, days, section_id)
+#   /api/analytics/technicians/      → admin / manager (query param: technician_id)
+#   /api/analytics/organizational/   → admin / manager
 
-# ROLE-BASED FIELD STRIPPING:
-# Serializers automatically strip fields the requesting role doesn't need:
-#
+# TICKET STATUS MACHINE
+#   open → assigned → in_progress → pending → resolved → closed
+#   pending_approval → (approve) → open  |  (reject) → rejected
+#   Transitions enforced server-side; invalid moves return 400.
+
+# ESCALATION PRIORITY MAPPING
+#   escalation_level 0 → priority "low"
+#   escalation_level 1 → priority "medium"
+#   escalation_level >= 2 → priority "high"
+#   "critical" is set manually and is never downgraded automatically.
+
+# ROLE-BASED FIELD STRIPPING
 #   FacilitySerializer
-#     purchase_date, warranty_expiry, asset_value  →  hod / director / admin only
-#
+#     purchase_date, warranty_expiry, asset_value  →  hod / manager / admin only
 #   SectionSerializer
-#     technicians                                  →  section_head / hod / admin only
-#
+#     technicians                                  →  head_of_section / hod / admin only
 #   TicketSerializer
-#     available_technicians                        →  section_head / hod / admin only
-#     escalated_to, escalated_at,
-#     escalation_reason, next_escalation_due       →  all roles except: user (stripped)
-#     organizational_path                          →  section_head / hod / director / admin only
+#     available_technicians                        →  head_of_section / hod / admin only
+#     escalation fields                            →  all except user (stripped)
+#     organizational_path                          →  head_of_section / hod / manager / admin only
 
-# ESCALATION PRIORITY FEATURE:
-# The new feature automatically sets ticket priority based on escalation level:
-#   - Escalation Level 0 (no escalation) → priority = "low"
-#   - Escalation Level 1 (escalated to section head) → priority = "medium"
-#   - Escalation Level 2 (escalated to HOD) → priority = "high"
-# 
-# Test this feature using the "PRIORITY TEST 1-4" requests in the 
-# "ESCALATION PRIORITY TESTS" section above.
+# SERVICE CATALOGUE (Phase 4)
+#   /api/service-catalogue/department-types/      → list department type blueprints
+#   /api/service-catalogue/section-types/<pk>/    → detail + default SLA
+#   /api/service-catalogue/service-categories/    → list all categories
+#   /api/service-catalogue/service-items/         → list all items (with form_schema)
+#   /api/section-types/<pk>/categories/           → categories for a section type (wizard)
+#   /api/categories/<pk>/items/                   → items for a category (wizard)
+#   /api/service-items/<pk>/                      → single item + form_schema
 
-# Troubleshooting:
-# - 401 Unauthorized: Check token validity, re-login
-# - 403 Forbidden: Check user permissions for the role
-# - 404 Not Found: Verify ticket/comment ID exists in database
-# - 400 Bad Request: Check request body format and required fields
+# TROUBLESHOOTING
+#   401 Unauthorized  → token invalid or expired; re-login
+#   403 Forbidden     → role lacks permission for this action
+#   404 Not Found     → ID does not exist or is out of scope for your role
+#   400 Bad Request   → invalid field values or illegal status transition

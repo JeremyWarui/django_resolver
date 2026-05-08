@@ -19,6 +19,7 @@ from tickets.models import (
     Section,
     Facility,
 )
+from tickets.email_service import EmailService
 from .exceptions import (
     TicketServiceException,
     InsufficientScopeException,
@@ -52,7 +53,7 @@ class TicketService:
         data: Dict,
         created_by: CustomUser,
         section: Section,
-        facility: Facility,
+        facility: Optional[Facility] = None,
         enable_auto_escalation: bool = True,
     ) -> Ticket:
         """
@@ -78,8 +79,8 @@ class TicketService:
                 f"User {created_by.username} lacks access to section {section.name}"
             )
 
-        # Check user has access to facility
-        if facility.campus_id:
+        # Check user has access to facility when one is provided
+        if facility and facility.campus_id:
             if not TicketService._user_can_access_facility(created_by, facility):
                 raise InsufficientScopeException(
                     f"User {created_by.username} lacks access to facility {facility.name}"
@@ -108,6 +109,9 @@ class TicketService:
             )
 
             TicketService._notify_ticket_creation(ticket)
+
+            if ticket.status == "pending_approval":
+                EmailService.send_ticket_pending_approval(ticket)
 
             return ticket
 
@@ -188,7 +192,9 @@ class TicketService:
         with transaction.atomic():
             # Use model's atomic helper
             ticket.change_assignment(technician, performed_by=assigned_by)
-            return ticket
+
+        EmailService.send_ticket_assigned(ticket, technician)
+        return ticket
 
     # ========================================================================
     # TICKET ESCALATION
@@ -325,6 +331,91 @@ class TicketService:
                     performed_by=updated_by,
                 )
 
+        if new_status == "resolved":
+            EmailService.send_ticket_resolved(ticket)
+
+        return ticket
+
+    @staticmethod
+    def approve_ticket(
+        ticket: Ticket,
+        approved_by: CustomUser,
+        notes: Optional[str] = None,
+    ) -> Ticket:
+        """
+        Approve a ticket that is in pending_approval status.
+
+        Only hod, manager, or admin may approve. Manager bypass is intentional:
+        change_status() blocks managers for regular workflow transitions, but
+        approval is a distinct privileged action, so we update the DB directly.
+
+        Raises:
+            DRFPermissionDenied: approver role is not authorised
+            DRFValidationError: ticket is not in pending_approval status
+        """
+        if approved_by.role not in ["hod", "manager", "admin"]:
+            raise DRFPermissionDenied(
+                "Only HOD, manager, or admin can approve tickets"
+            )
+        if ticket.status != "pending_approval":
+            raise DRFValidationError(
+                f"Only pending_approval tickets can be approved. "
+                f"Current status: '{ticket.status}'"
+            )
+
+        action = f"approved: {notes}" if notes else "approved"
+
+        with transaction.atomic():
+            Ticket.objects.filter(pk=ticket.pk).update(
+                status="approved", updated_at=timezone.now()
+            )
+            TicketLog.objects.create(
+                ticket=ticket, action=action, performed_by=approved_by
+            )
+
+        ticket.refresh_from_db()
+        return ticket
+
+    @staticmethod
+    def reject_ticket(
+        ticket: Ticket,
+        rejected_by: CustomUser,
+        reason: str,
+    ) -> Ticket:
+        """
+        Reject a ticket that is in pending_approval status.
+
+        Only hod, manager, or admin may reject. Reason is required and stored
+        in TicketLog so the requester can see why their request was declined.
+
+        Raises:
+            DRFPermissionDenied: rejector role is not authorised
+            DRFValidationError: ticket is not in pending_approval, or reason missing
+        """
+        if rejected_by.role not in ["hod", "manager", "admin"]:
+            raise DRFPermissionDenied(
+                "Only HOD, manager, or admin can reject tickets"
+            )
+        if ticket.status != "pending_approval":
+            raise DRFValidationError(
+                f"Only pending_approval tickets can be rejected. "
+                f"Current status: '{ticket.status}'"
+            )
+        if not reason or not reason.strip():
+            raise DRFValidationError("Rejection reason is required")
+
+        with transaction.atomic():
+            Ticket.objects.filter(pk=ticket.pk).update(
+                status="rejected", updated_at=timezone.now()
+            )
+            TicketLog.objects.create(
+                ticket=ticket,
+                action=f"rejected: {reason.strip()}",
+                performed_by=rejected_by,
+            )
+
+        ticket.refresh_from_db()
+        EmailService.send_ticket_rejected(ticket, reason.strip())
         return ticket
 
     @staticmethod
@@ -562,8 +653,16 @@ class TicketService:
             # Admin can see all tickets
             queryset = Ticket.objects.all()
         elif user.role == "manager":
-            # Manager has analytics-only access — no individual ticket access
-            queryset = Ticket.objects.none()
+            # Manager sees their department's tickets across all campuses in the org
+            if user.primary_department:
+                dept_code = user.primary_department.code
+                org = user.primary_department.campus.organization
+                queryset = Ticket.objects.filter(
+                    section__department__code=dept_code,
+                    section__department__campus__organization=org,
+                )
+            else:
+                queryset = Ticket.objects.none()
         elif user.role == "hod":
             # HOD can see all tickets in their department
             if user.primary_department:

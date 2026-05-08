@@ -196,22 +196,32 @@ class RoleBasedDashboardView(APIView):
         return Response(dashboard)
 
 
+class OrganizationalAnalyticsView(APIView):
+    """Organisation-wide analytics for admin — campus breakdown, top items, trend."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role != "admin":
+            return Response(
+                {"error": "Admin access required"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        days = int(request.query_params.get("days", 30))
+        data = AdminAnalytics.get_organisation_analytics(days=days)
+        return Response(data)
+
+
 class ManagerDashboardView(RoleBasedDashboardView):
     required_roles = ["manager", "admin"]
-    analytics_method = ManagerAnalytics.manager_dashboard
-
-
-# director role was renamed to manager; this endpoint now aliases the manager dashboard
-class DirectorDashboardView(RoleBasedDashboardView):
-    required_roles = ["manager", "admin"]
-    analytics_method = ManagerAnalytics.manager_dashboard
+    analytics_method = staticmethod(ManagerAnalytics.manager_dashboard)
 
 
 class HODDashboardView(RoleBasedDashboardView):
     required_roles = ["hod", "admin"]
-    analytics_method = HODAnalytics.hod_dashboard
+    analytics_method = staticmethod(HODAnalytics.hod_dashboard)
 
 
 class SectionHeadDashboardView(RoleBasedDashboardView):
     required_roles = ["head_of_section", "admin"]
-    analytics_method = SectionHeadAnalytics.section_head_dashboard
+    analytics_method = staticmethod(SectionHeadAnalytics.section_head_dashboard)

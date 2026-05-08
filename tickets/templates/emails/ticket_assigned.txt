@@ -1,0 +1,18 @@
+Hello {{ technician.first_name|default:technician.username }},
+
+A ticket has been assigned to you.
+
+Ticket:   {{ ticket.ticket_no }}
+Title:    {{ ticket.title }}
+Section:  {{ ticket.section.name }}
+Raised by: {{ ticket.raised_by.get_full_name|default:ticket.raised_by.username }}
+Priority: {{ ticket.priority|default:"normal"|title }}
+
+{% if ticket.description %}Details:
+{{ ticket.description }}
+
+{% endif %}You can view and update the ticket here:
+{{ ticket_url }}
+
+---
+This is an automated message from {{ company_name }}. Please do not reply.

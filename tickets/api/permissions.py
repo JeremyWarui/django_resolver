@@ -10,9 +10,9 @@ class IsWithinOrganizationalScope(permissions.BasePermission):
 
     Scope access:
     - user/technician: section-level
-    - section_head: department-level
+    - head_of_section: department-level
     - hod: campus-level
-    - director: organization-level
+    - manager: organization-level
     - admin: system-level (all access)
     """
 
@@ -63,7 +63,7 @@ class IsWithinOrganizationalScope(permissions.BasePermission):
             return False
 
         if user.role == "manager":
-            # Director can see all tickets in their organization
+            # Manager can see all tickets in their organization
             return (
                 ticket.section.department.campus.organization
                 == user.primary_campus.organization
@@ -175,7 +175,7 @@ class CanEscalateTickets(permissions.BasePermission):
         return (
             request.user.is_authenticated
             and
-            # Directors excluded
+            # Managers excluded
             request.user.role in ["head_of_section", "hod", "admin"]
         )
 
@@ -184,20 +184,26 @@ class CanViewAndEditTickets(permissions.BasePermission):
     """
     Permission for viewing and editing tickets with organizational scope.
 
-    Manager role has analytics-only access — no ticket list or detail.
-
     Distinguishes between VIEW and EDIT permissions:
     - VIEW (GET): Permissive - users can see tickets in their scope
     - EDIT (PATCH/PUT): Restrictive - users can only edit owned/assigned tickets
     """
 
     def has_permission(self, request, view):
-        if not request.user.is_authenticated:
+        return request.user.is_authenticated
+
+    def _manager_in_scope(self, user, obj):
+        if not user.primary_department:
             return False
-        # Managers have analytics-only access — block ticket endpoints
-        if request.user.role == "manager":
+        dept_code = user.primary_department.code
+        ticket_dept = obj.section.department if obj.section else None
+        if not ticket_dept:
             return False
-        return True
+        org = user.primary_department.campus.organization
+        return (
+            ticket_dept.code == dept_code
+            and ticket_dept.campus.organization == org
+        )
 
     def has_object_permission(self, request, view, obj):
         user = request.user
@@ -205,11 +211,9 @@ class CanViewAndEditTickets(permissions.BasePermission):
         if user.role == "admin":
             return True
 
-        # Managers blocked at has_permission; guard here too
-        if user.role == "manager":
-            return False
-
         if request.method in permissions.SAFE_METHODS:
+            if user.role == "manager":
+                return self._manager_in_scope(user, obj)
             if user.role == "technician":
                 return (
                     obj.section in user.sections.all()
@@ -230,6 +234,8 @@ class CanViewAndEditTickets(permissions.BasePermission):
                 return obj.section.department.campus == user.primary_campus
 
         if request.method in ["PATCH", "PUT", "DELETE"]:
+            if user.role == "manager":
+                return self._manager_in_scope(user, obj)
             if user.role == "technician":
                 return obj.assigned_to == user
             elif user.role == "user":

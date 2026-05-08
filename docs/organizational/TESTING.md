@@ -38,9 +38,9 @@ All endpoints require authentication. Test users from fixture:
 username: admin_user
 password: adminuser123
 
-# Director (organization-wide access)
-username: director_jane
-password: director123
+# Manager (own department, cross-campus analytics)
+username: manager_ict
+password: adminuser123
 
 # HOD (campus-level access)
 username: hod_alex
@@ -118,14 +118,14 @@ curl -H "Authorization: Token YOUR_TOKEN" \
 # Can view campus analytics dashboard
 ```
 
-#### 5. Director Role - Organization-Wide
+#### 5. Manager Role - Cross-Campus Department Analytics
 ```bash
-# Director doesn't see individual tickets in list
-# Instead, gets analytics view
+# Manager doesn't see individual tickets in list
+# Instead, gets analytics view for own department across all campuses
 curl -H "Authorization: Token YOUR_TOKEN" \
-  http://localhost:8000/api/analytics/director-dashboard/
+  http://localhost:8000/api/analytics/manager/
 
-# Expected: Organization-wide metrics (all campuses)
+# Expected: Department-level metrics across all org campuses
 ```
 
 #### 6. Admin Role - Complete Access
@@ -197,7 +197,7 @@ curl -H "Authorization: Token TECH_TOKEN" \
 ```bash
 # 1. Section Head views department dashboard
 curl -H "Authorization: Token SECTION_HEAD_TOKEN" \
-  http://localhost:8000/api/analytics/section-head-dashboard/
+  http://localhost:8000/api/analytics/section-head/
 
 # Expected: Department-level metrics
 # - Average resolution time
@@ -207,21 +207,21 @@ curl -H "Authorization: Token SECTION_HEAD_TOKEN" \
 
 # 2. HOD views campus dashboard
 curl -H "Authorization: Token HOD_TOKEN" \
-  http://localhost:8000/api/analytics/hod-dashboard/
+  http://localhost:8000/api/analytics/hod/
 
 # Expected: Campus-level metrics
 # - Department performance
 # - Section efficiency
 # - Cross-department escalations
 
-# 3. Director views organization dashboard
-curl -H "Authorization: Token DIRECTOR_TOKEN" \
-  http://localhost:8000/api/analytics/director-dashboard/
+# 3. Manager views cross-campus department dashboard
+curl -H "Authorization: Token MANAGER_TOKEN" \
+  http://localhost:8000/api/analytics/manager/
 
-# Expected: Organization-wide metrics
-# - All campuses
-# - Strategic insights
-# - Performance trends
+# Expected: Department metrics across all campuses
+# - Per-campus breakdown
+# - Top technicians
+# - SLA compliance
 ```
 
 ### Workflow 4: Get Assignable Users

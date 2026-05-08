@@ -7,13 +7,16 @@ HOD must have both primary_campus and primary_department set.
 from datetime import timedelta
 from django.utils import timezone
 from django.core.cache import cache
-from django.db.models import Count
+from django.db.models import Q
 
 from tickets.models import Ticket, CustomUser
 from .base_analytics import (
     calculate_avg_resolution_time,
     calculate_sla_compliance,
     get_escalation_trends,
+    build_technician_performance,
+    count_overdue,
+    get_status_distribution,
 )
 
 ANALYTICS_CACHE_TTL = 300
@@ -38,10 +41,7 @@ class HODAnalytics:
         all_tickets = Ticket.objects.filter(section__department=department)
         recent_tickets = all_tickets.filter(created_at__gte=time_threshold)
 
-        overdue_count = all_tickets.filter(
-            created_at__lt=timezone.now() - timedelta(days=7),
-            status__in=["open", "assigned", "in_progress", "pending", "escalated"],
-        ).count()
+        overdue_count = count_overdue(all_tickets)
 
         section_performance = []
         for section in department.sections.filter(is_active=True).select_related(
@@ -74,34 +74,9 @@ class HODAnalytics:
             role="technician", sections__department=department
         ).distinct()
 
-        tech_performance = []
-        for tech in technicians:
-            tech_tickets = all_tickets.filter(assigned_to=tech)
-            tech_performance.append(
-                {
-                    "technician": {
-                        "id": tech.id,
-                        "name": f"{tech.first_name} {tech.last_name}",
-                        "username": tech.username,
-                        "sections": list(
-                            tech.sections.filter(department=department).values_list(
-                                "name", flat=True
-                            )
-                        ),
-                    },
-                    "total_assigned": tech_tickets.count(),
-                    "resolved": tech_tickets.filter(
-                        status__in=["resolved", "closed"]
-                    ).count(),
-                    "open": tech_tickets.filter(
-                        status__in=["open", "assigned", "in_progress"]
-                    ).count(),
-                    "avg_resolution_hours": calculate_avg_resolution_time(tech_tickets),
-                    "escalation_count": tech_tickets.filter(
-                        escalation_level__gt=0
-                    ).count(),
-                }
-            )
+        tech_performance = build_technician_performance(
+            all_tickets, technicians, section_filter=Q(department=department)
+        )
 
         result = {
             "department": {
@@ -124,11 +99,7 @@ class HODAnalytics:
             "technicians": sorted(
                 tech_performance, key=lambda x: x["total_assigned"], reverse=True
             ),
-            "status_distribution": list(
-                recent_tickets.values("status")
-                .annotate(count=Count("id"))
-                .order_by("-count")
-            ),
+            "status_distribution": get_status_distribution(recent_tickets),
             "escalation_trends": get_escalation_trends(all_tickets, days=7),
             "period_days": days,
         }

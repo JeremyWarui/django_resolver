@@ -28,6 +28,8 @@ from tickets.api.views.index import (
     TicketDetailView,
     TicketEscalationView,
     TicketCloseView,
+    ApproveTicketView,
+    RejectTicketView,
     CommentListCreateView,
     FeedbackListCreateView,
     UserListCreateView,
@@ -36,12 +38,13 @@ from tickets.api.views.index import (
     BulkTicketStatusUpdateView,
     OrganizationalTicketListView,
     AssignableUsersView,
-    OrganizationalAnalyticsView,
-    EscalateTicketView,
     DepartmentTypeListView,
     ServiceCategoryListView,
     ServiceItemListView,
     SectionTypeDetailView,
+    ServiceCategoriesBySectionTypeView,
+    ServiceItemsByCategoryView,
+    ServiceItemDetailView,
     SectionTechniciansView,
     AddTechnicianToSectionView,
     RemoveTechnicianFromSectionView,
@@ -52,8 +55,8 @@ from tickets.api.analytics.index import (
     TicketAnalyticsView,
     TechnicianAnalyticsView,
     AdminDashboardAnalyticsView,
+    OrganizationalAnalyticsView,
     ManagerDashboardView,
-    DirectorDashboardView,
     HODDashboardView,
     SectionHeadDashboardView,
 )
@@ -151,6 +154,17 @@ urlpatterns = [
         TicketCloseView.as_view(),
         name="ticket-close",
     ),
+    # APPROVAL WORKFLOW
+    path(
+        "tickets/<int:ticket_id>/approve/",
+        ApproveTicketView.as_view(),
+        name="ticket-approve",
+    ),
+    path(
+        "tickets/<int:ticket_id>/reject/",
+        RejectTicketView.as_view(),
+        name="ticket-reject",
+    ),
     # BULK OPERATIONS
     path(
         "tickets/bulk-status-update/",
@@ -162,11 +176,6 @@ urlpatterns = [
         "tickets/organizational/list/",
         OrganizationalTicketListView.as_view(),
         name="organizational-ticket-list",
-    ),
-    path(
-        "tickets/<int:ticket_id>/escalate-manual/",
-        EscalateTicketView.as_view(),
-        name="escalate-ticket-manual",
     ),
     path(
         "assignable-users/",
@@ -246,11 +255,6 @@ urlpatterns = [
         name="analytics-manager",
     ),
     path(
-        "analytics/director/",
-        DirectorDashboardView.as_view(),
-        name="analytics-director",
-    ),
-    path(
         "analytics/hod/",
         HODDashboardView.as_view(),
         name="analytics-hod",
@@ -307,5 +311,21 @@ urlpatterns = [
         "service-catalogue/service-items/",
         ServiceItemListView.as_view(),
         name="service-items-list",
+    ),
+    # Nested catalogue routes consumed by the frontend wizard
+    path(
+        "section-types/<int:pk>/categories/",
+        ServiceCategoriesBySectionTypeView.as_view(),
+        name="section-type-categories",
+    ),
+    path(
+        "categories/<int:pk>/items/",
+        ServiceItemsByCategoryView.as_view(),
+        name="category-items",
+    ),
+    path(
+        "service-items/<int:pk>/",
+        ServiceItemDetailView.as_view(),
+        name="service-item-detail",
     ),
 ]

@@ -1,6 +1,13 @@
 from rest_framework import serializers
 from .models import *
 
+ESCALATION_STATUS_MAP = {
+    0: {"code": "none", "label": "Not escalated"},
+    1: {"code": "head_of_section", "label": "Escalated to Section Head"},
+    2: {"code": "hod", "label": "Escalated to HOD (Maximum Level)"},
+}
+_ESCALATION_UNKNOWN = {"code": "unknown", "label": "Unknown"}
+
 
 class UsernameField(serializers.RelatedField):
     """Custom field that returns just the username for user references"""
@@ -58,7 +65,8 @@ class CampusSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Campus
-        fields = ["id", "name", "code", "location", "organization", "organization_id"]
+        fields = ["id", "name", "code", "location",
+                  "organization", "organization_id"]
 
 
 class DepartmentSerializer(serializers.ModelSerializer):
@@ -139,6 +147,7 @@ class SectionSerializer(serializers.ModelSerializer):
     )
     section_head = serializers.SerializerMethodField()
     technicians = serializers.StringRelatedField(many=True, read_only=True)
+    effective_sla_hours = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Section
@@ -150,6 +159,9 @@ class SectionSerializer(serializers.ModelSerializer):
             "campus",
             "department",
             "department_id",
+            "section_type",
+            "sla_hours",
+            "effective_sla_hours",
             "head_of_section",
             "technicians",
             "is_active",
@@ -176,6 +188,9 @@ class SectionSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     username = serializers.CharField(read_only=True)
+    campus_name = serializers.CharField(
+        source="primary_campus.name", read_only=True, allow_null=True
+    )
     sections = serializers.PrimaryKeyRelatedField(
         many=True, queryset=Section.objects.all(), required=False
     )
@@ -202,6 +217,7 @@ class UserSerializer(serializers.ModelSerializer):
             "email",
             "password",
             "role",
+            "campus_name",
             "sections",
             "primary_campus_id",
             "primary_campus_display",
@@ -269,7 +285,8 @@ class FeedbackSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Feedback
-        fields = ["id", "ticket", "rated_by", "rating", "comment", "created_at"]
+        fields = ["id", "ticket", "rated_by",
+                  "rating", "comment", "created_at"]
 
 
 class TicketListSerializer(serializers.ModelSerializer):
@@ -321,14 +338,7 @@ class TicketListSerializer(serializers.ModelSerializer):
         return {"id": obj.assigned_to.id, "name": name or obj.assigned_to.username}
 
     def get_escalation_status(self, obj):
-        mapping = {
-            0: {"code": "none", "label": "Not escalated"},
-            1: {"code": "head_of_section", "label": "Escalated to Section Head"},
-            2: {"code": "hod", "label": "Escalated to HOD (Maximum Level)"},
-        }
-        return mapping.get(
-            obj.escalation_level, {"code": "unknown", "label": "Unknown"}
-        )
+        return ESCALATION_STATUS_MAP.get(obj.escalation_level, _ESCALATION_UNKNOWN)
 
     def get_service_item(self, obj):
         if not obj.service_item:
@@ -362,11 +372,41 @@ class TicketSerializer(serializers.ModelSerializer):
         queryset=Facility.objects.all(),
         source="facility",
         write_only=True,
+        allow_null=True,
+        required=False,
         label="Facility ID",
+    )
+
+    floor_id = serializers.PrimaryKeyRelatedField(
+        queryset=FacilityFloor.objects.all(),
+        source="floor",
+        write_only=True,
+        allow_null=True,
+        required=False,
+        label="Floor ID",
+    )
+
+    room_id = serializers.PrimaryKeyRelatedField(
+        queryset=FacilityRoom.objects.all(),
+        source="room",
+        write_only=True,
+        allow_null=True,
+        required=False,
+        label="Room ID",
+    )
+
+    location_detail = serializers.CharField(
+        source="location_details",
+        allow_blank=True,
+        allow_null=True,
+        required=False,
+        label="Location Detail",
     )
 
     section = NestedSectionSerializer(read_only=True)
     facility = NestedFacilitySerializer(read_only=True)
+    floor = serializers.SerializerMethodField(read_only=True)
+    room = serializers.SerializerMethodField(read_only=True)
     raised_by = UsernameField(read_only=True)
     assigned_to = serializers.SerializerMethodField(read_only=True)
     escalated_to = serializers.SerializerMethodField(read_only=True)
@@ -403,10 +443,15 @@ class TicketSerializer(serializers.ModelSerializer):
             "raised_by",
             "assigned_to_id",
             "assigned_to",
+            "floor_id",
+            "floor",
+            "room_id",
+            "room",
             "available_technicians",
             "created_at",
             "updated_at",
             "resolved_at",
+            "location_detail",
             "pending_reason",
             "pending_comment",
             # Escalation fields
@@ -430,7 +475,8 @@ class TicketSerializer(serializers.ModelSerializer):
         ]
 
     def get_assigned_to(self, obj):
-        u = obj.assigned_to if not isinstance(obj, dict) else obj.get("assigned_to")
+        u = obj.assigned_to if not isinstance(
+            obj, dict) else obj.get("assigned_to")
         if not u:
             return None
         return {
@@ -440,8 +486,31 @@ class TicketSerializer(serializers.ModelSerializer):
             "role": u.role,
         }
 
+    def get_floor(self, obj):
+        floor = obj.floor if not isinstance(obj, dict) else obj.get("floor")
+        if not floor:
+            return None
+        return {
+            "id": floor.id,
+            "name": floor.name,
+            "order": floor.order,
+            "facility": floor.facility_id,
+        }
+
+    def get_room(self, obj):
+        room = obj.room if not isinstance(obj, dict) else obj.get("room")
+        if not room:
+            return None
+        return {
+            "id": room.id,
+            "name": room.name,
+            "code": room.code,
+            "floor": room.floor_id,
+        }
+
     def get_escalated_to(self, obj):
-        u = obj.escalated_to if not isinstance(obj, dict) else obj.get("escalated_to")
+        u = obj.escalated_to if not isinstance(
+            obj, dict) else obj.get("escalated_to")
         if not u:
             return None
         return {
@@ -484,24 +553,18 @@ class TicketSerializer(serializers.ModelSerializer):
         )
 
     def get_service_item(self, obj):
-        si = obj.get("service_item") if isinstance(obj, dict) else getattr(obj, "service_item", None)
+        si = obj.get("service_item") if isinstance(
+            obj, dict) else getattr(obj, "service_item", None)
         if not si:
             return None
         return {"id": si.id, "name": si.name, "requires_approval": si.requires_approval}
 
     def get_escalation_status(self, obj):
-        """Return escalation status as {code, label} object"""
-        escalation_level = (
-            obj.get("escalation_level", 0)
-            if isinstance(obj, dict)
+        level = (
+            obj.get("escalation_level", 0) if isinstance(obj, dict)
             else getattr(obj, "escalation_level", 0)
         )
-        mapping = {
-            0: {"code": "none", "label": "Not escalated"},
-            1: {"code": "head_of_section", "label": "Escalated to Section Head"},
-            2: {"code": "hod", "label": "Escalated to HOD (Maximum Level)"},
-        }
-        return mapping.get(escalation_level, {"code": "unknown", "label": "Unknown"})
+        return ESCALATION_STATUS_MAP.get(level, _ESCALATION_UNKNOWN)
 
     def get_organizational_path(self, obj):
         """Return full organizational hierarchy as nested {id, code, name} objects."""
@@ -518,7 +581,8 @@ class TicketSerializer(serializers.ModelSerializer):
             org = campus.organization if campus else None
             return {
                 "organization": (
-                    {"id": org.id, "code": org.code, "name": org.name} if org else None
+                    {"id": org.id, "code": org.code,
+                        "name": org.name} if org else None
                 ),
                 "campus": (
                     {"id": campus.id, "code": campus.code, "name": campus.name}
@@ -591,6 +655,9 @@ class ServiceItemSerializer(serializers.ModelSerializer):
             "form_schema",
             "is_active",
             "section_type_code",
+            "default_priority",
+            "order",
+            "request_count",
         ]
 
     def get_section_type_code(self, obj):
@@ -610,6 +677,8 @@ class ServiceCategorySerializer(serializers.ModelSerializer):
             "description",
             "icon",
             "color",
+            "order",
+            "is_active",
             "service_items",
             "section_type_code",
         ]
@@ -644,4 +713,29 @@ class DepartmentTypeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DepartmentType
-        fields = ["id", "name", "code", "description", "section_types"]
+        fields = ["id", "name", "code", "description",
+                  "is_active", "section_types"]
+
+
+# PHASE 1: FACILITY FLOOR AND ROOM SERIALIZERS
+
+class FacilityFloorSerializer(serializers.ModelSerializer):
+    facility_name = serializers.CharField(
+        source='facility.name', read_only=True)
+    rooms_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = FacilityFloor
+        fields = ['id', 'facility', 'facility_name',
+                  'name', 'order', 'rooms_count']
+
+    def get_rooms_count(self, obj):
+        return obj.rooms.count()
+
+
+class FacilityRoomSerializer(serializers.ModelSerializer):
+    floor_name = serializers.CharField(source='floor.name', read_only=True)
+
+    class Meta:
+        model = FacilityRoom
+        fields = ['id', 'floor', 'floor_name', 'name', 'code']

@@ -25,8 +25,9 @@ from .views import (
     TicketDetailView,
     TicketEscalationView,
     TicketCloseView,
+    ApproveTicketView,
+    RejectTicketView,
     OrganizationalTicketListView,
-    EscalateTicketView,
     # Comments
     CommentListCreateView,
     # Feedback
@@ -38,15 +39,14 @@ from .views import (
     AssignableUsersView,
     # Bulk Operations
     BulkTicketStatusUpdateView,
-    # Analytics
-    OrganizationalAnalyticsView,
-    AnalyticsTicketsView,
-    AnalyticsTechniciansView,
     # Phase 4: Service Catalogue
     DepartmentTypeListView,
     SectionTypeDetailView,
     ServiceCategoryListView,
     ServiceItemListView,
+    ServiceCategoriesBySectionTypeView,
+    ServiceItemsByCategoryView,
+    ServiceItemDetailView,
     # Section Technician Management
     SectionTechniciansView,
     AddTechnicianToSectionView,
@@ -72,8 +72,9 @@ __all__ = [
     "TicketDetailView",
     "TicketEscalationView",
     "TicketCloseView",
+    "ApproveTicketView",
+    "RejectTicketView",
     "OrganizationalTicketListView",
-    "EscalateTicketView",
     # Comments
     "CommentListCreateView",
     # Feedback
@@ -85,15 +86,14 @@ __all__ = [
     "AssignableUsersView",
     # Bulk Operations
     "BulkTicketStatusUpdateView",
-    # Analytics
-    "OrganizationalAnalyticsView",
-    "AnalyticsTicketsView",
-    "AnalyticsTechniciansView",
     # Phase 4: Service Catalogue
     "DepartmentTypeListView",
     "SectionTypeDetailView",
     "ServiceCategoryListView",
     "ServiceItemListView",
+    "ServiceCategoriesBySectionTypeView",
+    "ServiceItemsByCategoryView",
+    "ServiceItemDetailView",
     # Section Technician Management
     "SectionTechniciansView",
     "AddTechnicianToSectionView",

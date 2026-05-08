@@ -153,7 +153,7 @@ Analytics endpoint and data aggregation tests. Pytest functions covering dashboa
 
 **Usage**: Run analytics tests with a specific dashboard:
 ```bash
-pytest tickets/tests/test_analytics.py -k director_dashboard -v
+pytest tickets/tests/test_analytics.py -k manager_dashboard -v
 ```
 
 **Ticket Analytics**
@@ -174,19 +174,19 @@ pytest tickets/tests/test_analytics.py -k director_dashboard -v
 - `test_admin_analytics_system_overview(admin_user_factory)` - System overview
 
 **Role-Based Dashboards**
-- `test_director_dashboard(director_factory)` - Director view
-- `test_director_dashboard_escalation_trends(director_factory)` - Escalations
-- `test_director_dashboard_top_technicians(director_factory)` - Technician ranking
-- `test_director_dashboard_facility_metrics(director_factory)` - Facilities
-- `test_director_dashboard_section_metrics(director_factory)` - Sections
+- `test_manager_dashboard(manager_factory)` - Manager view
+- `test_manager_dashboard_escalation_trends(manager_factory)` - Escalations
+- `test_manager_dashboard_top_technicians(manager_factory)` - Technician ranking
+- `test_manager_dashboard_facility_metrics(manager_factory)` - Facilities
+- `test_manager_dashboard_section_metrics(manager_factory)` - Sections
 - `test_hod_dashboard(hod_factory)` - HOD view
 - `test_hod_dashboard_department_performance(hod_factory)` - Dept performance
-- `test_section_head_dashboard(section_head_factory)` - Section head view
+- `test_section_head_dashboard(head_of_section_factory)` - Section head view
 
 **Edge Cases**
 - `test_analytics_empty_dataset()` - Empty data handling
-- `test_director_dashboard_facilities_sorted(director_factory)` - Sorting
-- `test_director_dashboard_sections_sorted(director_factory)` - Sorting
+- `test_manager_dashboard_facilities_sorted(manager_factory)` - Sorting
+- `test_manager_dashboard_sections_sorted(manager_factory)` - Sorting
 
 #### `test_organizational.py` (27 tests) - Organizational Hierarchy & Access Control
 Comprehensive tests for organizational hierarchy, role-based access, escalation, and dashboards. Pytest functions.
@@ -198,9 +198,9 @@ pytest tickets/tests/test_organizational.py -v
 
 **Organizational Structure**
 - `test_organizational_structure_created(organization, campus, department, section)` - Hierarchy
-- `test_director_access_all_tickets(director_factory)` - Director scope
+- `test_manager_no_ticket_list_access(manager_factory)` - Manager blocked from ticket list
 - `test_hod_campus_scoped_access(hod_factory)` - HOD scope
-- `test_section_head_department_scoped_access(section_head_factory)` - Head scope
+- `test_section_head_department_scoped_access(head_of_section_factory)` - Head scope
 - `test_technician_section_scoped_access(technician_factory)` - Tech scope
 
 **Escalation Workflows**
@@ -214,19 +214,19 @@ pytest tickets/tests/test_organizational.py -v
 **API & Scope Validation**
 - `test_create_ticket_with_proper_scope(section, facility, user_factory)` - Creation
 - `test_create_ticket_exceeds_scope(section, facility, user_factory)` - Scope check
-- `test_assign_ticket_with_proper_validation(ticket, section_head_factory)` - Assignment
+- `test_assign_ticket_with_proper_validation(ticket, head_of_section_factory)` - Assignment
 - `test_assign_ticket_invalid_technician(ticket, user_factory)` - Invalid assignment
 - `test_get_accessible_tickets_respects_scope(ticket, user_factory)` - Visibility
 - `test_organizational_ticket_list_endpoint(ticket, user_factory)` - List endpoint
 - `test_assignable_users_endpoint(user_factory)` - Technicians list
-- `test_organizational_analytics_endpoint(director_factory)` - Analytics
+- `test_organizational_analytics_endpoint(manager_factory)` - Analytics
 
 **Dashboards & Analytics**
-- `test_director_dashboard(director_factory)` - Director dashboard
-- `test_director_dashboard_aggregates_metrics(director_factory)` - Metrics
+- `test_manager_dashboard(manager_factory)` - Manager dashboard
+- `test_manager_dashboard_aggregates_metrics(manager_factory)` - Metrics
 - `test_hod_dashboard(hod_factory)` - HOD dashboard
 - `test_hod_dashboard_campus_scoped(hod_factory)` - Campus scope
-- `test_section_head_dashboard(section_head_factory)` - Section head view
+- `test_section_head_dashboard(head_of_section_factory)` - Section head view
 - `test_dashboard_sla_compliance_calculation(ticket_factory)` - SLA metrics
 - `test_escalation_trends(ticket_factory)` - Escalation trends
 - `test_dashboard_sla_compliance_calculation` - SLA metrics

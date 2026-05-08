@@ -29,7 +29,6 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import OrderingFilter
-from django.db import models
 from django.db.models import Prefetch
 from django.utils import timezone
 from datetime import timedelta
@@ -107,7 +106,8 @@ class OrganizationListCreateView(ListCreateAPIView):
 
     def create(self, request, *args, **kwargs):
         if request.user.role != "admin":
-            raise PermissionDenied("Only administrators can create organizations")
+            raise PermissionDenied(
+                "Only administrators can create organizations")
         return super().create(request, *args, **kwargs)
 
 
@@ -166,7 +166,8 @@ class DepartmentListCreateView(ListCreateAPIView):
 
     def create(self, request, *args, **kwargs):
         if request.user.role != "admin":
-            raise PermissionDenied("Only administrators can create departments")
+            raise PermissionDenied(
+                "Only administrators can create departments")
         return super().create(request, *args, **kwargs)
 
     def get_queryset(self):
@@ -224,11 +225,13 @@ class SectionListCreateView(ListCreateAPIView):
     def get_queryset(self):
         """Filter sections based on user's organizational scope"""
         queryset = (
-            Section.objects.select_related("department__campus", "head_of_section")
+            Section.objects.select_related(
+                "department__campus", "head_of_section")
             .prefetch_related(
                 Prefetch(
                     "technicians",
-                    queryset=CustomUser.objects.select_related("primary_campus"),
+                    queryset=CustomUser.objects.select_related(
+                        "primary_campus"),
                 )
             )
             .all()
@@ -370,7 +373,8 @@ class TicketListCreateView(ListCreateAPIView):
         queryset = TicketService.get_accessible_tickets(user, filters)
 
         # Handle additional custom filters
-        assigned_to_isnull = self.request.query_params.get("assigned_to__isnull", None)
+        assigned_to_isnull = self.request.query_params.get(
+            "assigned_to__isnull", None)
         if assigned_to_isnull and assigned_to_isnull.lower() == "true":
             queryset = queryset.filter(assigned_to__isnull=True)
 
@@ -394,8 +398,8 @@ class TicketListCreateView(ListCreateAPIView):
             section = serializer.validated_data.get("section")
             facility = serializer.validated_data.get("facility")
 
-            if not section or not facility:
-                raise serializers.ValidationError("Section and Facility are required")
+            if not section:
+                raise serializers.ValidationError("Section is required")
 
             # Use organizational service to create ticket and get the instance
             ticket = TicketService.create_ticket(
@@ -413,7 +417,8 @@ class TicketListCreateView(ListCreateAPIView):
         except InsufficientScopeException as e:
             raise serializers.ValidationError(str(e))
         except Exception as e:
-            raise serializers.ValidationError(f"Failed to create ticket: {str(e)}")
+            raise serializers.ValidationError(
+                f"Failed to create ticket: {str(e)}")
 
 
 class TicketDetailView(RetrieveUpdateDestroyAPIView):
@@ -522,35 +527,16 @@ class TicketEscalationView(CreateAPIView):
     serializer_class = TicketSerializer
 
     def create(self, request, *args, **kwargs):
-        """Handle ticket escalation"""
         try:
-            ticket_id = self.kwargs.get("ticket_id")
-            ticket = Ticket.objects.get(id=ticket_id)
-
-            # Check permission on the specific ticket
+            ticket = Ticket.objects.get(id=self.kwargs.get("ticket_id"))
             self.check_object_permissions(request, ticket)
-
-            # Get escalation reason from request body
-            reason = request.data.get("reason", "")
-            if not reason:
-                return Response(
-                    {"error": "Reason for escalation is required"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            # Escalate the ticket using the service layer
+            reason = request.data.get("reason", "") or "Manual escalation"
             escalated_ticket = TicketService.escalate_ticket(
                 ticket=ticket, escalated_by=request.user, reason=reason, manual=True
             )
-
-            # Return updated ticket
-            serializer = TicketSerializer(escalated_ticket)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-
+            return Response(TicketSerializer(escalated_ticket).data, status=status.HTTP_200_OK)
         except Ticket.DoesNotExist:
-            return Response(
-                {"error": "Ticket not found"}, status=status.HTTP_404_NOT_FOUND
-            )
+            return Response({"error": "Ticket not found"}, status=status.HTTP_404_NOT_FOUND)
         except (InvalidEscalationException, PermissionError) as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -600,6 +586,95 @@ class TicketCloseView(CreateAPIView):
         except PermissionDenied as e:
             return Response({"error": str(e)}, status=status.HTTP_403_FORBIDDEN)
         except ValidationError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ============================================================================
+# APPROVAL / REJECTION API
+# ============================================================================
+
+
+class ApproveTicketView(APIView):
+    """
+    POST /api/tickets/{ticket_id}/approve/
+    {
+        "notes": "Looks good, proceed."   // optional
+    }
+
+    Permission: hod, manager, admin only.
+    Ticket must be in pending_approval status.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, ticket_id):
+        try:
+            ticket = Ticket.objects.select_related(
+                "section",
+                "section__department",
+                "section__department__campus",
+            ).get(id=ticket_id)
+        except Ticket.DoesNotExist:
+            return Response(
+                {"error": "Ticket not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        notes = request.data.get("notes", "")
+
+        try:
+            updated_ticket = TicketService.approve_ticket(
+                ticket=ticket, approved_by=request.user, notes=notes
+            )
+            serializer = TicketSerializer(updated_ticket)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except DRFPermissionDenied as e:
+            return Response({"error": str(e)}, status=status.HTTP_403_FORBIDDEN)
+        except DRFValidationError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class RejectTicketView(APIView):
+    """
+    POST /api/tickets/{ticket_id}/reject/
+    {
+        "reason": "Budget not available."   // required
+    }
+
+    Permission: hod, manager, admin only.
+    Ticket must be in pending_approval status.
+    Rejection reason is stored in TicketLog.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, ticket_id):
+        try:
+            ticket = Ticket.objects.select_related(
+                "section",
+                "section__department",
+                "section__department__campus",
+            ).get(id=ticket_id)
+        except Ticket.DoesNotExist:
+            return Response(
+                {"error": "Ticket not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        reason = request.data.get("reason", "").strip()
+        if not reason:
+            return Response(
+                {"error": "Rejection reason is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            updated_ticket = TicketService.reject_ticket(
+                ticket=ticket, rejected_by=request.user, reason=reason
+            )
+            serializer = TicketSerializer(updated_ticket)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except DRFPermissionDenied as e:
+            return Response({"error": str(e)}, status=status.HTTP_403_FORBIDDEN)
+        except DRFValidationError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -849,87 +924,6 @@ class OrganizationalTicketListView(ListAPIView):
         return context
 
 
-class EscalateTicketView(APIView):
-    """
-    Endpoint for manually escalating tickets with validation.
-
-    POST /api/tickets/{ticket_id}/escalate-manual/
-    {
-        "reason": "Issue requires higher-level attention"
-    }
-
-    Escalation must follow organizational hierarchy:
-    - Open/Assigned/In Progress → Escalate to Section Head
-    - Section Head escalation → Escalate to HOD
-    - Cannot escalate beyond HOD
-    """
-
-    permission_classes = [IsAuthenticated, CanEscalateTickets]
-
-    def post(self, request, ticket_id):
-        """Handle manual ticket escalation"""
-        try:
-            ticket = Ticket.objects.select_related(
-                "section",
-                "section__department",
-                "section__department__campus",
-                "escalated_to",
-            ).get(id=ticket_id)
-
-        except Ticket.DoesNotExist:
-            return Response(
-                {"error": "Ticket not found"}, status=status.HTTP_404_NOT_FOUND
-            )
-
-        # Validate user can escalate this ticket
-        try:
-            TicketService._user_can_access_section(request.user, ticket.section)
-        except (PermissionDenied, ValidationError) as e:
-            return Response(
-                {"error": f"Cannot escalate tickets outside your scope: {str(e)}"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        # Get escalation reason
-        reason = request.data.get("reason", "")
-        if not reason:
-            return Response(
-                {"error": "Escalation reason is required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Perform escalation
-        try:
-            updated_ticket = TicketService.escalate_ticket(
-                ticket=ticket, escalated_by=request.user, reason=reason, manual=True
-            )
-
-            return Response(
-                {
-                    "success": True,
-                    "message": "Ticket escalated successfully",
-                    "ticket_no": updated_ticket.ticket_no,
-                    "escalation_level": updated_ticket.escalation_level,
-                    "escalated_to": (
-                        f"{updated_ticket.escalated_to.first_name} "
-                        f"{updated_ticket.escalated_to.last_name}"
-                        if updated_ticket.escalated_to
-                        else None
-                    ),
-                    "next_escalation_due": updated_ticket.next_escalation_due,
-                },
-                status=status.HTTP_200_OK,
-            )
-
-        except ValidationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            return Response(
-                {"error": f"Escalation failed: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-
 # ============================================================================
 # ANALYTICS API - ORGANIZATIONAL
 # ============================================================================
@@ -968,7 +962,8 @@ class OrganizationalAnalyticsView(APIView):
             elif user.role == "hod":
                 data = HODAnalytics.hod_dashboard(user, days=days)
             elif user.role == "head_of_section":
-                data = SectionHeadAnalytics.section_head_dashboard(user, days=days)
+                data = SectionHeadAnalytics.section_head_dashboard(
+                    user, days=days)
             else:
                 return Response(
                     {"error": "User role does not have access to analytics dashboard"},
@@ -1103,6 +1098,44 @@ class SectionTypeDetailView(generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated]
 
 
+class ServiceCategoriesBySectionTypeView(ListAPIView):
+    """GET /section-types/<pk>/categories/ — active categories for a section type"""
+
+    serializer_class = ServiceCategorySerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return (
+            ServiceCategory.objects.filter(
+                section_type_id=self.kwargs["pk"],
+                is_active=True,
+            )
+            .prefetch_related("service_items")
+            .order_by("order", "name")
+        )
+
+
+class ServiceItemsByCategoryView(ListAPIView):
+    """GET /categories/<pk>/items/ — active service items for a category"""
+
+    serializer_class = ServiceItemSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return ServiceItem.objects.filter(
+            category_id=self.kwargs["pk"],
+            is_active=True,
+        ).order_by("order", "name")
+
+
+class ServiceItemDetailView(generics.RetrieveAPIView):
+    """GET /service-items/<pk>/ — single service item detail"""
+
+    queryset = ServiceItem.objects.filter(is_active=True)
+    serializer_class = ServiceItemSerializer
+    permission_classes = [IsAuthenticated]
+
+
 # ============================================================================
 # SECTION TECHNICIAN MANAGEMENT
 # ============================================================================
@@ -1141,7 +1174,8 @@ class AddTechnicianToSectionView(APIView):
             )
         technician = generics.get_object_or_404(CustomUser, pk=user_id)
         try:
-            TechnicianService.add_technician_to_section(request.user, technician, section)
+            TechnicianService.add_technician_to_section(
+                request.user, technician, section)
         except (InsufficientScopeException, InvalidAssignmentException) as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(
@@ -1168,7 +1202,8 @@ class RemoveTechnicianFromSectionView(APIView):
             )
         technician = generics.get_object_or_404(CustomUser, pk=user_id)
         try:
-            TechnicianService.remove_technician_from_section(request.user, technician, section)
+            TechnicianService.remove_technician_from_section(
+                request.user, technician, section)
         except (InsufficientScopeException, InvalidAssignmentException) as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(

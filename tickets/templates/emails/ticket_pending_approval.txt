@@ -1,0 +1,17 @@
+Hello {{ approver.first_name|default:approver.username }},
+
+A service request requires your approval before work can begin.
+
+Ticket:    {{ ticket.ticket_no }}
+Title:     {{ ticket.title }}
+Section:   {{ ticket.section.name }}
+Requested by: {{ ticket.raised_by.get_full_name|default:ticket.raised_by.username }}
+{% if ticket.description %}
+Details:
+{{ ticket.description }}
+{% endif %}
+Please review and approve or reject the request here:
+{{ ticket_url }}
+
+---
+This is an automated message from {{ company_name }}. Please do not reply.

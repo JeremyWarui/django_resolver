@@ -7,8 +7,8 @@ from .views import (
     TicketAnalyticsView,
     TechnicianAnalyticsView,
     AdminDashboardAnalyticsView,
+    OrganizationalAnalyticsView,
     ManagerDashboardView,
-    DirectorDashboardView,
     HODDashboardView,
     SectionHeadDashboardView,
 )
@@ -17,8 +17,8 @@ __all__ = [
     "TicketAnalyticsView",
     "TechnicianAnalyticsView",
     "AdminDashboardAnalyticsView",
+    "OrganizationalAnalyticsView",
     "ManagerDashboardView",
-    "DirectorDashboardView",
     "HODDashboardView",
     "SectionHeadDashboardView",
 ]

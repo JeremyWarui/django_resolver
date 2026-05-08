@@ -201,6 +201,14 @@ class Section(models.Model):
         max_length=10, null=True, blank=True
     )  # Temporary for migration
     description = models.TextField(max_length=200, blank=True)
+    section_type = models.ForeignKey(
+        'SectionType',
+        on_delete=models.CASCADE,
+        related_name='sections',
+        null=True,
+        blank=True,
+    )
+    sla_hours = models.IntegerField(null=True, blank=True)
     head_of_section = models.ForeignKey(
         "CustomUser",
         on_delete=models.SET_NULL,
@@ -217,6 +225,18 @@ class Section(models.Model):
         if self.department:
             return f"{self.department.campus.code}-{self.department.code}-{self.code}: {self.name}"
         return f"{self.name}"  # Fallback during migration
+
+    @property
+    def campus(self):
+        return self.department.campus if self.department else None
+
+    @property
+    def effective_sla_hours(self):
+        if self.sla_hours:
+            return self.sla_hours
+        if self.section_type:
+            return self.section_type.default_sla_hours
+        return 24
 
     @property
     def full_hierarchy_name(self):
@@ -239,13 +259,12 @@ class Facility(models.Model):
     """Enhanced facility model with organizational context"""
 
     FACILITY_CHOICES = [
-        ("building", "Building"),
-        ("ict", "ICT Equipment"),
-        ("laundry", "Laundry Equipment"),
-        ("kitchen", "Kitchen Equipment"),
-        ("residential", "Residential"),
-        ("classroom", "Classroom"),
-        ("office", "Office Space"),
+        ('building', 'Building'),
+        ('workshop', 'Workshop'),
+        ('equipment', 'Equipment'),
+        ('outdoor', 'Outdoor Area'),
+        ('residential', 'Residential'),
+        ('other', 'Other'),
     ]
 
     name = models.CharField(max_length=100)
@@ -296,6 +315,32 @@ class Facility(models.Model):
         return self.name  # Fallback during migration
 
 
+class FacilityFloor(models.Model):
+    facility = models.ForeignKey(Facility, on_delete=models.CASCADE, related_name='floors')
+    name = models.CharField(max_length=100)
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        unique_together = [['facility', 'name']]
+        ordering = ['facility', 'order', 'name']
+
+    def __str__(self):
+        return f"{self.facility.name} - {self.name}"
+
+
+class FacilityRoom(models.Model):
+    floor = models.ForeignKey(FacilityFloor, on_delete=models.CASCADE, related_name='rooms')
+    name = models.CharField(max_length=100)
+    code = models.CharField(max_length=20, blank=True)
+
+    class Meta:
+        unique_together = [['floor', 'name']]
+        ordering = ['floor', 'name']
+
+    def __str__(self):
+        return f"{self.floor.name} - {self.name}"
+
+
 # TICKETS MODEL
 class Ticket(models.Model):
     """Enhanced ticket model with organizational hierarchy and escalation support"""
@@ -309,6 +354,7 @@ class Ticket(models.Model):
         ("closed", "Closed"),
         ("escalated", "Escalated"),
         ("pending_approval", "Pending Approval"),
+        ("approved", "Approved"),
         ("rejected", "Rejected"),
     ]
 
@@ -339,8 +385,18 @@ class Ticket(models.Model):
         Section, on_delete=models.CASCADE, related_name="tickets"
     )
     facility = models.ForeignKey(
-        Facility, on_delete=models.CASCADE, related_name="tickets"
+        Facility, on_delete=models.SET_NULL, related_name="tickets",
+        null=True, blank=True,
     )
+    floor = models.ForeignKey(
+        'FacilityFloor', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='tickets',
+    )
+    room = models.ForeignKey(
+        'FacilityRoom', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='tickets',
+    )
+    location_detail = models.CharField(max_length=200, blank=True)
 
     # User relationships
     raised_by = models.ForeignKey(
@@ -380,6 +436,7 @@ class Ticket(models.Model):
         help_text="Automatically set when ticket status changes to resolved/closed",
     )
     closed_at = models.DateTimeField(null=True, blank=True, editable=False)
+    due_date = models.DateTimeField(null=True, blank=True)
 
     # Escalation tracking
     # 0=none, 1=section_head, 2=hod (max level)
@@ -465,6 +522,22 @@ class Ticket(models.Model):
 
     def save(self, *args, performed_by=None, **kwargs):
         """Enhanced save with organizational ticket numbering and auto-escalation scheduling"""
+        # Auto-set from service item if this is a new ticket (no pk yet)
+        if not self.pk and self.service_item:
+            if not self.priority or self.priority == 'low':
+                self.priority = self.service_item.default_priority
+            if not self.due_date:
+                from datetime import timedelta
+                sla = None
+                if self.service_item.sla_hours:
+                    sla = self.service_item.sla_hours
+                elif self.section and hasattr(self.section, 'effective_sla_hours'):
+                    sla = self.section.effective_sla_hours
+                if sla:
+                    self.due_date = timezone.now() + timedelta(hours=sla)
+            if self.service_item.requires_approval and self.status == 'open':
+                self.status = 'pending_approval'
+
         # 0. Ensure priority is at least what escalation level requires.
         # Critical (set by aging logic) is never downgraded.
         if self.priority != "critical":
@@ -848,6 +921,7 @@ class DepartmentType(models.Model):
     name = models.CharField(max_length=100)
     code = models.CharField(max_length=10, unique=True)
     description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
 
     class Meta:
         ordering = ["code"]
@@ -888,9 +962,11 @@ class ServiceCategory(models.Model):
     description = models.TextField(blank=True)
     icon = models.CharField(max_length=50, blank=True, help_text="Icon name or emoji for UI")
     color = models.CharField(max_length=20, blank=True, help_text="Color code for UI")
+    order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
 
     class Meta:
-        ordering = ["section_type", "name"]
+        ordering = ["section_type", "order", "name"]
         verbose_name_plural = "Service Categories"
 
     def __str__(self):
@@ -914,9 +990,18 @@ class ServiceItem(models.Model):
         help_text="Array of form field definitions for dynamic form rendering"
     )
     is_active = models.BooleanField(default=True)
+    default_priority = models.CharField(
+        max_length=20,
+        choices=[
+            ('low', 'Low'), ('medium', 'Medium'), ('high', 'High'), ('critical', 'Critical')
+        ],
+        default='medium',
+    )
+    order = models.PositiveIntegerField(default=0)
+    request_count = models.PositiveIntegerField(default=0)
 
     class Meta:
-        ordering = ["category", "name"]
+        ordering = ["category", "order", "name"]
 
     def __str__(self):
         return f"{self.category.name}: {self.name}"

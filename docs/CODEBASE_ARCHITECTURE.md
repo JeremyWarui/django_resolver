@@ -145,7 +145,7 @@ All views:
 **Single TicketService class** with comprehensive methods:
 - `create_ticket(user, section, facility, title, description, priority)` - Create with org context
 - `assign_ticket(ticket, technician, performed_by)` - Validate technician can be assigned
-- `escalate_ticket(ticket, reason, performed_by)` - 2-level escalation (section_head → HOD)
+- `escalate_ticket(ticket, reason, performed_by)` - 2-level escalation (head_of_section → HOD)
 - `update_ticket_status(ticket, new_status, performed_by, reason)` - Validate status transitions
 - `close_ticket(ticket, performed_by)` - Final status with audit
 - `process_auto_escalations()` - Cron job for auto-escalation (runs hourly)
@@ -168,11 +168,13 @@ Import: `from tickets.api.services import TicketService`
 - `register_user()` - Create new user account
 - *Commented*: Magic link functions for future implementation
 
-**`analytics/analytics.py`** - Analytics Logic (UNIFIED, 4 classes)
-- `TicketAnalytics` - Ticket counts, trends, distributions by facility, section, status
-- `TechnicianAnalytics` - Technician performance, workload, completion metrics
-- `OrganizationalAnalytics` - Role-specific: `director_dashboard()`, `hod_dashboard()`, `section_head_dashboard()`
-- `AdminAnalytics` - System-wide monitoring, overdue tickets, SLA compliance
+**`analytics/`** - Analytics Logic (split by role)
+- `TicketAnalytics` (`ticket_analytics.py`) - Ticket counts, trends, distributions by facility, section, status
+- `TechnicianAnalytics` (`technician_analytics.py`) - Technician performance, workload, completion metrics
+- `ManagerAnalytics` (`manager_analytics.py`) - `manager_dashboard()` — own dept, all campuses in org
+- `HODAnalytics` (`hod_analytics.py`) - `hod_dashboard()` — campus-scoped
+- `SectionHeadAnalytics` (`head_of_section_analytics.py`) - `head_of_section_dashboard()` — section-scoped
+- `AdminAnalytics` (`admin_analytics.py`) - System-wide monitoring, overdue tickets, SLA compliance
 
 All classes support:
 - Temporal aggregation: day/week/month grouping
@@ -529,7 +531,7 @@ closed: Terminal state (no further transitions)
 
 **Escalation Workflow** (organizational 2-level):
 - **Level 0** (none): Initial state
-- **Level 1** → escalated to section_head after `escalation_threshold_hours` (default: 48)
+- **Level 1** → escalated to head_of_section after `escalation_threshold_hours` (default: 48)
 - **Level 2** → escalated to HOD after another threshold (maximum level)
 - **Manual escalation**: Any user with appropriate role can escalate with reason
 - **Auto-escalation**: Run `python manage.py process_auto_escalations` (hourly cron)
@@ -540,9 +542,9 @@ closed: Terminal state (no further transitions)
 |---|---|---|---|---|---|
 | user | ✅ | ❌ | ❌ | ❌ | ❌ |
 | technician | ✅ | ✅ | ❌ | ❌ | ❌ |
-| section_head | ✅ | ✅ | ✅ | ❌ | ✅ |
+| head_of_section | ✅ | ✅ | ✅ | ❌ | ✅ |
 | hod | ✅ | ✅ | ✅ | ❌ | ✅ |
-| director | ❌ | ❌ | ❌ | ❌ | ❌ |
+| manager | ❌ | ❌ | ❌ | ❌ | ❌ |
 | admin | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ### Assignment Validation
@@ -737,20 +739,19 @@ GET /api/analytics/admin-dashboard/
 
 OrganizationalAnalyticsView in views/views.py
 ├─ Permission: IsWithinOrganizationalScope (role-specific access)
-├─ Determine user's role: director | hod | section_head
-└─ Call OrganizationalAnalytics.{role}_dashboard()
+├─ Determine user's role: manager | hod | head_of_section
+└─ Call {Role}Analytics.{role}_dashboard()
 
-OrganizationalAnalytics class in analytics/analytics.py
+Role analytics classes in tickets/api/analytics/ (one file per role)
 
-director_dashboard(days=30):
-├─ System overview (ALL organizations user has access to):
-│  ├─ total_tickets (org-scoped)
+manager_dashboard(days=30):
+├─ Department overview (own dept code, ALL campuses in org):
+│  ├─ total_tickets (dept-scoped across org)
 │  ├─ status_breakdown (counts by status)
 │  ├─ escalation_trends (trending escalations)
 │  └─ avg_resolution_time
-├─ Campus-level breakdown
-├─ Department performance
-└─ Overdue tickets
+├─ Per-campus breakdown
+└─ Top technicians
 
 hod_dashboard(days=30):
 ├─ Department overview:
@@ -762,7 +763,7 @@ hod_dashboard(days=30):
 ├─ Technician workload
 └─ Overdue tickets in dept
 
-section_head_dashboard(days=30):
+head_of_section_dashboard(days=30):
 ├─ Section overview:
 │  ├─ total_tickets (section-scoped)
 │  ├─ escalated_to_me (level=1 escalations)
@@ -772,9 +773,9 @@ section_head_dashboard(days=30):
 ├─ Overdue tickets in section
 └─ Recent activities
 
-Response example (director_dashboard):
+Response example (manager_dashboard):
 {
-  "role": "director",
+  "role": "manager",
   "organization": "ACME Corp",
   "overview": {
     "total_tickets": 523,

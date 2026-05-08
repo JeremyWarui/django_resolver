@@ -281,8 +281,8 @@ from tickets.models import CustomUser
 # Get all users and set passwords from DEFAULT_CREDENTIALS
 credentials = {
     'admin_user': 'adminuser123',
-    'user_sarah': 'user_sarah123',
-    'director_jane': 'director123',
+    'user_sarah': 'adminuser123',
+    'manager_ict': 'adminuser123',
     # Add more from docs/DEFAULT_CREDENTIALS.md as needed
 }
 

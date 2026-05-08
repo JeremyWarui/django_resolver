@@ -69,7 +69,7 @@ for org in Organization.objects.all():
 ```python
 from tickets.models import CustomUser
 
-roles = ['user', 'technician', 'section_head', 'hod', 'director', 'admin']
+roles = ['user', 'technician', 'head_of_section', 'hod', 'manager', 'admin']
 
 for role in roles:
     users = CustomUser.objects.filter(role=role)
@@ -98,8 +98,8 @@ for section in Section.objects.all():
 for dept in Department.objects.select_related('head_of_department'):
     head = dept.head_of_department.username if dept.head_of_department else "Unassigned"
     print(f"{dept.name} (HOD: {head})")
-    for section in dept.sections.select_related('section_head'):
-        leader = section.section_head.username if section.section_head else "Unassigned"
+    for section in dept.sections.select_related('head_of_section'):
+        leader = section.head_of_section.username if section.head_of_section else "Unassigned"
         print(f"  └─ {section.name} (Leader: {leader})")
 ```
 
@@ -198,8 +198,8 @@ for tech in CustomUser.objects.filter(role='technician'):
 
 ```python
 # Get tickets that need section head attention (escalated)
-for section_head in CustomUser.objects.filter(role='section_head'):
-    section = section_head.section_head_for.all()
+for section_head in CustomUser.objects.filter(role='head_of_section'):
+    section = section_head.managed_sections.all()
     escalated = Ticket.objects.filter(
         section__in=section,
         escalation_level=1
@@ -726,7 +726,7 @@ print(f"Resolved {ticket.ticket_no}")
 from tickets.models import Ticket, Feedback, CustomUser
 
 ticket = Ticket.objects.get(ticket_no='TKT-000004')
-user = CustomUser.objects.get(username='manager_ben')
+user = CustomUser.objects.get(username='manager_ict')
 
 feedback = Feedback.objects.create(
     ticket=ticket,

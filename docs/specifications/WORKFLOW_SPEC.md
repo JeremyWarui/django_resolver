@@ -82,21 +82,21 @@ These are **two different sections** with different IDs. Naming collisions cause
 |------|--------------|------------------|-----------|
 | **user** | Requester | Creates tickets, views own tickets, confirms/rejects resolution, closes own tickets | Section (own tickets only) |
 | **technician** | Officer/Technician | Works on assigned tickets, updates progress, marks resolved/pending, can escalate | Section (assigned + own) |
-| **section_head** | **Supervisor** | Assigns tickets to technicians, monitors section-level tickets, receives 24h delay alerts, acts on PENDING tickets | Department (via Section management) |
+| **head_of_section** | **Supervisor** | Assigns tickets to technicians, monitors section-level tickets, receives 24h delay alerts, acts on PENDING tickets | Department (via Section management) |
 | **hod** | Head of Department | Monitors department performance per campus, receives 48h escalations, resolves bottlenecks | Campus (department-wide) |
-| **director** | Director/Admin | **Analytics & Reports ONLY** - no direct ticket management access | Organization (analytics view only) |
+| **manager** | Manager | **Analytics & Reports ONLY** - no direct ticket management access | Own department across all campuses in org |
 | **admin** | System Admin | Full system access, configuration, migrations | System (all access) |
 
 ### 🔑 **KEY CLARIFICATION: Supervisor = Section Head**
 
 **Original Spec**: Used term "Supervisor"  
-**Implementation**: Use role name `section_head` (more specific than generic "supervisor")  
+**Implementation**: Use role name `head_of_section` (more specific than generic "supervisor")  
 **Decision**: These are semantically identical:
 - Supervisor supervises a **Section** → Section Head is responsible for a **Section**
 - Supervisor assigns tickets → Section Head assigns tickets to team members
 - Supervisor acts on PENDING → Section Head resolves PENDING issues
 
-> **No separate "Supervisor" role needed.** The `section_head` role IS the supervisor role.
+> **No separate "Supervisor" role needed.** The `head_of_section` role IS the supervisor role.
 
 ### Director Role - ANALYTICS ONLY (REVISED)
 
@@ -279,7 +279,7 @@ LOW (default) → MEDIUM (first escalation) → HIGH (second escalation) → CRI
 
 ### Timeline:
 
-* **After 24 Hours**: Notify Supervisor (section_head) - ⚠️ Advisory
+* **After 24 Hours**: Notify Supervisor (head_of_section) - ⚠️ Advisory
 * **After 48 Hours**: Escalate to Section Head
   - Status → ESCALATED
   - Escalation Level → 1
@@ -339,7 +339,7 @@ Each ticket must include:
 | location_details | String(200) | ❌ Optional | Room/building specifics |
 | created_by | FK → User | ✅ Yes | Ticket creator (raised_by) |
 | assigned_to | FK → User | ❌ Optional | Technician assigned |
-| supervisor | *Derived* (via section.section_head) | ✅ Derived | Not stored as field |
+| supervisor | *Derived* (via section.head_of_section) | ✅ Derived | Not stored as field |
 | status | Choice | ✅ Yes | Current state |
 | **priority** | Choice | ✅ Yes | LOW, MEDIUM, HIGH, CRITICAL |
 | pending_reason | Choice | ❌ Optional | Only when PENDING |
@@ -348,7 +348,7 @@ Each ticket must include:
 | updated_at | DateTime | ✅ Auto | Auto-updated |
 | resolved_at | DateTime | ❌ Optional | Set when resolved |
 | closed_at | DateTime | ❌ Optional | Set when closed |
-| escalation_level | Integer (0-2) | ✅ Yes | 0=none, 1=section_head, 2=hod |
+| escalation_level | Integer (0-2) | ✅ Yes | 0=none, 1=head_of_section, 2=hod |
 | escalated_to | FK → User | ❌ Optional | Who ticket escalated to |
 | escalated_at | DateTime | ❌ Optional | When escalation occurred |
 | escalation_reason | Text(500) | ❌ Optional | Why escalated |

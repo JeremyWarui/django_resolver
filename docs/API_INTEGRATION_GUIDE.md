@@ -30,19 +30,19 @@
 
 ```bash
 # 1. Get test credentials from docs/DEFAULT_CREDENTIALS.md
-# Example: username=jane_doe, password=janedoe123
+# Example: username=user_sarah, password=adminuser123
 
 # 2. Login and get token
 curl -X POST http://localhost:8000/api/auth/login/ \
   -H "Content-Type: application/json" \
-  -d '{"username":"jane_doe","password":"janedoe123"}'
+  -d '{"username":"user_sarah","password":"adminuser123"}'
 
 # Response:
 {
   "token": "abc123xyz789...",
   "user": {
     "id": 2,
-    "username": "jane_doe",
+    "username": "user_sarah",
     "email": "jane@example.com",
     "role": "technician"
   }
@@ -73,8 +73,8 @@ POST /api/auth/login/
 #### Request
 ```json
 {
-  "username": "jane_doe",
-  "password": "janedoe123"
+  "username": "user_sarah",
+  "password": "adminuser123"
 }
 ```
 
@@ -84,7 +84,7 @@ POST /api/auth/login/
   "token": "abc123xyz789...",
   "user": {
     "id": 2,
-    "username": "jane_doe",
+    "username": "user_sarah",
     "email": "jane@example.com",
     "first_name": "Jane",
     "last_name": "Doe",
@@ -456,7 +456,7 @@ GET /api/tickets/?status=open&section_id=1&escalation_level=1&ordering=-created_
       "escalation_level": 0,
       "assigned_to_name": "john_tech",
       "raised_by": {
-        "username": "jane_doe"
+        "username": "user_sarah"
       },
       "created_at": "2024-01-15T10:30:00Z",
       "updated_at": "2024-01-15T14:20:00Z"
@@ -498,7 +498,7 @@ POST /api/tickets/
   "status": "open",
   "priority": "medium",
   "section": { "id": 1, "name": "Network" },
-  "raised_by": { "id": 2, "username": "jane_doe" },
+  "raised_by": { "id": 2, "username": "user_sarah" },
   "assigned_to": null,
   "created_at": "2024-01-15T15:00:00Z",
   "updated_at": "2024-01-15T15:00:00Z"
@@ -537,7 +537,7 @@ GET /api/tickets/{id}/
   },
   "raised_by": {
     "id": 2,
-    "username": "jane_doe",
+    "username": "user_sarah",
     "email": "jane@example.com"
   },
   "assigned_to": {
@@ -634,7 +634,7 @@ POST /api/tickets/{id}/close/
 {
   "id": 1,
   "status": "closed",
-  "closed_by": { "id": 2, "username": "jane_doe" },
+  "closed_by": { "id": 2, "username": "user_sarah" },
   "closed_at": "2024-01-15T17:00:00Z",
   "updated_at": "2024-01-15T17:00:00Z"
 }
@@ -671,7 +671,7 @@ POST /api/tickets/{id}/escalate/
   "escalated_to": {
     "id": 6,
     "username": "section_head_ben",
-    "role": "section_head"
+    "role": "head_of_section"
   },
   "escalation_reason": "No response from technician",
   "escalated_at": "2024-01-15T16:30:00Z",
@@ -837,41 +837,33 @@ GET /api/analytics/technicians/
 }
 ```
 
-### Director Dashboard (Analytics-Only Role)
+### Manager Dashboard (Analytics-Only Role)
 
-#### Get Director Dashboard (Directors/Admins only)
+#### Get Manager Dashboard (Managers/Admins only)
 ```
-GET /api/analytics/director-dashboard/
+GET /api/analytics/manager/
 ```
 
 **Query parameters**:
-- `campus_id=1` - Specific campus
 - `days=30` - Time period
-- `include_technicians=true` - Include technician workload
 
-**Response** (High-level org metrics):
+**Response** (own department across all org campuses):
 ```json
 {
-  "organization_overview": {
+  "department": "ICT",
+  "organization": "Kenya School of Government",
+  "overview": {
     "total_tickets": 342,
     "open_tickets": 47,
     "closure_rate": 86.2,
     "average_response_time": "2.1 hours"
   },
-  "by_campus": [
+  "campuses": [
     {
-      "campus": "MAIN",
+      "campus": "NRB",
       "total": 156,
       "open": 23,
       "closure_rate": 85.5
-    }
-  ],
-  "by_department": [
-    {
-      "department": "IT",
-      "total": 89,
-      "open": 12,
-      "escalated": 2
     }
   ],
   "escalation_trend": [
@@ -881,20 +873,20 @@ GET /api/analytics/director-dashboard/
 }
 ```
 
-### HOD Dashboard (Section Head Analytics)
+### HOD Dashboard
 
 #### Get HOD Dashboard (HODs/Admins only)
 ```
-GET /api/analytics/hod-dashboard/
+GET /api/analytics/hod/
 ```
 
-**Response**: Department-level metrics
+**Response**: Campus-level metrics for own department
 
 ### Section Head Dashboard
 
 #### Get Section Head Dashboard (Section Heads/Admins only)
 ```
-GET /api/analytics/section-head-dashboard/
+GET /api/analytics/section-head/
 ```
 
 **Response**: Section-specific metrics
@@ -944,7 +936,7 @@ POST /api/feedback/
   "ticket": 1,
   "rating": 5,
   "comment": "Technician was very helpful",
-  "submitted_by": { "id": 2, "username": "jane_doe" },
+  "submitted_by": { "id": 2, "username": "user_sarah" },
   "created_at": "2024-01-15T17:30:00Z"
 }
 ```
@@ -1020,8 +1012,8 @@ async function loginAndListTickets() {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      username: 'jane_doe',
-      password: 'janedoe123'
+      username: 'user_sarah',
+      password: 'adminuser123'
     })
   });
 

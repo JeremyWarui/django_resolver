@@ -25,16 +25,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
-# SECRET_KEY = 'django-insecure-evo47-7z$&aazzyp7_cqf85%!q2)wsrw*lb)+3ab9+$0%h6(=5'
 SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY environment variable is not set.")
 
-
-# SECURITY WARNING: DEBUG is temporarily set to True for error diagnosis in production!
-DEBUG = True
+DEBUG = os.getenv("DEBUG", "False") == "True"
 
 # Allow all hosts in production for now (more secure to specify exact domains)
 ALLOWED_HOSTS = ["127.0.0.1", "localhost", "django-resolver.onrender.com"]

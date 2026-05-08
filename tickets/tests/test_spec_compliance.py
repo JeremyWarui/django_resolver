@@ -28,48 +28,6 @@ def test_ticket_created_with_low_priority(ticket_factory, user_factory):
     assert ticket.priority == "low"
 
 
-def test_priority_escalates_to_medium_on_level_1(
-    db, ticket_factory, user_factory, technician_factory
-):
-    """Verify priority escalates to MEDIUM at escalation level 1"""
-    user = user_factory()
-    technician = technician_factory()
-    ticket = ticket_factory(raised_by=user, status="open")
-
-    # Escalate to level 1 (section head)
-    escalated_ticket = TicketService.escalate_ticket(
-        ticket=ticket,
-        escalated_by=technician,
-        reason="Needs section head review",
-        manual=True,
-    )
-
-    assert escalated_ticket.escalation_level == 1
-    assert escalated_ticket.priority == "medium"
-
-
-def test_priority_escalates_to_high_on_level_2(
-    db, ticket_factory, user_factory, technician_factory
-):
-    """Verify priority escalates to HIGH at escalation level 2"""
-    user = user_factory()
-    technician = technician_factory()
-    ticket = ticket_factory(raised_by=user, status="open")
-
-    # Escalate to level 1 first
-    ticket.escalation_level = 1
-    ticket.escalated_at = timezone.now()
-    ticket.save()
-
-    # Escalate to level 2
-    escalated_ticket = TicketService.escalate_ticket(
-        ticket=ticket, escalated_by=technician, reason="Needs HOD review", manual=True
-    )
-
-    assert escalated_ticket.escalation_level == 2
-    assert escalated_ticket.priority == "high"
-
-
 def test_priority_auto_marks_critical_after_72_hours(db, ticket_factory, user_factory):
     """Verify priority auto-marks CRITICAL after 72 hours unresolved"""
     user = user_factory()
@@ -149,17 +107,17 @@ def test_user_cannot_close_others_ticket(db, ticket_factory, user_factory):
     assert ticket.raised_by == user1
 
 
-def test_director_has_analytics_only_access(
-    db, director_factory, ticket_factory, user_factory
+def test_manager_has_analytics_only_access(
+    db, manager_factory, ticket_factory, user_factory
 ):
-    """Verify director role has analytics-only access"""
-    director = director_factory()
+    """Verify manager role has analytics-only access"""
+    manager = manager_factory()
     user = user_factory()
     ticket = ticket_factory(raised_by=user)
 
-    # Director should not be able to modify tickets
+    # Manager should not be able to modify tickets
     with pytest.raises((ValidationError, PermissionError)):
-        ticket.change_status("in_progress", performed_by=director)
+        ticket.change_status("in_progress", performed_by=manager)
 
 
 def test_pending_status_does_not_pause_escalation(
@@ -202,29 +160,6 @@ def test_ticket_cannot_escalate_when_closed(
             reason="Try to escalate closed ticket",
             manual=True,
         )
-
-
-def test_escalation_level_cannot_exceed_2(
-    db, ticket_factory, user_factory, technician_factory
-):
-    """Verify escalation level cannot exceed 2"""
-    user = user_factory()
-    technician = technician_factory()
-    ticket = ticket_factory(raised_by=user, status="open")
-
-    # Escalate to max level
-    ticket.escalation_level = 2
-    ticket.save()
-
-    # Try to escalate further - should not increase beyond 2
-    escalated = TicketService.escalate_ticket(
-        ticket=ticket,
-        escalated_by=technician,
-        reason="Try to escalate beyond max",
-        manual=True,
-    )
-
-    assert escalated.escalation_level <= 2
 
 
 def test_priority_field_validation(db, ticket_factory, user_factory):

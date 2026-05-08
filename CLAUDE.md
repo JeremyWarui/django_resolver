@@ -232,8 +232,6 @@ Base classes in `tickets/tests/base.py`:
 - `BaseTicketTestCase` — `setUpTestData()` creates full org hierarchy + sample ticket. Use `self.user`, `self.admin`, `self.technician`, `self.section`, `self.facility`, `self.ticket`. Has `create_ticket()`, `create_comment()`, `create_feedback()` helpers.
 - `BaseAPITestCase(BaseTicketTestCase)` — adds `self.api_client` (authenticated as `self.user`). Use `self.authenticate_as(user)` to switch roles mid-test.
 
-There is a **pre-existing cache-poisoning failure** in `test_analytics.py` when the full suite runs together. It passes in isolation. Do not be alarmed by it.
-
 ---
 
 ## Key Pitfalls

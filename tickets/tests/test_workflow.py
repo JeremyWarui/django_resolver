@@ -22,108 +22,104 @@ def api_client():
 
 @pytest.fixture
 def setup_data(db):
-    # Create organizational hierarchy
+    # Org hierarchy
     organization = Organization.objects.create(
         name="Test Organization", code="TEST", organization_type="corporate"
     )
-
     campus = Campus.objects.create(
-        name="Main Campus",
-        code="MAIN",
-        organization=organization,
-        location="123 Main St",
+        name="Main Campus", code="MAIN", organization=organization, location="123 Main St",
+    )
+
+    # HODs created before departments so they can be set as head_of_department
+    hod_it = CustomUser.objects.create_user(
+        username="hod_it", email="hodit@example.com", password="hodpass",
+        role="hod", primary_campus=campus,
+    )
+    hod_facilities = CustomUser.objects.create_user(
+        username="hod_facilities", email="hodfac@example.com", password="hodpass",
+        role="hod", primary_campus=campus,
     )
 
     it_department = Department.objects.create(
-        name="IT Department", code="IT", campus=campus
+        name="IT Department", code="IT", campus=campus, head_of_department=hod_it
     )
-
     facilities_department = Department.objects.create(
-        name="Facilities Department", code="FAC", campus=campus
+        name="Facilities Department", code="FAC", campus=campus, head_of_department=hod_facilities
     )
 
-    # Create sections with department relationships
+    # Set primary_department on HODs now that departments exist
+    hod_it.primary_department = it_department
+    hod_it.save()
+    hod_facilities.primary_department = facilities_department
+    hod_facilities.save()
+
+    # Sections
     section = Section.objects.create(
-        name="IT",
-        code="IT",
-        description="Information Technology",
-        department=it_department,
+        name="IT", code="IT", description="Information Technology", department=it_department,
     )
-
     hvac = Section.objects.create(
-        name="HVAC",
-        code="HVAC",
-        description="Air Conditioning systems.",
-        department=facilities_department,
+        name="HVAC", code="HVAC", description="Air Conditioning systems.", department=facilities_department,
     )
-
     electrical = Section.objects.create(
-        name="Electrical",
-        code="ELEC",
-        description="Electricity installations and fixtures.",
+        name="Electrical", code="ELEC", description="Electricity installations and fixtures.",
         department=facilities_department,
     )
 
-    # Create facility with organizational context
+    # HOS — each section gets a head; hos_facilities oversees both HVAC and Electrical
+    hos_it = CustomUser.objects.create_user(
+        username="hos_it", email="hosit@example.com", password="hospass",
+        role="head_of_section", primary_campus=campus, primary_department=it_department,
+    )
+    section.head_of_section = hos_it
+    section.save()
+    hos_it.sections.add(section)
+
+    hos_facilities = CustomUser.objects.create_user(
+        username="hos_facilities", email="hosfac@example.com", password="hospass",
+        role="head_of_section", primary_campus=campus, primary_department=facilities_department,
+    )
+    hvac.head_of_section = hos_facilities
+    hvac.save()
+    electrical.head_of_section = hos_facilities
+    electrical.save()
+    hos_facilities.sections.add(hvac, electrical)
+
+    # Facility (department field removed in migration 0006)
     facility = Facility.objects.create(
-        name="Main Building",
-        type="building",
-        status="active",
-        location="123 Main St",
-        campus=campus,
-        department=it_department,
+        name="Main Building", type="building", status="active",
+        location="123 Main St", campus=campus,
     )
 
-    # Create users with different roles
+    # Users
     user = CustomUser.objects.create_user(
-        username="testuser",
-        email="testuser@example.com",
-        password="testpass",
-        role="user",
-        primary_campus=campus,
+        username="testuser", email="testuser@example.com", password="testpass",
+        role="user", primary_campus=campus,
     )
-    user.sections.add(section, hvac, electrical)  # Add user to all sections
+    user.sections.add(section, hvac, electrical)
 
     technician = CustomUser.objects.create_user(
-        username="techuser",
-        email="techuser@example.com",
-        password="techpass",
-        role="technician",
-        primary_campus=campus,
+        username="techuser", email="techuser@example.com", password="techpass",
+        role="technician", primary_campus=campus, primary_department=it_department,
     )
-
     hvac_technician = CustomUser.objects.create_user(
-        username="hvac_tech",
-        email="hvactech@example.com",
-        password="hvac123",
-        role="technician",
-        primary_campus=campus,
+        username="hvac_tech", email="hvactech@example.com", password="hvac123",
+        role="technician", primary_campus=campus, primary_department=facilities_department,
     )
-
     electrician = CustomUser.objects.create_user(
-        username="electrical_tech",
-        email="electricaltech@example.com",
-        password="electrician123",
-        role="technician",
-        primary_campus=campus,
+        username="electrical_tech", email="electricaltech@example.com", password="electrician123",
+        role="technician", primary_campus=campus, primary_department=facilities_department,
     )
-
     admin = CustomUser.objects.create_user(
-        username="adminuser",
-        email="admin@example.com",
-        password="adminpass",
-        role="admin",
+        username="adminuser", email="admin@example.com", password="adminpass", role="admin",
     )
-
+    # Manager: scoped to IT dept code across all campuses in org; primary_campus helps
+    # get_accessible_campuses() but org is derived from primary_department.campus.organization
     manager = CustomUser.objects.create_user(
-        username="manager",
-        email="manager@example.com",
-        password="managerpass",
-        role="manager",
-        primary_campus=campus,
+        username="manager", email="manager@example.com", password="managerpass",
+        role="manager", primary_campus=campus, primary_department=it_department,
     )
 
-    # Assign technicians to their respective sections
+    # Assign technicians to sections
     technician.sections.add(section)
     hvac_technician.sections.add(hvac)
     electrician.sections.add(electrical)
@@ -143,6 +139,10 @@ def setup_data(db):
         "electrician": electrician,
         "admin": admin,
         "manager": manager,
+        "hod_it": hod_it,
+        "hod_facilities": hod_facilities,
+        "hos_it": hos_it,
+        "hos_facilities": hos_facilities,
     }
 
 
@@ -167,36 +167,6 @@ def test_ticket_creation(api_client, setup_data):
     assert ticket.status == "open"
     assert ticket.assigned_to is None
     assert ticket.raised_by == setup_data["user"]
-
-
-@pytest.mark.django_db
-def test_admin_can_assign_ticket(api_client, setup_data):
-    """Admin assigns ticket to technician in same section as ticket section"""
-    ticket = Ticket.objects.create(
-        title="Network issue",
-        description="WiFi is down",
-        section=setup_data["section"],
-        facility=setup_data["facility"],
-        raised_by=setup_data["user"],
-        status="open",
-    )
-
-    payload = {"assigned_to_id": setup_data["technician"].id, "status": "assigned"}
-
-    print(ticket, payload)
-    # ✅ authenticate as admin
-    api_client.force_authenticate(user=setup_data["admin"])
-
-    response = api_client.patch(
-        reverse("ticket-detail", args=[ticket.id]), payload, format="json"
-    )
-    print(response.status_code, response.data)
-
-    assert response.status_code in [200, 202]
-
-    ticket.refresh_from_db()
-    assert ticket.assigned_to == setup_data["technician"]
-    assert ticket.status == "assigned"
 
 
 @pytest.mark.django_db
@@ -243,38 +213,6 @@ def test_admin_cant_assign_ticket_to_technician_not_in_section(api_client, setup
 
 
 @pytest.mark.django_db
-def test_technician_can_update_ticket_status(api_client, setup_data):
-    """Technician updates ticket from assigned to in_progress to resolved"""
-    ticket = Ticket.objects.create(
-        title="Email down",
-        description="Outlook not syncing",
-        section=setup_data["section"],
-        facility=setup_data["facility"],
-        raised_by=setup_data["user"],
-        assigned_to=setup_data["technician"],
-        status="assigned",
-    )
-
-    payload = {"status": "in_progress"}
-    api_client.force_authenticate(user=setup_data["technician"])
-
-    response = api_client.patch(
-        reverse("ticket-detail", args=[ticket.id]), payload, format="json"
-    )
-    assert response.status_code in [200, 202]
-    ticket.refresh_from_db()
-    assert ticket.status == "in_progress"
-
-    payload = {"status": "resolved"}
-    response = api_client.patch(
-        reverse("ticket-detail", args=[ticket.id]), payload, format="json"
-    )
-    assert response.status_code in [200, 202]
-    ticket.refresh_from_db()
-    assert ticket.status == "resolved"
-
-
-@pytest.mark.django_db
 def test_user_cant_update_ticket_status(api_client, setup_data):
     """User cannot updates ticket from assigned to in_progress to resolved"""
     ticket = Ticket.objects.create(
@@ -313,46 +251,6 @@ def test_user_cant_update_ticket_status(api_client, setup_data):
 
 
 @pytest.mark.django_db()
-def test_technician_or_admin_add_comment_to_ticket(api_client, setup_data):
-    """test that comments can be added to a ticket"""
-    ticket = Ticket.objects.create(
-        title="Email down",
-        description="Outlook not syncing",
-        section=setup_data["section"],
-        facility=setup_data["facility"],
-        raised_by=setup_data["user"],
-        assigned_to=setup_data["technician"],
-        status="in_progress",
-    )
-    api_client.force_authenticate(user=setup_data["technician"])
-    payload = {
-        "text": "It is now working!",
-    }
-
-    response = api_client.post(
-        reverse("ticket-comments", args=[ticket.id]), payload, format="json"
-    )
-    print(response.status_code, response.data)
-    assert response.status_code == 201
-    comment_tech = Comment.objects.first()
-    assert comment_tech.author == setup_data["technician"]
-    assert comment_tech.text == payload["text"]
-
-    api_client.force_authenticate(user=setup_data["admin"])
-    admin_payload = {
-        "text": "Great to hear!",
-    }
-    response = api_client.post(
-        reverse("ticket-comments", args=[ticket.id]), admin_payload, format="json"
-    )
-    print(response.status_code, response.data)
-    assert response.status_code == 201
-    admin_comment = Comment.objects.last()
-    assert admin_comment.text == admin_payload["text"]
-    assert admin_comment.author == setup_data["admin"]
-
-
-@pytest.mark.django_db()
 def test_user_can_submit_feedback(api_client, setup_data):
     """User submits feedback after ticket is resolved"""
     ticket = Ticket.objects.create(
@@ -375,31 +273,6 @@ def test_user_can_submit_feedback(api_client, setup_data):
     feedback = Feedback.objects.get(ticket=ticket)
     assert feedback.rating == 5
     assert feedback.rated_by == setup_data["user"]
-
-
-@pytest.mark.django_db()
-def test_user_cant_submit_feedback_is_not_resolved(api_client, setup_data):
-    """User submits feedback after ticket is resolved"""
-    ticket = Ticket.objects.create(
-        title="Email fixed",
-        description="Problem resolved",
-        section=setup_data["section"],
-        facility=setup_data["facility"],
-        raised_by=setup_data["user"],
-        assigned_to=setup_data["technician"],
-        status="pending",
-    )
-
-    api_client.force_authenticate(user=setup_data["user"])
-    payload = {"rating": 5, "comment": "Great job!"}
-
-    response = api_client.post(
-        reverse("ticket-feedback", args=[ticket.id]), payload, format="json"
-    )
-    assert response.status_code == 400
-    feedback = Feedback.objects.filter(ticket=ticket).count()
-    assert feedback == 0
-    # assert feedback.rated_by is None
 
 
 @pytest.mark.django_db

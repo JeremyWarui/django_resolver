@@ -124,10 +124,10 @@ def hod_factory(db):
 
 
 @pytest.fixture
-def director_factory(db):
-    """Factory for creating manager (director) users"""
+def manager_factory(db):
+    """Factory for creating manager users"""
 
-    def create_director(username=None, email=None, password="dirpass", **kwargs):
+    def create_manager(username=None, email=None, password="managerpass", **kwargs):
         if username is None:
             username = f"manager_{uuid.uuid4().hex[:8]}"
         if email is None:
@@ -136,7 +136,7 @@ def director_factory(db):
             username=username, email=email, password=password, role="manager", **kwargs
         )
 
-    return create_director
+    return create_manager
 
 
 # ============================================================================
@@ -214,6 +214,8 @@ def department(db, campus, hod_factory):
     dept = Department.objects.create(
         name="IT Department", code="IT", campus=campus, head_of_department=hod
     )
+    hod.primary_department = dept
+    hod.save()
     return dept
 
 
@@ -227,6 +229,8 @@ def department_hvac(db, campus, hod_factory):
     dept = Department.objects.create(
         name="Facilities Department", code="FAC", campus=campus, head_of_department=hod
     )
+    hod.primary_department = dept
+    hod.save()
     return dept
 
 

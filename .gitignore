@@ -56,6 +56,9 @@ venv/
 docs/api/test-requests.http
 .venv
 
+# Claude Code local settings (project settings.json is tracked)
+.claude/settings.local.json
+
 # IDEs / Editors
 .vscode/
 .idea/

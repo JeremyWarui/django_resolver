@@ -405,7 +405,6 @@ def test_bulk_ticket_creation(db, user_factory):
         status="active",
         location="Main",
         campus=campus,
-        department=dept,
     )
 
     # Create tickets using save() instead of bulk_create to ensure ticket_no generation

@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3)",
+      "Bash(python3 -c ' *)",
+      "Bash(git commit -m ' *)",
+      "Bash(gh api *)",
+      "Bash(python3 -c \"import sys,json; data=sys.stdin.read\\(\\); prs=json.loads\\(data\\); [print\\(p['number'], p['title']\\) for p in prs]\")",
+      "Bash(python manage.py check --database default)",
+      "Bash(python manage.py dbshell -- -c \"SELECT COUNT\\(*\\) FROM tickets_customuser;\")"
+    ]
+  }
+}

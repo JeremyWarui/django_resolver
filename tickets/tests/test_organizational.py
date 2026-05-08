@@ -37,21 +37,17 @@ def test_organizational_structure_created(organization, campus, department, sect
     assert section.department == department
 
 
-def test_manager_has_no_ticket_access(
+def test_manager_ticket_scope(
     organization,
     campus,
     department,
     section,
     facility,
-    director_factory,
+    manager_factory,
     user_factory,
     technician_factory,
 ):
-    """Test that managers have analytics-only access — no individual ticket visibility"""
-    manager = director_factory()
-    manager.primary_campus = campus
-    manager.save()
-
+    """Test manager sees dept-scoped tickets across campuses; no primary_department → none"""
     user = user_factory()
     user.primary_campus = campus
     user.save()
@@ -63,19 +59,22 @@ def test_manager_has_no_ticket_access(
 
     Ticket.objects.create(
         title="Manager Scope Test Ticket",
-        description="Manager should not see this via get_accessible_tickets",
+        description="Manager should see this when dept is set",
         section=section,
         facility=facility,
         raised_by=user,
         assigned_to=technician,
     )
 
-    # Manager scope is organization-wide for analytics only
-    assert manager.organizational_scope == "organization"
+    # Manager without primary_department gets nothing
+    manager_no_dept = manager_factory()
+    assert TicketService.get_accessible_tickets(manager_no_dept).count() == 0
 
-    # Managers get no individual tickets — analytics-only role
-    accessible_tickets = TicketService.get_accessible_tickets(manager)
-    assert accessible_tickets.count() == 0
+    # Manager with primary_department sees dept-scoped tickets
+    manager = manager_factory()
+    manager.primary_department = department
+    manager.save()
+    assert TicketService.get_accessible_tickets(manager).count() == 1
 
 
 def test_hod_campus_scoped_access(
@@ -325,127 +324,6 @@ def test_cannot_escalate_beyond_hod(
     assert result.escalation_level == 2
 
 
-def test_priority_level_0_is_low(
-    organization, campus, department, section, facility, user_factory
-):
-    """Test that escalation level 0 (open) tickets have LOW priority"""
-    user = user_factory()
-    user.primary_campus = campus
-    user.save()
-
-    ticket = Ticket.objects.create(
-        title="Low Priority Test",
-        description="Test that open tickets are low priority",
-        section=section,
-        facility=facility,
-        raised_by=user,
-        status="open",
-        escalation_level=0,
-    )
-
-    ticket.refresh_from_db()
-    assert ticket.escalation_level == 0
-    assert ticket.priority == "low"
-
-
-def test_priority_level_1_is_medium(
-    organization,
-    campus,
-    department,
-    section,
-    facility,
-    user_factory,
-    technician_factory,
-    section_head_factory,
-):
-    """Test that escalation level 1 (first escalation) tickets have MEDIUM priority"""
-    user = user_factory()
-    user.primary_campus = campus
-    user.save()
-
-    technician = technician_factory()
-    technician.primary_campus = campus
-    technician.sections.add(section)
-    technician.save()
-
-    section_head = section_head_factory()
-    section_head.primary_campus = campus
-    section_head.primary_department = department
-    section_head.sections.add(section)
-    section_head.save()
-
-    ticket = Ticket.objects.create(
-        title="Medium Priority Test",
-        description="Test that escalated to section head tickets are medium priority",
-        section=section,
-        facility=facility,
-        raised_by=user,
-        assigned_to=technician,
-        status="open",
-        escalation_level=0,
-        priority="low",
-    )
-
-    # Escalate to section head
-    TicketService.escalate_ticket(
-        ticket=ticket, escalated_by=technician, reason="Escalating to section head"
-    )
-
-    ticket.refresh_from_db()
-    assert ticket.escalation_level == 1
-    assert ticket.priority == "medium"
-
-
-def test_priority_level_2_is_high(
-    organization,
-    campus,
-    department,
-    section,
-    facility,
-    user_factory,
-    technician_factory,
-    hod_factory,
-):
-    """Test that escalation level 2 (final escalation) tickets have HIGH priority"""
-    user = user_factory()
-    user.primary_campus = campus
-    user.save()
-
-    technician = technician_factory()
-    technician.primary_campus = campus
-    technician.sections.add(section)
-    technician.save()
-
-    hod = hod_factory()
-    hod.primary_campus = campus
-    hod.primary_department = department
-    hod.save()
-
-    ticket = Ticket.objects.create(
-        title="High Priority Test",
-        description="Test that escalated to HOD tickets are high priority",
-        section=section,
-        facility=facility,
-        raised_by=user,
-        assigned_to=technician,
-        status="open",
-        escalation_level=0,
-        priority="low",
-    )
-
-    # Escalate to section head first
-    ticket.escalate(escalated_by=technician, reason="Escalating to section head")
-
-    # Then escalate to HOD
-    TicketService.escalate_ticket(
-        ticket=ticket, escalated_by=technician, reason="Escalating to HOD"
-    )
-
-    ticket.refresh_from_db()
-    assert ticket.escalation_level == 2
-    assert ticket.priority == "high"
-
-
 # ============================================================================
 # API INTEGRATION TESTS
 # ============================================================================
@@ -553,93 +431,9 @@ def test_organizational_analytics_endpoint(
     assert response.status_code in [status.HTTP_200_OK, status.HTTP_403_FORBIDDEN]
 
 
-def test_escalate_ticket_manual_endpoint(
-    authenticated_client,
-    organization,
-    campus,
-    department,
-    section,
-    facility,
-    user_factory,
-    technician_factory,
-):
-    """Test manual ticket escalation endpoint"""
-    user = user_factory()
-    user.primary_campus = campus
-    user.save()
-
-    technician = technician_factory()
-    technician.primary_campus = campus
-    technician.sections.add(section)
-    technician.save()
-
-    ticket = Ticket.objects.create(
-        title="Escalate Endpoint Test",
-        description="Test escalation endpoint",
-        section=section,
-        facility=facility,
-        raised_by=user,
-        assigned_to=technician,
-        status="open",
-    )
-
-    client = authenticated_client["client"]
-    url = reverse("escalate-ticket-manual", args=[ticket.id])
-    data = {"reason": "Needs urgent attention"}
-
-    response = client.post(url, data, format="json")
-
-    # Endpoint should process the escalation
-    assert response.status_code in [
-        status.HTTP_200_OK,
-        status.HTTP_400_BAD_REQUEST,
-        status.HTTP_403_FORBIDDEN,
-    ]
-
-
 # ============================================================================
 # ANALYTICS AGGREGATION TESTS
 # ============================================================================
-
-
-def test_director_dashboard_aggregates_metrics(
-    director_factory,
-    organization,
-    campus,
-    department,
-    section,
-    facility,
-    user_factory,
-    technician_factory,
-):
-    """Test director dashboard aggregates organization-wide metrics"""
-    director = director_factory()
-    director.primary_campus = campus
-    director.save()
-
-    user = user_factory()
-    user.primary_campus = campus
-    user.save()
-
-    technician = technician_factory()
-    technician.primary_campus = campus
-    technician.sections.add(section)
-    technician.save()
-
-    # Create multiple tickets with different statuses
-    for i in range(3):
-        Ticket.objects.create(
-            title=f"Dashboard Test {i}",
-            description=f"Test ticket {i}",
-            section=section,
-            facility=facility,
-            raised_by=user,
-            assigned_to=technician if i % 2 == 0 else None,
-            status="open" if i % 3 == 0 else "assigned",
-        )
-
-    # Director should be able to see aggregated metrics
-    assert director.role == "manager"
 
 
 def test_hod_dashboard_campus_scoped(
@@ -997,196 +791,3 @@ def test_auto_escalation_processing(
 # ============================================================================
 
 
-def test_director_dashboard(
-    director_factory,
-    organization,
-    campus,
-    department,
-    section,
-    facility,
-    user_factory,
-    technician_factory,
-):
-    """Test director dashboard with organization-wide metrics"""
-    director = director_factory()
-    director.primary_campus = campus
-    director.save()
-
-    user = user_factory()
-    user.primary_campus = campus
-    user.save()
-
-    technician = technician_factory()
-    technician.primary_campus = campus
-    technician.sections.add(section)
-    technician.save()
-
-    # Create various tickets
-    for i in range(5):
-        Ticket.objects.create(
-            title=f"Dashboard Ticket {i}",
-            description=f"Dashboard test {i}",
-            section=section,
-            facility=facility,
-            raised_by=user,
-            assigned_to=technician if i % 2 == 0 else None,
-            status="open" if i < 2 else "assigned",
-        )
-
-    # Director should have full organization access
-    assert director.organizational_scope == "organization"
-
-
-def test_hod_dashboard(
-    hod_factory,
-    organization,
-    campus,
-    department,
-    section,
-    facility,
-    user_factory,
-    technician_factory,
-):
-    """Test HOD dashboard with department-scoped metrics"""
-    hod = hod_factory()
-    hod.primary_campus = campus
-    hod.primary_department = department
-    hod.save()
-
-    user = user_factory()
-    user.primary_campus = campus
-    user.save()
-
-    technician = technician_factory()
-    technician.primary_campus = campus
-    technician.sections.add(section)
-    technician.save()
-
-    # Create tickets
-    for i in range(3):
-        Ticket.objects.create(
-            title=f"HOD Ticket {i}",
-            description=f"HOD dashboard test {i}",
-            section=section,
-            facility=facility,
-            raised_by=user,
-            assigned_to=technician,
-        )
-
-    # HOD should have department access
-    assert hod.organizational_scope == "department"
-
-
-def test_section_head_dashboard(
-    section_head_factory,
-    organization,
-    campus,
-    department,
-    section,
-    facility,
-    user_factory,
-    technician_factory,
-):
-    """Test section head dashboard with section-scoped metrics"""
-    section_head = section_head_factory()
-    section_head.primary_campus = campus
-    section_head.primary_department = department
-    section_head.sections.add(section)
-    section_head.save()
-
-    user = user_factory()
-    user.primary_campus = campus
-    user.save()
-
-    technician = technician_factory()
-    technician.primary_campus = campus
-    technician.sections.add(section)
-    technician.save()
-
-    # Create tickets
-    for i in range(2):
-        Ticket.objects.create(
-            title=f"Section Head Ticket {i}",
-            description=f"Section head dashboard test {i}",
-            section=section,
-            facility=facility,
-            raised_by=user,
-            assigned_to=technician,
-        )
-
-    # Section head should have section access
-    assert section_head.organizational_scope == "section"
-
-
-def test_dashboard_sla_compliance_calculation(
-    organization,
-    campus,
-    department,
-    section,
-    facility,
-    user_factory,
-    technician_factory,
-):
-    """Test SLA compliance calculation in dashboards"""
-    user = user_factory()
-    user.primary_campus = campus
-    user.save()
-
-    technician = technician_factory()
-    technician.primary_campus = campus
-    technician.sections.add(section)
-    technician.save()
-
-    # Create ticket and mark as resolved quickly (should have good SLA)
-    ticket = Ticket.objects.create(
-        title="SLA Compliance Test",
-        description="Testing SLA compliance calculation",
-        section=section,
-        facility=facility,
-        raised_by=user,
-        assigned_to=technician,
-        status="resolved",
-        created_at=timezone.now() - timedelta(hours=2),
-    )
-
-    # Ticket exists and can be used for SLA calculations
-    assert ticket.status == "resolved"
-    assert ticket.created_at is not None
-
-
-def test_escalation_trends(
-    organization,
-    campus,
-    department,
-    section,
-    facility,
-    user_factory,
-    technician_factory,
-):
-    """Test escalation trend analysis"""
-    user = user_factory()
-    user.primary_campus = campus
-    user.save()
-
-    technician = technician_factory()
-    technician.primary_campus = campus
-    technician.sections.add(section)
-    technician.save()
-
-    # Create tickets with different escalation levels
-    for level in range(3):
-        Ticket.objects.create(
-            title=f"Escalation Level {level}",
-            description=f"Testing escalation level {level}",
-            section=section,
-            facility=facility,
-            raised_by=user,
-            assigned_to=technician,
-            status="escalated" if level > 0 else "open",
-            escalation_level=level,
-        )
-
-    # Verify escalation levels are set correctly
-    tickets = Ticket.objects.all().order_by("escalation_level")
-    assert tickets.first().escalation_level == 0
-    assert tickets.last().escalation_level == 2

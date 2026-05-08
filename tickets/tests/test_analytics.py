@@ -2,6 +2,7 @@
 
 import pytest
 from datetime import timedelta
+from django.core.cache import cache
 from django.urls import reverse
 from django.utils import timezone
 
@@ -70,7 +71,7 @@ def organizational_analytics_setup(
     org_aware_user_factory,
     technician_factory,
     hod_factory,
-    director_factory,
+    manager_factory,
     section_head_factory,
 ):
     """Full org hierarchy for role-based dashboard tests."""
@@ -99,9 +100,9 @@ def organizational_analytics_setup(
     )
 
     # Manager: cross-campus dept scope — needs primary_department, NOT primary_campus
-    manager = director_factory(
+    manager = manager_factory(
         username="manager",
-        first_name="Director",
+        first_name="Manager",
         last_name="User",
         primary_department=dept_it,
     )
@@ -250,6 +251,7 @@ def test_ticket_analytics_date_range(db, analytics_setup, ticket_factory):
             created_at=now - timedelta(days=i),
         )
 
+    cache.clear()
     assert TicketAnalytics.get_ticket_counts_by_timeframe(days=30)["count"] >= 10
 
 
@@ -440,8 +442,8 @@ def test_admin_analytics_overdue_tickets_structure(db):
 # ============================================================================
 
 
-def test_manager_dashboard_structure(db, organizational_analytics_setup, ticket_factory):
-    """manager_dashboard returns department, overview, campuses, sections, technicians."""
+def test_manager_dashboard(db, organizational_analytics_setup, ticket_factory):
+    """manager_dashboard: correct structure, content, technician data, section data, and sort order."""
     manager = organizational_analytics_setup["manager"]
     tech1 = organizational_analytics_setup["tech1"]
     user = organizational_analytics_setup["user"]
@@ -449,133 +451,7 @@ def test_manager_dashboard_structure(db, organizational_analytics_setup, ticket_
     facility_main = organizational_analytics_setup["facility_main"]
     dept_it = organizational_analytics_setup["dept_it"]
 
-    for i in range(4):
-        ticket_factory(
-            title=f"Manager Test {i}", assigned_to=tech1,
-            section=section_network, facility=facility_main, raised_by=user,
-        )
-
-    dashboard = ManagerAnalytics.manager_dashboard(manager, days=30)
-
-    assert "department" in dashboard
-    assert dashboard["department"]["code"] == dept_it.code
-    assert "overview" in dashboard
-    assert dashboard["overview"]["total_tickets"] >= 4
-    assert "campuses" in dashboard
-    assert "sections" in dashboard
-    assert "technicians" in dashboard
-    assert "status_distribution" in dashboard
-    assert "escalation_trends" in dashboard
-    assert "period_days" in dashboard
-
-
-def test_manager_dashboard_no_primary_department_returns_empty(db, director_factory):
-    """manager_dashboard returns {} when manager has no primary_department."""
-    manager = director_factory(username="mgr_nodept")
-    assert ManagerAnalytics.manager_dashboard(manager, days=30) == {}
-
-
-def test_manager_dashboard_wrong_role_returns_empty(db, hod_factory):
-    """manager_dashboard returns {} for non-manager roles."""
-    hod = hod_factory()
-    assert ManagerAnalytics.manager_dashboard(hod, days=30) == {}
-
-
-def test_manager_dashboard_escalation_trends(
-    db, organizational_analytics_setup, ticket_factory
-):
-    """manager_dashboard includes escalation_trends dict."""
-    manager = organizational_analytics_setup["manager"]
-    tech1 = organizational_analytics_setup["tech1"]
-    user = organizational_analytics_setup["user"]
-    section_network = organizational_analytics_setup["section_network"]
-    facility_main = organizational_analytics_setup["facility_main"]
-
-    for i in range(2):
-        ticket_factory(
-            title=f"Esc Test {i}", assigned_to=tech1,
-            section=section_network, facility=facility_main, raised_by=user,
-        )
-
-    dashboard = ManagerAnalytics.manager_dashboard(manager, days=30)
-    assert "escalation_trends" in dashboard
-    assert isinstance(dashboard["escalation_trends"], dict)
-
-
-def test_manager_dashboard_technicians(
-    db, organizational_analytics_setup, ticket_factory
-):
-    """manager_dashboard lists technicians with resolution counts."""
-    manager = organizational_analytics_setup["manager"]
-    tech1 = organizational_analytics_setup["tech1"]
-    user = organizational_analytics_setup["user"]
-    section_network = organizational_analytics_setup["section_network"]
-    facility_main = organizational_analytics_setup["facility_main"]
-
-    for i in range(3):
-        ticket = ticket_factory(
-            title=f"Resolved {i}", assigned_to=tech1,
-            section=section_network, facility=facility_main, raised_by=user,
-        )
-        ticket.change_status("resolved", performed_by=tech1)
-
-    dashboard = ManagerAnalytics.manager_dashboard(manager, days=30)
-    assert "technicians" in dashboard
-    assert len(dashboard["technicians"]) > 0
-    tech_entry = dashboard["technicians"][0]
-    assert "technician" in tech_entry
-    assert "total_assigned" in tech_entry
-    assert "resolved" in tech_entry
-
-
-def test_manager_dashboard_section_metrics(
-    db, organizational_analytics_setup, ticket_factory
-):
-    """manager_dashboard sections list has correct structure and counts."""
-    manager = organizational_analytics_setup["manager"]
-    tech1 = organizational_analytics_setup["tech1"]
-    user = organizational_analytics_setup["user"]
-    section_network = organizational_analytics_setup["section_network"]
-    facility_main = organizational_analytics_setup["facility_main"]
-
-    for i in range(4):
-        ticket_factory(
-            title=f"Section Test {i}", assigned_to=tech1,
-            section=section_network, facility=facility_main, raised_by=user,
-        )
-
-    dashboard = ManagerAnalytics.manager_dashboard(manager, days=30)
-    assert "sections" in dashboard
-    assert len(dashboard["sections"]) > 0
-
-    section = dashboard["sections"][0]
-    assert "section" in section
-    assert "id" in section["section"]
-    assert "name" in section["section"]
-    assert "code" in section["section"]
-    assert "total_tickets" in section
-    assert "open_tickets" in section
-    assert "escalated_tickets" in section
-    assert "avg_resolution_hours" in section
-
-    network_entry = next(
-        (s for s in dashboard["sections"] if s["section"]["id"] == section_network.id), None
-    )
-    assert network_entry is not None
-    assert network_entry["total_tickets"] >= 4
-
-
-def test_manager_dashboard_sections_sorted_by_count(
-    db, organizational_analytics_setup, ticket_factory
-):
-    """manager_dashboard sections are sorted descending by total_tickets."""
-    manager = organizational_analytics_setup["manager"]
-    tech1 = organizational_analytics_setup["tech1"]
-    user = organizational_analytics_setup["user"]
-    facility_main = organizational_analytics_setup["facility_main"]
-    section_network = organizational_analytics_setup["section_network"]
-    dept_it = organizational_analytics_setup["dept_it"]
-
+    # Create a second section so we can assert descending sort order
     section_support = Section.objects.create(name="Support", code="SUP", department=dept_it)
     tech1.sections.add(section_support)
 
@@ -585,15 +461,53 @@ def test_manager_dashboard_sections_sorted_by_count(
             section=section_network, facility=facility_main, raised_by=user,
         )
     for i in range(2):
-        ticket_factory(
+        t = ticket_factory(
             title=f"Support {i}", assigned_to=tech1,
             section=section_support, facility=facility_main, raised_by=user,
         )
+        t.change_status("resolved", performed_by=tech1)
 
     dashboard = ManagerAnalytics.manager_dashboard(manager, days=30)
-    sections = dashboard["sections"]
-    for i in range(len(sections) - 1):
-        assert sections[i]["total_tickets"] >= sections[i + 1]["total_tickets"]
+
+    # Top-level keys
+    for key in ("department", "overview", "campuses", "sections", "technicians",
+                "status_distribution", "escalation_trends", "period_days"):
+        assert key in dashboard
+    assert dashboard["department"]["code"] == dept_it.code
+    assert dashboard["overview"]["total_tickets"] >= 5
+    assert isinstance(dashboard["escalation_trends"], dict)
+
+    # Section structure
+    assert len(dashboard["sections"]) > 0
+    sec = dashboard["sections"][0]
+    for field in ("section", "total_tickets", "open_tickets", "escalated_tickets", "avg_resolution_hours"):
+        assert field in sec
+    for field in ("id", "name", "code"):
+        assert field in sec["section"]
+    network_entry = next(s for s in dashboard["sections"] if s["section"]["id"] == section_network.id)
+    assert network_entry["total_tickets"] >= 5
+
+    # Sections sorted descending by ticket count
+    counts = [s["total_tickets"] for s in dashboard["sections"]]
+    assert counts == sorted(counts, reverse=True)
+
+    # Technician entry structure
+    assert len(dashboard["technicians"]) > 0
+    tech_entry = dashboard["technicians"][0]
+    for field in ("technician", "total_assigned", "resolved"):
+        assert field in tech_entry
+
+
+def test_manager_dashboard_no_primary_department_returns_empty(db, manager_factory):
+    """manager_dashboard returns {} when manager has no primary_department."""
+    manager = manager_factory(username="mgr_nodept")
+    assert ManagerAnalytics.manager_dashboard(manager, days=30) == {}
+
+
+def test_manager_dashboard_wrong_role_returns_empty(db, hod_factory):
+    """manager_dashboard returns {} for non-manager roles."""
+    hod = hod_factory()
+    assert ManagerAnalytics.manager_dashboard(hod, days=30) == {}
 
 
 def test_manager_dashboard_endpoint(db, organizational_analytics_setup, api_client):
@@ -670,9 +584,9 @@ def test_hod_dashboard_section_breakdown(
     assert "technician_count" in section_entry
 
 
-def test_hod_dashboard_wrong_role_returns_empty(db, director_factory):
+def test_hod_dashboard_wrong_role_returns_empty(db, manager_factory):
     """hod_dashboard returns {} for non-hod roles."""
-    manager = director_factory()
+    manager = manager_factory()
     assert HODAnalytics.hod_dashboard(manager, days=30) == {}
 
 

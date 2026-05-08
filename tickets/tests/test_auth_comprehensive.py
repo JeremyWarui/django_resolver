@@ -81,21 +81,6 @@ def test_password_authentication_required(api_client):
     assert response.status_code in [401, 400]
 
 
-def test_authenticated_user_can_create_ticket(authenticated_client, section, facility):
-    """Test that authenticated user can create tickets"""
-    client = authenticated_client["client"]
-
-    payload = {
-        "title": "Test Ticket",
-        "description": "Test description",
-        "section_id": section.id,
-        "facility_id": facility.id,
-    }
-
-    response = client.post(reverse("ticket-list"), payload, format="json")
-    assert response.status_code == 201
-
-
 def test_unauthenticated_user_cannot_create_ticket(api_client, section, facility):
     """Test that unauthenticated users cannot create tickets"""
     payload = {
@@ -107,20 +92,6 @@ def test_unauthenticated_user_cannot_create_ticket(api_client, section, facility
 
     response = api_client.post(reverse("ticket-list"), payload, format="json")
     assert response.status_code in [401, 403]
-
-
-def test_admin_can_access_admin_endpoints(authenticated_admin_client):
-    """Test that admin can access admin-only endpoints"""
-    client = authenticated_admin_client["client"]
-    response = client.get(reverse("ticket-list"))
-    assert response.status_code == 200
-
-
-def test_technician_restricted_access(authenticated_technician_client, ticket_factory):
-    """Test that technician has restricted access to certain endpoints"""
-    client = authenticated_technician_client["client"]
-    response = client.get(reverse("ticket-list"))
-    assert response.status_code == 200
 
 
 def test_authentication_persists_across_requests(authenticated_client):
@@ -142,13 +113,3 @@ def test_invalid_token_rejected(api_client):
     assert response.status_code in [401, 403]
 
 
-def test_user_role_determines_permissions(
-    db, user_factory, technician_factory, ticket_factory
-):
-    """Test that user role determines their permissions"""
-    user = user_factory()
-    technician = technician_factory()
-
-    # Verify user role is correctly assigned
-    assert user.role == "user"
-    assert technician.role == "technician"

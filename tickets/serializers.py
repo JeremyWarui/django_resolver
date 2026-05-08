@@ -145,7 +145,7 @@ class SectionSerializer(serializers.ModelSerializer):
         write_only=True,
         required=True,
     )
-    section_head = serializers.SerializerMethodField()
+    head_of_section = serializers.SerializerMethodField()
     technicians = serializers.StringRelatedField(many=True, read_only=True)
     effective_sla_hours = serializers.IntegerField(read_only=True)
 
@@ -167,7 +167,7 @@ class SectionSerializer(serializers.ModelSerializer):
             "is_active",
         ]
 
-    def get_section_head(self, obj):
+    def get_head_of_section(self, obj):
         if not obj.head_of_section:
             return None
         u = obj.head_of_section

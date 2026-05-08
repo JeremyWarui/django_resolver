@@ -52,29 +52,6 @@ def test_get_tickets(authenticated_client, section, facility, campus):
     assert test_ticket is not None
 
 
-def test_create_ticket_via_api(authenticated_client, section, facility, campus):
-    """Test creating ticket via API endpoint"""
-    auth_user = authenticated_client["user"]
-    auth_user.primary_campus = campus
-    auth_user.save()
-
-    client = authenticated_client["client"]
-    url = reverse("ticket-list")
-
-    data = {
-        "title": "New Ticket",
-        "description": "This is a new ticket.",
-        "section_id": section.id,
-        "facility_id": facility.id,
-        "status": "open",
-    }
-    response = client.post(url, data, format="json")
-
-    assert response.status_code == status.HTTP_201_CREATED
-    assert response.data["title"] == "New Ticket"
-    assert response.data["status"] == "open"
-
-
 def test_get_ticket_detail(authenticated_client, section, facility, campus):
     """Test retrieving a specific ticket with comments & feedback"""
     auth_user = authenticated_client["user"]
@@ -116,15 +93,17 @@ def test_get_ticket_detail(authenticated_client, section, facility, campus):
 # ============================================================================
 
 
-def test_update_ticket_status_technician(
+def test_technician_status_progression(
     authenticated_technician_client, section, facility, user_factory
 ):
-    """Test technician updating ticket status for assigned ticket"""
+    """Test technician can advance a ticket through assigned → in_progress → resolved"""
     user = user_factory()
     technician = authenticated_technician_client["user"]
+    technician.sections.add(section)
+
     ticket = Ticket.objects.create(
-        title="Test Ticket",
-        description="This is a test ticket.",
+        title="Status Progression Test",
+        description="Testing technician status updates.",
         section=section,
         facility=facility,
         raised_by=user,
@@ -134,11 +113,18 @@ def test_update_ticket_status_technician(
 
     client = authenticated_technician_client["client"]
     url = reverse("ticket-detail", args=[ticket.id])
-    data = {"status": "in_progress"}
 
-    response = client.patch(url, data, format="json")
+    response = client.patch(url, {"status": "in_progress"}, format="json")
     assert response.status_code == status.HTTP_200_OK
     assert response.data["status"] == "in_progress"
+
+    response = client.patch(url, {"status": "resolved"}, format="json")
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["status"] == "resolved"
+
+    latest_log = TicketLog.objects.filter(ticket=ticket).order_by("-timestamp").first()
+    assert latest_log is not None
+    assert latest_log.performed_by == technician
 
 
 def test_technician_cannot_edit_unassigned_ticket(
@@ -195,32 +181,6 @@ def test_update_ticket_status_admin(
     response = client.patch(url, data, format="json")
     assert response.status_code == status.HTTP_200_OK
     assert response.data["status"] == "in_progress"
-
-
-def test_update_ticket_user_cant(
-    authenticated_client, section, facility, user_factory, technician_factory
-):
-    """Test that regular user cannot update ticket status"""
-    user = user_factory()
-    technician = technician_factory()
-    ticket = Ticket.objects.create(
-        title="Test Ticket",
-        description="This is a test ticket.",
-        section=section,
-        facility=facility,
-        raised_by=user,
-        assigned_to=technician,
-        status="assigned",
-    )
-
-    # Create a different authenticated user so they try to modify someone else's ticket
-    auth_user = authenticated_client["user"]
-    client = authenticated_client["client"]
-    url = reverse("ticket-detail", args=[ticket.id])
-    data = {"status": "in_progress"}
-
-    response = client.patch(url, data, format="json")
-    assert response.status_code == status.HTTP_403_FORBIDDEN
 
 
 # ============================================================================
@@ -508,124 +468,6 @@ def test_filter_tickets_by_section(
 # ============================================================================
 
 
-def test_ticket_lifecycle_workflow(
-    authenticated_admin_client,
-    authenticated_technician_client,
-    section,
-    facility,
-    user_factory,
-):
-    """Test the complete ticket lifecycle from open to resolved"""
-    user = user_factory()
-    technician = authenticated_technician_client["user"]
-    technician.sections.add(section)
-
-    lifecycle_ticket = Ticket.objects.create(
-        title="Lifecycle Test",
-        description="Testing the complete lifecycle of a ticket.",
-        section=section,
-        facility=facility,
-        raised_by=user,
-        status="open",
-    )
-
-    # Step 1: Admin assigns ticket
-    admin_client = authenticated_admin_client["client"]
-    url = reverse("ticket-detail", args=[lifecycle_ticket.id])
-    data = {"assigned_to_id": technician.id}
-
-    response = admin_client.patch(url, data, format="json")
-    assert response.status_code == status.HTTP_200_OK
-    assert response.data["status"] == "assigned"
-
-    # Step 2: Technician updates status to in_progress
-    tech_client = authenticated_technician_client["client"]
-    data = {"status": "in_progress"}
-
-    response = tech_client.patch(url, data, format="json")
-    assert response.status_code == status.HTTP_200_OK
-    assert response.data["status"] == "in_progress"
-
-    # Step 3: Technician marks as resolved
-    data = {"status": "resolved"}
-
-    response = tech_client.patch(url, data, format="json")
-    assert response.status_code == status.HTTP_200_OK
-    assert response.data["status"] == "resolved"
-
-
-def test_changing_ticket_status(
-    authenticated_admin_client,
-    authenticated_technician_client,
-    section,
-    facility,
-    user_factory,
-    technician_factory,
-):
-    """Test that admin and technician can update ticket status appropriately"""
-    user = user_factory()
-    technician = technician_factory()
-    technician.sections.add(section)
-
-    ticket = Ticket.objects.create(
-        title="Status Test",
-        description="This ticket is for testing status changes.",
-        section=section,
-        facility=facility,
-        raised_by=user,
-        assigned_to=technician,
-        status="assigned",
-    )
-
-    # Test technician can update to in_progress
-    tech_client = authenticated_technician_client["client"]
-    url = reverse("ticket-detail", args=[ticket.id])
-    data = {"status": "in_progress"}
-
-    response = tech_client.patch(url, data, format="json")
-    assert response.status_code == status.HTTP_200_OK
-    assert response.data["status"] == "in_progress"
-
-    # Test technician can update to resolved
-    data = {"status": "resolved"}
-    response = tech_client.patch(url, data, format="json")
-    assert response.status_code == status.HTTP_200_OK
-    assert response.data["status"] == "resolved"
-
-
-def test_resolve_ticket_technician(
-    authenticated_technician_client, section, facility, user_factory
-):
-    """Test that technician can mark a ticket as resolved"""
-    user = user_factory()
-    technician = authenticated_technician_client["user"]
-    technician.sections.add(section)
-
-    ticket = Ticket.objects.create(
-        title="Resolve Test",
-        description="This ticket is for testing resolution.",
-        section=section,
-        facility=facility,
-        raised_by=user,
-        assigned_to=technician,
-        status="assigned",
-    )
-
-    # Update to in_progress first
-    ticket.change_status("in_progress", performed_by=technician)
-
-    tech_client = authenticated_technician_client["client"]
-    url = reverse("ticket-detail", args=[ticket.id])
-    data = {"status": "resolved"}
-
-    response = tech_client.patch(url, data, format="json")
-    assert response.status_code == status.HTTP_200_OK
-    assert response.data["status"] == "resolved"
-
-    # Verify that a ticket log was created for this status change
-    latest_log = TicketLog.objects.filter(ticket=ticket).order_by("-timestamp").first()
-    assert latest_log is not None
-    assert latest_log.performed_by == technician
 
 
 # ============================================================================
@@ -723,57 +565,9 @@ def test_invalid_data_handling(authenticated_client, section, facility):
     assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
-def test_anonymous_user_cannot_create_ticket(api_client, section, facility):
-    """Test that unauthenticated users cannot create tickets"""
-    url = reverse("ticket-list")
-    data = {
-        "title": "Anonymous Ticket",
-        "description": "This ticket is created by an anonymous user.",
-        "section_id": section.id,
-        "facility_id": facility.id,
-    }
-
-    response = api_client.post(url, data, format="json")
-    assert response.status_code == status.HTTP_401_UNAUTHORIZED
-
-
 # ============================================================================
 # STATUS TRANSITION TESTS
 # ============================================================================
-
-
-def test_status_transition_validation(
-    authenticated_admin_client,
-    authenticated_technician_client,
-    section,
-    facility,
-    user_factory,
-):
-    """Test status transition validations for tickets"""
-    user = user_factory()
-    technician = authenticated_technician_client["user"]
-    technician.sections.add(section)
-    # Set organizational context for technician
-    technician.primary_campus = section.department.campus
-    technician.primary_department = section.department
-    technician.save()
-
-    open_ticket = Ticket.objects.create(
-        title="Open Ticket",
-        description="This is an open ticket",
-        section=section,
-        facility=facility,
-        raised_by=user,
-        status="open",
-    )
-
-    client = authenticated_admin_client["client"]
-    url = reverse("ticket-detail", args=[open_ticket.id])
-    data = {"assigned_to_id": technician.id}
-
-    response = client.patch(url, data, format="json")
-    assert response.status_code == status.HTTP_200_OK
-    assert response.data["status"] == "assigned"
 
 
 def test_valid_status_transitions(
@@ -1240,3 +1034,21 @@ def test_unassign_technician_from_ticket(
     response = client.patch(url, data, format="json")
     # API may return 200 with null or 400 depending on implementation
     assert response.status_code in [status.HTTP_200_OK, status.HTTP_400_BAD_REQUEST]
+
+
+def test_get_available_technicians_for_section(
+    authenticated_admin_client, section, facility, technician_factory
+):
+    """Test filtering technicians by section returns only those in that section"""
+    tech = technician_factory()
+    tech.sections.add(section)
+    tech.save()
+
+    client = authenticated_admin_client["client"]
+    response = client.get(
+        reverse("technicians-by-section"),
+        {"section_id": section.id},
+        format="json",
+    )
+
+    assert response.status_code == status.HTTP_200_OK

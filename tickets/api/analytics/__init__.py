@@ -1,26 +1,27 @@
-"""Analytics module - centralized analytics, dashboards, and reporting.
+"""Analytics module - role-scoped analytics and dashboards.
 
-Exports:
-- TicketAnalytics: Basic ticket metrics (counts, trends, distributions)
-- TechnicianAnalytics: Technician performance and workload metrics
-- OrganizationalAnalytics: Role-specific dashboards (Director, HOD, Section Head)
+Each class is responsible for one level of the org hierarchy:
 
-Backwards compatibility:
-- OrganizationalAnalyticsService alias for module consistency
+  AdminAnalytics       — system-wide (admin only)
+  ManagerAnalytics     — own department across all campuses
+  HODAnalytics         — own department within own campus
+  SectionHeadAnalytics — own section(s) only
+  TechnicianAnalytics  — personal performance metrics
+  TicketAnalytics      — raw ticket counts and trends (shared utility)
 """
 
-from .analytics import (
-    TicketAnalytics,
-    TechnicianAnalytics,
-    OrganizationalAnalytics,
-)
-
-# Backwards compatibility
-OrganizationalAnalyticsService = OrganizationalAnalytics
+from .ticket_analytics import TicketAnalytics
+from .technician_analytics import TechnicianAnalytics
+from .admin_analytics import AdminAnalytics
+from .manager_analytics import ManagerAnalytics
+from .hod_analytics import HODAnalytics
+from .section_head_analytics import SectionHeadAnalytics
 
 __all__ = [
     "TicketAnalytics",
     "TechnicianAnalytics",
-    "OrganizationalAnalytics",
-    "OrganizationalAnalyticsService",
+    "AdminAnalytics",
+    "ManagerAnalytics",
+    "HODAnalytics",
+    "SectionHeadAnalytics",
 ]

@@ -71,7 +71,11 @@ from tickets.api.services import (
     InvalidAssignmentException,
     InvalidEscalationException,
 )
-from tickets.api.analytics.analytics import TicketAnalytics, OrganizationalAnalytics
+from tickets.api.analytics.ticket_analytics import TicketAnalytics
+from tickets.api.analytics.technician_analytics import TechnicianAnalytics
+from tickets.api.analytics.manager_analytics import ManagerAnalytics
+from tickets.api.analytics.hod_analytics import HODAnalytics
+from tickets.api.analytics.section_head_analytics import SectionHeadAnalytics
 from tickets.models import (
     Organization,
     Campus,
@@ -134,8 +138,9 @@ class CampusListCreateView(ListCreateAPIView):
 
         if user.role == "admin":
             return queryset
-        elif user.role == "manager" and user.primary_campus:
-            return queryset.filter(organization=user.primary_campus.organization)
+        elif user.role == "manager" and user.primary_department:
+            # Manager sees campuses in their department's organization (cross-campus)
+            return queryset.filter(organization=user.primary_department.campus.organization)
         elif (
             user.role in ["hod", "head_of_section", "technician", "user"]
             and user.primary_campus
@@ -173,10 +178,11 @@ class DepartmentListCreateView(ListCreateAPIView):
 
         if user.role == "admin":
             return queryset
-        elif user.role == "manager" and user.primary_campus:
-            return queryset.filter(
-                campus__organization=user.primary_campus.organization
-            )
+        elif user.role == "manager" and user.primary_department:
+            # Manager sees their department across all campuses in their organization
+            dept_code = user.primary_department.code
+            org = user.primary_department.campus.organization
+            return queryset.filter(code=dept_code, campus__organization=org)
         elif user.role == "hod" and user.primary_campus:
             return queryset.filter(campus=user.primary_campus)
         elif (
@@ -958,11 +964,11 @@ class OrganizationalAnalyticsView(APIView):
 
         try:
             if user.role == "manager":
-                data = OrganizationalAnalytics.manager_dashboard(user, days=days)
+                data = ManagerAnalytics.manager_dashboard(user, days=days)
             elif user.role == "hod":
-                data = OrganizationalAnalytics.hod_dashboard(user, days=days)
+                data = HODAnalytics.hod_dashboard(user, days=days)
             elif user.role == "head_of_section":
-                data = OrganizationalAnalytics.head_of_section_dashboard(user, days=days)
+                data = SectionHeadAnalytics.section_head_dashboard(user, days=days)
             else:
                 return Response(
                     {"error": "User role does not have access to analytics dashboard"},
@@ -1028,7 +1034,7 @@ class AnalyticsTechniciansView(APIView):
     def get(self, request):
         """Get technician analytics data"""
         try:
-            data = TicketAnalytics.get_technician_performance()
+            data = TechnicianAnalytics.get_technician_performance()
             return Response(data)
         except Exception as e:
             return Response(

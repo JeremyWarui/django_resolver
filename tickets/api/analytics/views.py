@@ -7,13 +7,13 @@ from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
-# permissions and model imports not required in this module
-from tickets.api.analytics.analytics import (
-    TicketAnalytics,
-    TechnicianAnalytics,
-    AdminAnalytics,
-    OrganizationalAnalytics,
-)
+
+from tickets.api.analytics.ticket_analytics import TicketAnalytics
+from tickets.api.analytics.technician_analytics import TechnicianAnalytics
+from tickets.api.analytics.admin_analytics import AdminAnalytics
+from tickets.api.analytics.manager_analytics import ManagerAnalytics
+from tickets.api.analytics.hod_analytics import HODAnalytics
+from tickets.api.analytics.section_head_analytics import SectionHeadAnalytics
 
 # ============================================================================
 # MANAGER DASHBOARD VIEW
@@ -198,19 +198,20 @@ class RoleBasedDashboardView(APIView):
 
 class ManagerDashboardView(RoleBasedDashboardView):
     required_roles = ["manager", "admin"]
-    analytics_method = OrganizationalAnalytics.manager_dashboard
+    analytics_method = ManagerAnalytics.manager_dashboard
 
 
+# director role was renamed to manager; this endpoint now aliases the manager dashboard
 class DirectorDashboardView(RoleBasedDashboardView):
     required_roles = ["manager", "admin"]
-    analytics_method = OrganizationalAnalytics.director_dashboard
+    analytics_method = ManagerAnalytics.manager_dashboard
 
 
 class HODDashboardView(RoleBasedDashboardView):
     required_roles = ["hod", "admin"]
-    analytics_method = OrganizationalAnalytics.hod_dashboard
+    analytics_method = HODAnalytics.hod_dashboard
 
 
 class SectionHeadDashboardView(RoleBasedDashboardView):
     required_roles = ["head_of_section", "admin"]
-    analytics_method = OrganizationalAnalytics.head_of_section_dashboard
+    analytics_method = SectionHeadAnalytics.section_head_dashboard

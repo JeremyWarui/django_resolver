@@ -288,6 +288,7 @@ class TicketListSerializer(serializers.ModelSerializer):
     raised_by = UsernameField(read_only=True)
     assigned_to = serializers.SerializerMethodField(read_only=True)
     escalation_status = serializers.SerializerMethodField(read_only=True)
+    service_item = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Ticket
@@ -309,6 +310,8 @@ class TicketListSerializer(serializers.ModelSerializer):
             "escalation_level",
             "escalation_status",
             "is_due_for_escalation",
+            "service_item",
+            "form_data",
         ]
 
     def get_assigned_to(self, obj):
@@ -326,6 +329,11 @@ class TicketListSerializer(serializers.ModelSerializer):
         return mapping.get(
             obj.escalation_level, {"code": "unknown", "label": "Unknown"}
         )
+
+    def get_service_item(self, obj):
+        if not obj.service_item:
+            return None
+        return {"id": obj.service_item.id, "name": obj.service_item.name}
 
 
 class TicketSerializer(serializers.ModelSerializer):
@@ -364,6 +372,16 @@ class TicketSerializer(serializers.ModelSerializer):
     escalated_to = serializers.SerializerMethodField(read_only=True)
     comments = CommentSerializer(many=True, read_only=True)
     feedback = FeedbackSerializer(read_only=True)
+
+    service_item_id = serializers.PrimaryKeyRelatedField(
+        queryset=ServiceItem.objects.filter(is_active=True),
+        source="service_item",
+        allow_null=True,
+        required=False,
+        write_only=True,
+        label="Service Item ID",
+    )
+    service_item = serializers.SerializerMethodField(read_only=True)
 
     # Escalation read-only fields
     escalation_status = serializers.SerializerMethodField(read_only=True)
@@ -405,6 +423,10 @@ class TicketSerializer(serializers.ModelSerializer):
             # Relationships
             "comments",
             "feedback",
+            # Service catalogue
+            "service_item_id",
+            "service_item",
+            "form_data",
         ]
 
     def get_assigned_to(self, obj):
@@ -460,6 +482,12 @@ class TicketSerializer(serializers.ModelSerializer):
                 "id", "username", "first_name", "last_name"
             )
         )
+
+    def get_service_item(self, obj):
+        si = obj.get("service_item") if isinstance(obj, dict) else getattr(obj, "service_item", None)
+        if not si:
+            return None
+        return {"id": si.id, "name": si.name, "requires_approval": si.requires_approval}
 
     def get_escalation_status(self, obj):
         """Return escalation status as {code, label} object"""

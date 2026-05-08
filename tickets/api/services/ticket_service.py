@@ -1,36 +1,15 @@
-"""
-Consolidated Services Layer for Django Resolver
+"""Ticket service for managing tickets with organizational validation."""
 
-This module provides all ticket management services with organizational hierarchy validation.
-All operations respect role-based permissions, organizational scope, and escalation rules.
-
-Key Operations:
-- create_ticket(): Create tickets with organizational context validation
-- assign_ticket(): Assign tickets with scope validation
-- escalate_ticket(): Manual escalation with approval chain
-- process_auto_escalations(): Scheduled task for automatic escalations
-- close_ticket(): Close tickets with proper authorization
-- get_accessible_tickets(): Retrieve tickets within user's organizational scope
-- create_comment(): Add comments to tickets
-- create_feedback(): Add feedback/ratings to tickets
-
-Organizational Hierarchy:
-- Admin: Full system access
-- Director: Organization-wide view
-- HOD: Campus-level access
-- Section Head: Department level
-- Technician: Section level
-- User: Own tickets only
-"""
-
+from typing import Dict, List, Optional, Any
 from django.db import transaction
 from django.utils import timezone
-from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import (
     ValidationError as DRFValidationError,
     PermissionDenied as DRFPermissionDenied,
 )
+
 from tickets.models import (
     Ticket,
     CustomUser,
@@ -40,145 +19,16 @@ from tickets.models import (
     Section,
     Facility,
 )
-from typing import List, Optional, Dict, Tuple, Any
-from datetime import timedelta
-from django.db.models import QuerySet
-
-# ============================================================================
-# EXCEPTIONS
-# ============================================================================
-
-
-class TicketServiceException(Exception):
-    """Base exception for ticket service errors"""
-
-    pass
-
-
-class InsufficientScopeException(TicketServiceException):
-    """User lacks organizational scope to perform operation"""
-
-    pass
-
-
-class InvalidAssignmentException(TicketServiceException):
-    """Technician cannot be assigned for organizational or role reasons"""
-
-    pass
-
-
-class InvalidEscalationException(TicketServiceException):
-    """Escalation cannot be performed for organizational or state reasons"""
-
-    pass
-
-
-# ============================================================================
-# VALIDATORS - Pure validation functions
-# ============================================================================
-
-
-def validate_status_transition(
-    old_status: str, new_status: str, user_role: str
-) -> Tuple[bool, str]:
-    """
-    Validate if a ticket status transition is allowed based on business rules.
-
-    Args:
-        old_status (str): Current status of the ticket
-        new_status (str): Proposed new status
-        user_role (str): Role of the user attempting the transition
-
-    Returns:
-        tuple: (is_valid, message) - is_valid is a boolean, message is an error message if invalid
-    """
-    # Define valid transitions based on current status
-    valid_transitions = {
-        "open": ["assigned", "pending", "escalated"],
-        "assigned": ["in_progress", "pending", "escalated"],
-        "in_progress": ["pending", "resolved", "escalated"],
-        "pending": ["in_progress", "resolved", "escalated"],
-        "resolved": ["closed"],
-        "closed": [],  # No transitions allowed from closed state
-        "escalated": ["in_progress", "pending", "resolved"],
-    }
-
-    # Define which roles can perform which transitions
-    role_permissions = {
-        "technician": [
-            "open",
-            "assigned",
-            "in_progress",
-            "pending",
-            "resolved",
-            "escalated",
-        ],
-        "head_of_section": ["in_progress", "pending", "resolved", "escalated"],
-        "hod": ["in_progress", "pending", "resolved", "escalated"],
-        "admin": [
-            "open",
-            "assigned",
-            "in_progress",
-            "pending",
-            "resolved",
-            "closed",
-            "escalated",
-        ],
-        "manager": [],  # Analytics-only role — cannot modify ticket status
-        "user": [],  # Regular users can't change status
-    }
-
-    # Check if transition is valid
-    if new_status not in valid_transitions.get(old_status, []):
-        valid_options = ", ".join(valid_transitions.get(old_status, []))
-        return (
-            False,
-            f"Invalid status transition from '{old_status}' to '{new_status}'. Valid options: {valid_options}",
-        )
-
-    # Check if user role has permission for this new status
-    if new_status not in role_permissions.get(user_role, []):
-        return (
-            False,
-            f"User with role '{user_role}' cannot set ticket status to '{new_status}'",
-        )
-
-    return True, ""
-
-
-def manual_escalation_allowed(ticket: Ticket) -> bool:
-    """Check if a ticket can be manually escalated based on auto-escalation cooldown"""
-    if not ticket.next_escalation_due:
-        return True
-    return timezone.now() > ticket.next_escalation_due
-
-
-def validate_pending_transition(
-    new_status: str, pending_reason: str, pending_comment: str
-) -> Tuple[bool, str]:
-    """
-    Validate that PENDING status transitions include required reason and comment.
-
-    Args:
-        new_status: Proposed new status
-        pending_reason: Reason for pending (if applicable)
-        pending_comment: Comment for pending (if applicable)
-
-    Returns:
-        tuple: (is_valid, message)
-    """
-    if new_status == "pending":
-        if not pending_reason:
-            return False, "pending_reason is required when marking ticket as PENDING"
-        if not pending_comment:
-            return False, "pending_comment is required when marking ticket as PENDING"
-
-    return True, ""
-
-
-# ============================================================================
-# TICKET SERVICE - Organizational-focused
-# ============================================================================
+from .exceptions import (
+    TicketServiceException,
+    InsufficientScopeException,
+    InvalidAssignmentException,
+    InvalidEscalationException,
+)
+from .validators import (
+    validate_status_transition,
+    validate_pending_transition,
+)
 
 
 class TicketService:
@@ -235,8 +85,12 @@ class TicketService:
                     f"User {created_by.username} lacks access to facility {facility.name}"
                 )
 
+        service_item = data.get("service_item")
+        initial_status = "open"
+        if service_item and getattr(service_item, "requires_approval", False):
+            initial_status = "pending_approval"
+
         with transaction.atomic():
-            # Create ticket with organizational context
             ticket = Ticket.objects.create(
                 title=data.get("title"),
                 description=data.get("description"),
@@ -244,15 +98,15 @@ class TicketService:
                 facility=facility,
                 raised_by=created_by,
                 auto_escalation_enabled=enable_auto_escalation,
-                status="open",
+                status=initial_status,
+                service_item=service_item,
+                form_data=data.get("form_data"),
             )
 
-            # Log ticket creation
             TicketLog.objects.create(
                 ticket=ticket, action="created", performed_by=created_by
             )
 
-            # Notify relevant users
             TicketService._notify_ticket_creation(ticket)
 
             return ticket
@@ -933,118 +787,3 @@ class TicketService:
             logger.error(
                 f"Failed to notify on ticket escalation {ticket.ticket_no}: {str(e)}"
             )
-
-
-# ============================================================================
-# TECHNICIAN SERVICE
-# ============================================================================
-
-
-class TechnicianService:
-    """Service for managing technician-section assignments with org scope validation."""
-
-    @staticmethod
-    def _check_can_manage(user: CustomUser, section: Section) -> None:
-        """Raise InsufficientScopeException if user cannot manage technicians in section."""
-        if user.role == "admin":
-            return
-        if user.role in ["user", "technician", "manager"]:
-            raise InsufficientScopeException(
-                f"Role '{user.role}' cannot manage section technicians."
-            )
-        if not section.department or not section.department.campus:
-            raise InsufficientScopeException(
-                "Section has no valid department/campus.")
-        if user.role == "hod":
-            if section.department.campus != user.primary_campus:
-                raise InsufficientScopeException(
-                    "HoD can only manage technicians within their campus."
-                )
-            if user.primary_department and section.department != user.primary_department:
-                raise InsufficientScopeException(
-                    "HoD can only manage technicians within their department."
-                )
-        elif user.role == "head_of_section":
-            if section.department.campus != user.primary_campus:
-                raise InsufficientScopeException(
-                    "Head of Section can only manage technicians within their campus."
-                )
-            if user.primary_department and section.department != user.primary_department:
-                raise InsufficientScopeException(
-                    "Head of Section can only manage technicians within their department."
-                )
-
-    @staticmethod
-    def add_technician_to_section(
-        user: CustomUser, technician: CustomUser, section: Section
-    ) -> None:
-        """Add a technician to a section. Validates scope for both the acting user and the technician."""
-        TechnicianService._check_can_manage(user, section)
-        if technician.role != "technician":
-            raise InvalidAssignmentException(
-                f"User '{technician.username}' is not a technician."
-            )
-        if not section.department or not section.department.campus:
-            raise InvalidAssignmentException(
-                "Section has no valid department/campus.")
-        if (
-            user.role != "admin"
-            and technician.primary_campus
-            and technician.primary_campus != section.department.campus
-        ):
-            raise InvalidAssignmentException(
-                "Technician must be on the same campus as the section."
-            )
-        technician.sections.add(section)
-
-    @staticmethod
-    def remove_technician_from_section(
-        user: CustomUser, technician: CustomUser, section: Section
-    ) -> None:
-        """Remove a technician from a section."""
-        TechnicianService._check_can_manage(user, section)
-        if not technician.sections.filter(pk=section.pk).exists():
-            raise InvalidAssignmentException(
-                f"Technician '{technician.username}' is not assigned to this section."
-            )
-        technician.sections.remove(section)
-
-    @staticmethod
-    def get_assignable_technicians(
-        user: CustomUser, section: Section
-    ) -> QuerySet:
-        """Return technicians that can be assigned to the given section, scoped by role."""
-
-        if user.role == "admin":
-            return CustomUser.objects.filter(role="technician")
-        if user.role == "manager":
-            raise InsufficientScopeException(
-                "Manager role cannot manage technicians.")
-        if not section.department or not section.department.campus:
-            return CustomUser.objects.none()
-        campus = section.department.campus
-        dept = section.department
-        if user.role == "hod":
-            return CustomUser.objects.filter(
-                role="technician",
-                primary_campus=campus,
-                primary_department=dept,
-            )
-        if user.role == "head_of_section":
-            # head_of_section can only manage technicians in their specific section
-            return CustomUser.objects.filter(
-                role="technician",
-                sections__id=section.id,
-            )
-        return CustomUser.objects.none()
-
-
-# ============================================================================
-# CONVENIENCE ALIASES FOR BACKWARDS COMPATIBILITY
-# ============================================================================
-
-# Legacy function names that now call the unified TicketService
-create_ticket_legacy = TicketService.create_ticket
-update_ticket_legacy = TicketService.update_ticket_status
-create_comment_legacy = TicketService.create_comment
-create_feedback_legacy = TicketService.create_feedback

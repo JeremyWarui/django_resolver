@@ -6,7 +6,7 @@ while respecting user scope boundaries.
 """
 
 from django_filters import rest_framework as filters
-from tickets.models import Ticket, Section, Facility, Campus, Department
+from tickets.models import Ticket, Section, Facility, Campus, Department, ServiceItem
 
 
 class OrganizationalScopeFilterMixin:
@@ -105,9 +105,13 @@ class TicketFilter(filters.FilterSet, OrganizationalScopeFilterMixin):
         queryset=Campus.objects.all(), help_text="Filter by campus"
     )
 
+    service_item = filters.ModelChoiceFilter(
+        queryset=ServiceItem.objects.all(), help_text="Filter by service item"
+    )
+
     class Meta:
         model = Ticket
-        fields = ["status", "escalation_level", "section", "assigned_to"]
+        fields = ["status", "escalation_level", "section", "assigned_to", "service_item"]
 
     def filter_by_escalation_status(self, queryset, name, value):
         """Filter by escalation status"""
@@ -205,11 +209,17 @@ class FacilityFilter(filters.FilterSet, OrganizationalScopeFilterMixin):
     )
 
     facility_type = filters.ChoiceFilter(
-        choices=Facility.FACILITY_TYPE_CHOICES, help_text="Filter by facility type"
+        choices=Facility.FACILITY_CHOICES, help_text="Filter by facility type"
     )
 
     status = filters.ChoiceFilter(
-        choices=Facility.STATUS_CHOICES, help_text="Filter by facility status"
+        choices=[
+            ("active", "Active"),
+            ("maintenance", "Under Maintenance"),
+            ("inactive", "Inactive"),
+            ("decommissioned", "Decommissioned"),
+        ],
+        help_text="Filter by facility status",
     )
 
     class Meta:

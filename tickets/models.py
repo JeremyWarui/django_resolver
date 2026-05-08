@@ -44,6 +44,8 @@ class Campus(models.Model):
     name = models.CharField(max_length=200)
     code = models.CharField(max_length=10)  # e.g., "MAIN", "WEST", "HQ"
     location = models.CharField(max_length=200)
+    is_headquarters = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
 
     class Meta:
         ordering = ["organization", "name"]
@@ -68,6 +70,13 @@ class Department(models.Model):
         null=True,
         blank=True,
         related_name="managed_departments",
+    )
+    department_type = models.ForeignKey(
+        'DepartmentType',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='departments',
     )
     is_active = models.BooleanField(default=True)
 

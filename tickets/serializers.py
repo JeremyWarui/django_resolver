@@ -9,6 +9,71 @@ ESCALATION_STATUS_MAP = {
 _ESCALATION_UNKNOWN = {"code": "unknown", "label": "Unknown"}
 
 
+# ─── SERIALIZER HELPER FUNCTIONS ────────────────────────────────────────────
+
+def format_user_info(user):
+    """Convert user object to standardized dict format.
+
+    Handles both ORM model instances and dict representations.
+    Returns None if user is None.
+    """
+    if not user:
+        return None
+
+    if isinstance(user, dict):
+        return {
+            "id": user.get("id"),
+            "name": user.get("name") or user.get("username"),
+            "username": user.get("username"),
+            "role": user.get("role"),
+        }
+
+    # ORM model instance
+    name = f"{user.first_name} {user.last_name}".strip() or user.username
+    return {
+        "id": user.id,
+        "name": name,
+        "username": user.username,
+        "role": getattr(user, "role", None),
+    }
+
+
+def format_escalation_status(escalation_level):
+    """Convert escalation level to standardized status dict.
+
+    Args:
+        escalation_level: Integer escalation level (0, 1, 2, etc.)
+
+    Returns:
+        Dict with code and label for the escalation status
+    """
+    return ESCALATION_STATUS_MAP.get(escalation_level, _ESCALATION_UNKNOWN)
+
+
+def format_service_item(service_item):
+    """Convert service item object to standardized dict format.
+
+    Handles both ORM model instances and dict representations.
+    Returns None if service_item is None.
+    """
+    if not service_item:
+        return None
+
+    if isinstance(service_item, dict):
+        return {
+            "id": service_item.get("id"),
+            "name": service_item.get("name"),
+            "requires_approval": service_item.get("requires_approval", False),
+        }
+
+    # ORM model instance
+    return {
+        "id": service_item.id,
+        "name": service_item.name,
+        "requires_approval": getattr(service_item, "requires_approval", False),
+    }
+
+
 class UsernameField(serializers.RelatedField):
     """Custom field that returns just the username for user references"""
 
@@ -332,18 +397,13 @@ class TicketListSerializer(serializers.ModelSerializer):
         ]
 
     def get_assigned_to(self, obj):
-        if not obj.assigned_to:
-            return None
-        name = f"{obj.assigned_to.first_name} {obj.assigned_to.last_name}".strip()
-        return {"id": obj.assigned_to.id, "name": name or obj.assigned_to.username}
+        return format_user_info(obj.assigned_to)
 
     def get_escalation_status(self, obj):
-        return ESCALATION_STATUS_MAP.get(obj.escalation_level, _ESCALATION_UNKNOWN)
+        return format_escalation_status(obj.escalation_level)
 
     def get_service_item(self, obj):
-        if not obj.service_item:
-            return None
-        return {"id": obj.service_item.id, "name": obj.service_item.name}
+        return format_service_item(obj.service_item)
 
 
 class TicketSerializer(serializers.ModelSerializer):
@@ -477,94 +537,22 @@ class TicketSerializer(serializers.ModelSerializer):
     def get_assigned_to(self, obj):
         u = obj.assigned_to if not isinstance(
             obj, dict) else obj.get("assigned_to")
-        if not u:
-            return None
-        return {
-            "id": u.id,
-            "username": u.username,
-            "name": f"{u.first_name} {u.last_name}".strip() or u.username,
-            "role": u.role,
-        }
-
-    def get_floor(self, obj):
-        floor = obj.floor if not isinstance(obj, dict) else obj.get("floor")
-        if not floor:
-            return None
-        return {
-            "id": floor.id,
-            "name": floor.name,
-            "order": floor.order,
-            "facility": floor.facility_id,
-        }
-
-    def get_room(self, obj):
-        room = obj.room if not isinstance(obj, dict) else obj.get("room")
-        if not room:
-            return None
-        return {
-            "id": room.id,
-            "name": room.name,
-            "code": room.code,
-            "floor": room.floor_id,
-        }
+        return format_user_info(u)
 
     def get_escalated_to(self, obj):
         u = obj.escalated_to if not isinstance(
             obj, dict) else obj.get("escalated_to")
-        if not u:
-            return None
-        return {
-            "id": u.id,
-            "username": u.username,
-            "name": f"{u.first_name} {u.last_name}".strip() or u.username,
-            "role": u.role,
-        }
-
-    def get_available_technicians(self, obj):
-        """Return technicians assignable to this ticket's section.
-
-        Uses prefetched data from TicketDetailView (available_technicians_prefetch)
-        to avoid a per-ticket DB query. Falls back to a direct query when the
-        prefetch isn't present (e.g. in the create response path).
-        """
-        section = (
-            obj.get("section")
-            if isinstance(obj, dict)
-            else getattr(obj, "section", None)
-        )
-        if not section:
-            return []
-
-        if hasattr(section, "available_technicians_prefetch"):
-            return [
-                {
-                    "id": t.id,
-                    "username": t.username,
-                    "first_name": t.first_name,
-                    "last_name": t.last_name,
-                }
-                for t in section.available_technicians_prefetch
-            ]
-
-        return list(
-            CustomUser.objects.filter(role="technician", sections=section).values(
-                "id", "username", "first_name", "last_name"
-            )
-        )
+        return format_user_info(u)
 
     def get_service_item(self, obj):
         si = obj.get("service_item") if isinstance(
             obj, dict) else getattr(obj, "service_item", None)
-        if not si:
-            return None
-        return {"id": si.id, "name": si.name, "requires_approval": si.requires_approval}
+        return format_service_item(si)
 
     def get_escalation_status(self, obj):
-        level = (
-            obj.get("escalation_level", 0) if isinstance(obj, dict)
-            else getattr(obj, "escalation_level", 0)
-        )
-        return ESCALATION_STATUS_MAP.get(level, _ESCALATION_UNKNOWN)
+        level = obj.get("escalation_level", 0) if isinstance(
+            obj, dict) else getattr(obj, "escalation_level", 0)
+        return format_escalation_status(level)
 
     def get_organizational_path(self, obj):
         """Return full organizational hierarchy as nested {id, code, name} objects."""
@@ -661,6 +649,7 @@ class ServiceItemSerializer(serializers.ModelSerializer):
         ]
 
     def get_section_type_code(self, obj):
+        """Get section type code from service item's category"""
         return obj.category.section_type.code if obj.category else None
 
 
@@ -684,6 +673,7 @@ class ServiceCategorySerializer(serializers.ModelSerializer):
         ]
 
     def get_section_type_code(self, obj):
+        """Get section type code directly from this object"""
         return obj.section_type.code if obj.section_type else None
 
 

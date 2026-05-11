@@ -13,7 +13,20 @@ class OrganizationalScopeFilterMixin:
     """
     Mixin to add organizational scope filtering to any filter class.
     Automatically restricts querysets based on user's role and organization hierarchy.
+
+    Subclasses should define ORGANIZATIONAL_FILTER_PATHS as a dict mapping scope levels
+    to field paths and user attributes. Example:
+
+        ORGANIZATIONAL_FILTER_PATHS = {
+            'organization': ('section__department__campus__organization', 'primary_campus'),
+            'campus': ('section__department__campus', 'primary_campus'),
+            'department': ('section__department', 'primary_department'),
+            'section': ('section', 'sections'),
+        }
     """
+
+    # Default filter paths (can be overridden in subclasses)
+    ORGANIZATIONAL_FILTER_PATHS = None
 
     def get_queryset(self, queryset):
         """Filter queryset based on user's organizational scope"""
@@ -25,34 +38,60 @@ class OrganizationalScopeFilterMixin:
         if user.role == "admin":
             return queryset
         elif user.role == "manager":
-            # Director sees items in their organization
-            return self._filter_by_organization(queryset, user)
+            return self._apply_org_filter(queryset, user, 'organization')
         elif user.role == "hod":
-            # HOD sees items in their campus
-            return self._filter_by_campus(queryset, user)
+            return self._apply_org_filter(queryset, user, 'campus')
         elif user.role == "head_of_section":
-            # Section head sees items in their department
-            return self._filter_by_department(queryset, user)
+            return self._apply_org_filter(queryset, user, 'department')
         elif user.role in ["technician", "user"]:
-            # Technician/user sees items in their accessible sections
-            return self._filter_by_section(queryset, user)
+            return self._apply_org_filter(queryset, user, 'section')
 
         return queryset.none()
 
+    def _apply_org_filter(self, queryset, user, scope_level):
+        """
+        Generic filter application using ORGANIZATIONAL_FILTER_PATHS.
+        If not defined, falls back to _filter_by_* methods for backward compatibility.
+        """
+        if not self.ORGANIZATIONAL_FILTER_PATHS:
+            # Fallback to old method-based approach for backward compatibility
+            method = getattr(self, f'_filter_by_{scope_level}', None)
+            if method:
+                return method(queryset, user)
+            return queryset
+
+        filter_config = self.ORGANIZATIONAL_FILTER_PATHS.get(scope_level)
+        if not filter_config:
+            return queryset
+
+        field_path, user_attr = filter_config
+        user_value = getattr(user, user_attr, None)
+
+        # Handle special case for M2M fields (sections)
+        if user_attr == 'sections':
+            if user_value:
+                return queryset.filter(**{f'{field_path}__in': user_value.all()})
+        else:
+            if user_value:
+                return queryset.filter(**{field_path: user_value})
+
+        return queryset
+
+    # Keep deprecated methods for backward compatibility
     def _filter_by_organization(self, queryset, user):
-        """Override in subclass to implement organization filtering"""
+        """Deprecated: Use ORGANIZATIONAL_FILTER_PATHS instead"""
         return queryset
 
     def _filter_by_campus(self, queryset, user):
-        """Override in subclass to implement campus filtering"""
+        """Deprecated: Use ORGANIZATIONAL_FILTER_PATHS instead"""
         return queryset
 
     def _filter_by_department(self, queryset, user):
-        """Override in subclass to implement department filtering"""
+        """Deprecated: Use ORGANIZATIONAL_FILTER_PATHS instead"""
         return queryset
 
     def _filter_by_section(self, queryset, user):
-        """Override in subclass to implement section filtering"""
+        """Deprecated: Use ORGANIZATIONAL_FILTER_PATHS instead"""
         return queryset
 
 
@@ -68,6 +107,14 @@ class TicketFilter(filters.FilterSet, OrganizationalScopeFilterMixin):
     - section: specific section
     - is_due_for_escalation: boolean
     """
+
+    # Organizational filter field paths
+    ORGANIZATIONAL_FILTER_PATHS = {
+        'organization': ('section__department__campus__organization', 'primary_campus'),
+        'campus': ('section__department__campus', 'primary_campus'),
+        'department': ('section__department', 'primary_department'),
+        'section': ('section', 'sections'),
+    }
 
     status = filters.ChoiceFilter(
         choices=Ticket.STATUS_CHOICES, help_text="Filter by ticket status"
@@ -111,7 +158,8 @@ class TicketFilter(filters.FilterSet, OrganizationalScopeFilterMixin):
 
     class Meta:
         model = Ticket
-        fields = ["status", "escalation_level", "section", "assigned_to", "service_item"]
+        fields = ["status", "escalation_level",
+                  "section", "assigned_to", "service_item"]
 
     def filter_by_escalation_status(self, queryset, name, value):
         """Filter by escalation status"""
@@ -136,33 +184,17 @@ class TicketFilter(filters.FilterSet, OrganizationalScopeFilterMixin):
             )
         return queryset
 
-    def _filter_by_organization(self, queryset, user):
-        """Filter to organization level"""
-        if user.primary_campus:
-            return queryset.filter(
-                section__department__campus__organization=user.primary_campus.organization
-            )
-        return queryset
-
-    def _filter_by_campus(self, queryset, user):
-        """Filter to campus level"""
-        if user.primary_campus:
-            return queryset.filter(section__department__campus=user.primary_campus)
-        return queryset
-
-    def _filter_by_department(self, queryset, user):
-        """Filter to department level"""
-        if user.primary_department:
-            return queryset.filter(section__department=user.primary_department)
-        return queryset
-
-    def _filter_by_section(self, queryset, user):
-        """Filter to section level"""
-        return queryset.filter(section__in=user.sections.all())
-
 
 class SectionFilter(filters.FilterSet, OrganizationalScopeFilterMixin):
     """Filter for sections with organizational scope awareness."""
+
+    # Organizational filter field paths
+    ORGANIZATIONAL_FILTER_PATHS = {
+        'organization': ('department__campus__organization', 'primary_campus'),
+        'campus': ('department__campus', 'primary_campus'),
+        'department': ('department', 'primary_department'),
+        'section': ('pk', 'sections'),
+    }
 
     department = filters.ModelChoiceFilter(
         queryset=Department.objects.all(), help_text="Filter by department"
@@ -176,29 +208,18 @@ class SectionFilter(filters.FilterSet, OrganizationalScopeFilterMixin):
         model = Section
         fields = ["department", "is_active"]
 
-    def _filter_by_organization(self, queryset, user):
-        if user.primary_campus:
-            return queryset.filter(
-                department__campus__organization=user.primary_campus.organization
-            )
-        return queryset
-
-    def _filter_by_campus(self, queryset, user):
-        if user.primary_campus:
-            return queryset.filter(department__campus=user.primary_campus)
-        return queryset
-
-    def _filter_by_department(self, queryset, user):
-        if user.primary_department:
-            return queryset.filter(department=user.primary_department)
-        return queryset
-
-    def _filter_by_section(self, queryset, user):
-        return queryset.filter(pk__in=user.sections.all())
-
 
 class FacilityFilter(filters.FilterSet, OrganizationalScopeFilterMixin):
     """Filter for facilities with organizational scope awareness."""
+
+    # Organizational filter field paths
+    ORGANIZATIONAL_FILTER_PATHS = {
+        'organization': ('campus__organization', 'primary_campus'),
+        'campus': ('campus', 'primary_campus'),
+        'department': ('department', 'primary_department'),
+        # Technicians/users see facilities in their campus
+        'section': ('campus', 'primary_campus'),
+    }
 
     campus = filters.ModelChoiceFilter(
         queryset=Campus.objects.all(), help_text="Filter by campus"
@@ -225,26 +246,3 @@ class FacilityFilter(filters.FilterSet, OrganizationalScopeFilterMixin):
     class Meta:
         model = Facility
         fields = ["campus", "department", "facility_type", "status"]
-
-    def _filter_by_organization(self, queryset, user):
-        if user.primary_campus:
-            return queryset.filter(
-                campus__organization=user.primary_campus.organization
-            )
-        return queryset
-
-    def _filter_by_campus(self, queryset, user):
-        if user.primary_campus:
-            return queryset.filter(campus=user.primary_campus)
-        return queryset
-
-    def _filter_by_department(self, queryset, user):
-        if user.primary_department:
-            return queryset.filter(department=user.primary_department)
-        return queryset
-
-    def _filter_by_section(self, queryset, user):
-        # Technicians/users see facilities in their campus
-        if user.primary_campus:
-            return queryset.filter(campus=user.primary_campus)
-        return queryset

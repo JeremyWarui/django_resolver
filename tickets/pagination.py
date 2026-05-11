@@ -33,7 +33,8 @@ class FlexiblePageNumberPagination(PageNumberPagination):
         # Get requested page size
         if self.page_size_query_param:
             try:
-                requested_size = int(request.query_params[self.page_size_query_param])
+                requested_size = int(
+                    request.query_params[self.page_size_query_param])
             except (KeyError, ValueError):
                 return self.page_size
 
@@ -52,21 +53,13 @@ class TicketPagination(FlexiblePageNumberPagination):
     """
     Pagination specifically optimized for ticket endpoints.
     Allows larger page sizes for admin and technician workflows.
+
+    Inherits get_page_size() from parent: role-aware pagination sizing.
+    Frontend can request appropriate sizes:
+    - Admin dashboard: 100-500 items (for filtering/bulk operations)
+    - Technician view: 50-100 items (for assigned tickets)
+    - User view: 10-50 items (for personal tickets)
     """
 
     page_size = 25  # Default for regular views
     max_page_size = 500  # Allow large datasets for admin views
-
-    def get_page_size(self, request):
-        """
-        Role-aware pagination sizing.
-
-        Frontend can request appropriate sizes:
-        - Admin dashboard: 100-500 items (for filtering/bulk operations)
-        - Technician view: 50-100 items (for assigned tickets)
-        - User view: 10-50 items (for personal tickets)
-        """
-        requested_size = super().get_page_size(request)
-
-        # Validate against max_page_size
-        return min(requested_size, self.max_page_size)

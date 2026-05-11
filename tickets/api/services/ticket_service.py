@@ -785,6 +785,8 @@ class TicketService:
             return False
 
         if user.role == "manager":
+            if not user.primary_campus:
+                return False
             return (
                 section.department.campus.organization
                 == user.primary_campus.organization

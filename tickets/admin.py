@@ -8,6 +8,20 @@ from unfold.decorators import display
 from unfold.contrib.filters.admin import RangeDateFilter
 from tickets.models import CustomUser, Section, Facility, Ticket, Comment, Feedback
 
+
+# Mixin for display methods shared across multiple admin classes
+class TicketCountDisplayMixin:
+    """Shared display method for active/open ticket counts"""
+
+    @display(description="Open Tickets")
+    def tickets_count(self, obj):
+        count = obj.ticket_set.exclude(
+            status__in=["resolved", "closed"]).count()
+        return format_html(
+            '<span style="color: #dc2626; font-weight: 500;">{}</span>', count
+        )
+
+
 # CustomUser admin
 
 
@@ -93,8 +107,9 @@ class CustomUserAdmin(ModelAdmin):
         return super().get_form(request, obj, **defaults)
 
 
-class SectionAdmin(ModelAdmin):
-    list_display = ("name", "description", "technicians_count", "tickets_count")
+class SectionAdmin(TicketCountDisplayMixin, ModelAdmin):
+    list_display = ("name", "description",
+                    "technicians_count", "tickets_count")
     search_fields = ("name", "description")
 
     @display(description="Technicians")
@@ -104,16 +119,10 @@ class SectionAdmin(ModelAdmin):
             '<span style="color: #059669; font-weight: 500;">{}</span>', count
         )
 
-    @display(description="Active Tickets")
-    def tickets_count(self, obj):
-        count = obj.ticket_set.exclude(status__in=["resolved", "closed"]).count()
-        return format_html(
-            '<span style="color: #dc2626; font-weight: 500;">{}</span>', count
-        )
 
-
-class FacilityAdmin(ModelAdmin):
-    list_display = ("name", "type_badge", "status_badge", "location", "tickets_count")
+class FacilityAdmin(TicketCountDisplayMixin, ModelAdmin):
+    list_display = ("name", "type_badge", "status_badge",
+                    "location", "tickets_count")
     list_filter = ("type", "status")
     search_fields = ("name", "location")
 
@@ -144,13 +153,6 @@ class FacilityAdmin(ModelAdmin):
             '<span style="background: {}; color: white; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 500;">{}</span>',
             color,
             obj.status.title(),
-        )
-
-    @display(description="Open Tickets")
-    def tickets_count(self, obj):
-        count = obj.ticket_set.exclude(status__in=["resolved", "closed"]).count()
-        return format_html(
-            '<span style="color: #dc2626; font-weight: 500;">{}</span>', count
         )
 
 

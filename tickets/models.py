@@ -782,14 +782,14 @@ class Ticket(models.Model):
         This method centralizes status transition side-effects so services can
         perform validation and then call this for an atomic update+log.
 
-        Directors cannot modify ticket status (analytics-only role).
+        Managers cannot modify ticket status (analytics-only role).
         """
         from django.db import transaction
 
-        # Directors have analytics-only access
+        # Managers have analytics-only access
         if performed_by and performed_by.role == "manager":
             raise PermissionError(
-                "Directors have analytics-only access and cannot modify tickets"
+                "Managers have analytics-only access and cannot modify tickets"
             )
 
         original_status = self.status

@@ -241,7 +241,7 @@ class SectionListCreateView(ListCreateAPIView):
         if user.role == "admin":
             return queryset
         elif user.role == "manager":
-            # Director sees sections in their organization
+            # Manager sees sections in their organization
             return queryset.filter(
                 department__campus__organization=user.primary_campus.organization
             )
@@ -323,7 +323,7 @@ class TicketListCreateView(ListCreateAPIView):
 
     Respects organizational hierarchy:
     - Admin: sees all tickets
-    - Director: sees organization-wide tickets
+    - Manager: sees organization-wide tickets
     - HOD: sees campus-level tickets
     - Section Head: sees department-level tickets
     - Technician/User: sees accessible section-level tickets
@@ -819,7 +819,7 @@ class AssignableUsersView(ListAPIView):
         try:
             if not TicketService._user_can_access_section(user, section):
                 return CustomUser.objects.none()
-        except (PermissionDenied, ValidationError):
+        except Exception:
             return CustomUser.objects.none()
 
         # Return active technicians assigned to this section
@@ -895,7 +895,7 @@ class OrganizationalTicketListView(ListAPIView):
 
     Respects organizational hierarchy:
     - Admin: sees all tickets
-    - Director: sees organization-wide tickets
+    - Manager: sees organization-wide tickets
     - HOD: sees campus-level tickets
     - Section Head: sees department-level tickets
     - Technician/User: sees section-level tickets
@@ -934,7 +934,7 @@ class OrganizationalAnalyticsView(APIView):
     Unified analytics endpoint that returns role-specific dashboards.
 
     Returns different dashboard data based on user's organizational role:
-    - Director: Organization-wide metrics and alerts
+    - Manager: Organization-wide metrics and alerts
     - HOD: Campus-level performance and escalations
     - Section Head: Department efficiency and technician performance
 

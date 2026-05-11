@@ -488,7 +488,11 @@ class TicketDetailView(RetrieveUpdateDestroyAPIView):
 
                 # Update using service
                 TicketService.update_ticket_status(
-                    ticket=ticket, new_status=new_status, updated_by=user
+                    ticket=ticket,
+                    new_status=new_status,
+                    updated_by=user,
+                    pending_reason=serializer.validated_data.get("pending_reason"),
+                    pending_comment=serializer.validated_data.get("pending_comment"),
                 )
                 updated = True
 

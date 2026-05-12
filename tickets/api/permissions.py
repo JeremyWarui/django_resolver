@@ -59,21 +59,25 @@ class IsWithinOrganizationalScope(permissions.BasePermission):
     @staticmethod
     def _check_ticket_access(user, ticket):
         """Check if user can access a specific ticket"""
-        if not ticket.section or not ticket.section.department:
+        if not ticket.section or not ticket.section.campus_department:
             return False
 
         if user.role == "manager":
             # Manager can see all tickets in their organization
+            pd = user.primary_campus_department
+            if not pd:
+                return False
             return (
-                ticket.section.department.campus.organization
-                == user.primary_campus.organization
+                ticket.section.campus_department.campus.organization
+                == pd.campus.organization
             )
         elif user.role == "hod":
             # HOD can see all tickets in their campus
-            return ticket.section.department.campus == user.primary_campus
+            return ticket.section.campus_department.campus == user.primary_campus
         elif user.role == "head_of_section":
-            # Section head can see all tickets in their department
-            return ticket.section.department == user.primary_department
+            # Section head can see all tickets in their department (by CampusDepartment)
+            pd = user.primary_campus_department
+            return pd and ticket.section.campus_department == pd
         elif user.role == "technician":
             # Technician can see tickets in their sections or assigned to them
             return (
@@ -90,34 +94,42 @@ class IsWithinOrganizationalScope(permissions.BasePermission):
     @staticmethod
     def _check_section_access(user, section):
         """Check if user has access to specific section"""
-        if not section.department or not section.department.campus:
+        if not section.campus_department or not section.campus_department.campus:
             return False
 
         if user.role == "manager":
-            return (
-                section.department.campus.organization
-                == user.primary_campus.organization
-            )
+            pd = user.primary_campus_department
+            if not pd:
+                return False
+            return section.campus_department.campus.organization == pd.campus.organization
         elif user.role == "hod":
-            return section.department.campus == user.primary_campus
+            return section.campus_department.campus == user.primary_campus
         elif user.role == "head_of_section":
-            return section.department == user.primary_department
+            pd = user.primary_campus_department
+            return pd and section.campus_department == pd
         elif user.role in ["technician", "user"]:
-            return section.department == user.primary_department
+            pd = user.primary_campus_department
+            return pd and section.campus_department == pd
 
         return False
 
     @staticmethod
     def _check_department_access(user, department):
         """Check if user has access to specific department"""
-        if not department.campus:
+        if not hasattr(department, 'campus') or not department.campus:
             return False
 
+        # Department here may be legacy `Department` or `CampusDepartment`/DepartmentType wrapper.
+        # Normalize by checking for campus attribute and comparing organizations.
         if user.role == "manager":
             return department.campus.organization == user.primary_campus.organization
         elif user.role == "hod":
             return department.campus == user.primary_campus
         elif user.role in ["head_of_section", "technician", "user"]:
+            pd = user.primary_campus_department
+            # If pd exists, compare by CampusDepartment equality; otherwise fall back to legacy Department equality
+            if pd and hasattr(department, 'department_type'):
+                return department == pd
             return department == user.primary_department
 
         return False
@@ -370,7 +382,8 @@ class CanManageUsers(permissions.BasePermission):
             return False
 
         # For bulk operations, only allow admins and managers
-        view_name = view.__class__.__name__ if hasattr(view, "__class__") else ""
+        view_name = view.__class__.__name__ if hasattr(
+            view, "__class__") else ""
         if "bulk" in view_name.lower():
             return request.user.role in ["admin", "manager"]
 

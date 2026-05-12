@@ -6,50 +6,43 @@ HOD must have both primary_campus and primary_department set.
 
 from datetime import timedelta
 from django.utils import timezone
-from django.core.cache import cache
 from django.db.models import Q
 
 from tickets.models import Ticket, CustomUser
 from .base_analytics import (
+    ANALYTICS_CACHE_TTL,
+    get_cached,
     calculate_avg_resolution_time,
     calculate_sla_compliance,
     get_escalation_trends,
     build_technician_performance,
-    count_overdue,
+    build_overview,
     get_status_distribution,
 )
-
-ANALYTICS_CACHE_TTL = 300
 
 
 class HODAnalytics:
 
     @staticmethod
     def hod_dashboard(user, days=30):
-        if user.role != "hod" or not user.primary_campus or not user.primary_department:
+        if not user.primary_campus or not user.primary_department:
             return {}
-
-        cache_key = f"analytics_hod_{user.primary_department_id}_{days}"
-        cached = cache.get(cache_key)
-        if cached is not None:
-            return cached
 
         department = user.primary_department
         campus = user.primary_campus
-        time_threshold = timezone.now() - timedelta(days=days)
 
-        all_tickets = Ticket.objects.filter(section__department=department)
-        recent_tickets = all_tickets.filter(created_at__gte=time_threshold)
+        def compute():
+            time_threshold = timezone.now() - timedelta(days=days)
 
-        overdue_count = count_overdue(all_tickets)
+            all_tickets = Ticket.objects.filter(section__department=department)
+            recent_tickets = all_tickets.filter(created_at__gte=time_threshold)
 
-        section_performance = []
-        for section in department.sections.filter(is_active=True).select_related(
-            "head_of_section"
-        ):
-            section_tickets = all_tickets.filter(section=section)
-            section_performance.append(
-                {
+            section_performance = []
+            for section in department.sections.filter(is_active=True).select_related(
+                "head_of_section"
+            ):
+                section_tickets = all_tickets.filter(section=section)
+                section_performance.append({
                     "section": {
                         "id": section.id,
                         "name": section.name,
@@ -61,47 +54,40 @@ class HODAnalytics:
                         ),
                     },
                     "ticket_count": section_tickets.count(),
-                    "open_count": section_tickets.filter(
-                        status__in=["open", "assigned"]
-                    ).count(),
+                    "open_count": section_tickets.filter(status__in=["open", "assigned"]).count(),
                     "avg_resolution_hours": calculate_avg_resolution_time(section_tickets),
                     "sla_compliance": calculate_sla_compliance(section_tickets),
                     "technician_count": section.technicians.count(),
-                }
+                })
+
+            technicians = CustomUser.objects.filter(
+                role="technician", sections__department=department
+            ).distinct()
+            tech_performance = build_technician_performance(
+                all_tickets, technicians, section_filter=Q(department=department)
             )
 
-        technicians = CustomUser.objects.filter(
-            role="technician", sections__department=department
-        ).distinct()
+            return {
+                "campus": {
+                    "id": campus.id,
+                    "name": campus.name,
+                    "code": campus.code,
+                    "location": getattr(campus, "location", ""),
+                },
+                "department": {
+                    "id": department.id,
+                    "name": department.name,
+                    "code": department.code,
+                    "campus": campus.name,
+                },
+                "overview": build_overview(all_tickets),
+                "sections": sorted(
+                    section_performance, key=lambda x: x["ticket_count"], reverse=True
+                ),
+                "technicians": tech_performance,
+                "status_distribution": get_status_distribution(recent_tickets),
+                "escalation_trends": get_escalation_trends(all_tickets, days=7),
+                "period_days": days,
+            }
 
-        tech_performance = build_technician_performance(
-            all_tickets, technicians, section_filter=Q(department=department)
-        )
-
-        result = {
-            "department": {
-                "id": department.id,
-                "name": department.name,
-                "code": department.code,
-                "campus": campus.name,
-            },
-            "overview": {
-                "total_tickets": all_tickets.count(),
-                "open_tickets": all_tickets.filter(status__in=["open", "assigned"]).count(),
-                "overdue_tickets": overdue_count,
-                "escalated_tickets": all_tickets.filter(escalation_level__gt=0).count(),
-                "avg_resolution_hours": calculate_avg_resolution_time(all_tickets),
-                "sla_compliance": calculate_sla_compliance(all_tickets),
-            },
-            "sections": sorted(
-                section_performance, key=lambda x: x["ticket_count"], reverse=True
-            ),
-            "technicians": sorted(
-                tech_performance, key=lambda x: x["total_assigned"], reverse=True
-            ),
-            "status_distribution": get_status_distribution(recent_tickets),
-            "escalation_trends": get_escalation_trends(all_tickets, days=7),
-            "period_days": days,
-        }
-        cache.set(cache_key, result, ANALYTICS_CACHE_TTL)
-        return result
+        return get_cached(f"analytics_hod_{department.id}_{days}", compute)

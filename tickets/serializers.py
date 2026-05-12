@@ -100,9 +100,16 @@ class NestedDepartmentSerializer(serializers.ModelSerializer):
 
 
 class NestedSectionSerializer(serializers.ModelSerializer):
+    campus_code = serializers.CharField(
+        source="campus_department.campus.code", read_only=True, default=None
+    )
+    department_code = serializers.CharField(
+        source="campus_department.department_type.code", read_only=True, default=None
+    )
+
     class Meta:
         model = Section
-        fields = ["id", "code", "name"]
+        fields = ["id", "code", "name", "campus_code", "department_code"]
 
 
 class NestedFacilitySerializer(serializers.ModelSerializer):
@@ -157,14 +164,7 @@ class DepartmentSerializer(serializers.ModelSerializer):
         ]
 
     def get_head_of_department(self, obj):
-        if not obj.head_of_department:
-            return None
-        u = obj.head_of_department
-        return {
-            "id": u.id,
-            "username": u.username,
-            "name": f"{u.first_name} {u.last_name}".strip() or u.username,
-        }
+        return format_user_info(obj.head_of_department)
 
 
 class FacilitySerializer(serializers.ModelSerializer):
@@ -202,13 +202,17 @@ class FacilitySerializer(serializers.ModelSerializer):
 
 
 class SectionSerializer(serializers.ModelSerializer):
-    campus = NestedCampusSerializer(source="department.campus", read_only=True)
-    department = NestedDepartmentSerializer(read_only=True)
-    department_id = serializers.PrimaryKeyRelatedField(
-        queryset=Department.objects.all(),
-        source="department",
+    campus = NestedCampusSerializer(
+        source="campus_department.campus", read_only=True)
+    department = serializers.SerializerMethodField(read_only=True)
+    # New write field: allow specifying existing CampusDepartment
+    campus_department_id = serializers.PrimaryKeyRelatedField(
+        queryset=CampusDepartment.objects.all(),
+        source="campus_department",
         write_only=True,
-        required=True,
+        required=False,
+        allow_null=True,
+        label="CampusDepartment ID",
     )
     head_of_section = serializers.SerializerMethodField()
     technicians = serializers.StringRelatedField(many=True, read_only=True)
@@ -233,14 +237,7 @@ class SectionSerializer(serializers.ModelSerializer):
         ]
 
     def get_head_of_section(self, obj):
-        if not obj.head_of_section:
-            return None
-        u = obj.head_of_section
-        return {
-            "id": u.id,
-            "username": u.username,
-            "name": f"{u.first_name} {u.last_name}".strip() or u.username,
-        }
+        return format_user_info(obj.head_of_section)
 
     def get_fields(self):
         fields = super().get_fields()
@@ -249,6 +246,13 @@ class SectionSerializer(serializers.ModelSerializer):
             fields.pop("technicians", None)
         return fields
 
+    def get_department(self, obj):
+        """Return department_type info via campus_department mapping."""
+        cd = getattr(obj, "campus_department", None)
+        if not cd or not cd.department_type:
+            return None
+        return {"id": cd.department_type.id, "code": cd.department_type.code, "name": cd.department_type.name}
+
 
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
@@ -256,14 +260,21 @@ class UserSerializer(serializers.ModelSerializer):
     campus_name = serializers.CharField(
         source="primary_campus.name", read_only=True, allow_null=True
     )
+    primary_department_name = serializers.CharField(
+        source="primary_department.name", read_only=True, allow_null=True
+    )
     sections = serializers.PrimaryKeyRelatedField(
         many=True, queryset=Section.objects.all(), required=False
     )
+    section_names = serializers.SerializerMethodField(read_only=True)
     primary_campus_id = serializers.IntegerField(
         source="primary_campus.id", read_only=True, allow_null=True
     )
-    primary_department_id = serializers.IntegerField(
-        source="primary_department.id", read_only=True, allow_null=True
+    primary_department_id = serializers.PrimaryKeyRelatedField(
+        queryset=Department.objects.all(),
+        source="primary_department",
+        required=False,
+        allow_null=True,
     )
     primary_campus_display = serializers.CharField(
         source="primary_campus", read_only=True, allow_null=True
@@ -271,6 +282,18 @@ class UserSerializer(serializers.ModelSerializer):
     primary_department_display = serializers.CharField(
         source="primary_department", read_only=True, allow_null=True
     )
+
+    def get_section_names(self, obj):
+        """Return formatted section display names bundled with the user — avoids a separate lookup."""
+        result = []
+        for s in obj.sections.select_related("campus_department__campus").all():
+            campus_code = (
+                s.campus_department.campus.code
+                if s.campus_department and s.campus_department.campus
+                else None
+            )
+            result.append(f"{campus_code}-{s.name}" if campus_code else s.name)
+        return result
 
     class Meta:
         model = CustomUser
@@ -283,7 +306,9 @@ class UserSerializer(serializers.ModelSerializer):
             "password",
             "role",
             "campus_name",
+            "primary_department_name",
             "sections",
+            "section_names",
             "primary_campus_id",
             "primary_campus_display",
             "primary_department_id",
@@ -367,7 +392,7 @@ class TicketListSerializer(serializers.ModelSerializer):
 
     section = NestedSectionSerializer(read_only=True)
     facility = NestedFacilitySerializer(read_only=True)
-    raised_by = UsernameField(read_only=True)
+    raised_by = serializers.SerializerMethodField(read_only=True)
     assigned_to = serializers.SerializerMethodField(read_only=True)
     escalation_status = serializers.SerializerMethodField(read_only=True)
     service_item = serializers.SerializerMethodField(read_only=True)
@@ -395,6 +420,13 @@ class TicketListSerializer(serializers.ModelSerializer):
             "service_item",
             "form_data",
         ]
+
+    def get_raised_by(self, obj):
+        user = obj.raised_by
+        if not user:
+            return None
+        name = f"{user.first_name} {user.last_name}".strip()
+        return name or user.username
 
     def get_assigned_to(self, obj):
         return format_user_info(obj.assigned_to)
@@ -425,6 +457,8 @@ class TicketSerializer(serializers.ModelSerializer):
         queryset=Section.objects.all(),
         source="section",
         write_only=True,
+        required=False,
+        allow_null=True,
         label="Section ID",
     )
 
@@ -467,7 +501,9 @@ class TicketSerializer(serializers.ModelSerializer):
     facility = NestedFacilitySerializer(read_only=True)
     floor = serializers.SerializerMethodField(read_only=True)
     room = serializers.SerializerMethodField(read_only=True)
-    raised_by = UsernameField(read_only=True)
+    raised_by = serializers.SerializerMethodField(read_only=True)
+    raised_by_id = serializers.IntegerField(
+        source="raised_by.id", read_only=True)
     assigned_to = serializers.SerializerMethodField(read_only=True)
     escalated_to = serializers.SerializerMethodField(read_only=True)
     comments = CommentSerializer(many=True, read_only=True)
@@ -480,6 +516,14 @@ class TicketSerializer(serializers.ModelSerializer):
         required=False,
         write_only=True,
         label="Service Item ID",
+    )
+    service_category_id = serializers.PrimaryKeyRelatedField(
+        queryset=ServiceCategory.objects.filter(is_active=True),
+        source="service_category",
+        allow_null=True,
+        required=False,
+        write_only=True,
+        label="Service Category ID",
     )
     service_item = serializers.SerializerMethodField(read_only=True)
 
@@ -501,6 +545,7 @@ class TicketSerializer(serializers.ModelSerializer):
             "facility_id",
             "facility",
             "raised_by",
+            "raised_by_id",
             "assigned_to_id",
             "assigned_to",
             "floor_id",
@@ -534,6 +579,36 @@ class TicketSerializer(serializers.ModelSerializer):
             "form_data",
         ]
 
+    def get_available_technicians(self, obj):
+        section = obj.get("section") if isinstance(
+            obj, dict) else getattr(obj, "section", None)
+        if not section:
+            return []
+        techs = section.technicians.all()
+        return [{"id": u.id, "username": u.username, "full_name": u.get_full_name()} for u in techs]
+
+    def get_floor(self, obj):
+        floor = obj.get("floor") if isinstance(
+            obj, dict) else getattr(obj, "floor", None)
+        if not floor:
+            return None
+        return {"id": floor.id, "name": floor.name}
+
+    def get_room(self, obj):
+        room = obj.get("room") if isinstance(
+            obj, dict) else getattr(obj, "room", None)
+        if not room:
+            return None
+        return {"id": room.id, "name": room.name, "code": room.code}
+
+    def get_raised_by(self, obj):
+        user = obj.raised_by if not isinstance(
+            obj, dict) else obj.get("raised_by")
+        if not user:
+            return None
+        name = f"{user.first_name} {user.last_name}".strip()
+        return name or user.username
+
     def get_assigned_to(self, obj):
         u = obj.assigned_to if not isinstance(
             obj, dict) else obj.get("assigned_to")
@@ -564,8 +639,9 @@ class TicketSerializer(serializers.ModelSerializer):
         if not section:
             return None
         try:
-            dept = section.department
-            campus = dept.campus if dept else None
+            cd = getattr(section, "campus_department", None)
+            dept_type = cd.department_type if cd else None
+            campus = cd.campus if cd else None
             org = campus.organization if campus else None
             return {
                 "organization": (
@@ -573,20 +649,14 @@ class TicketSerializer(serializers.ModelSerializer):
                         "name": org.name} if org else None
                 ),
                 "campus": (
-                    {"id": campus.id, "code": campus.code, "name": campus.name}
-                    if campus
-                    else None
+                    {"id": campus.id, "code": campus.code,
+                        "name": campus.name} if campus else None
                 ),
                 "department": (
-                    {"id": dept.id, "code": dept.code, "name": dept.name}
-                    if dept
-                    else None
+                    {"id": dept_type.id, "code": dept_type.code,
+                        "name": dept_type.name} if dept_type else None
                 ),
-                "section": {
-                    "id": section.id,
-                    "code": section.code,
-                    "name": section.name,
-                },
+                "section": {"id": section.id, "code": section.code, "name": section.name},
             }
         except (AttributeError, TypeError):
             return None

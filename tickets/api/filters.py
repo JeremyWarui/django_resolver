@@ -20,7 +20,7 @@ class OrganizationalScopeFilterMixin:
         ORGANIZATIONAL_FILTER_PATHS = {
             'organization': ('section__department__campus__organization', 'primary_campus'),
             'campus': ('section__department__campus', 'primary_campus'),
-            'department': ('section__department', 'primary_department'),
+            'department': ('section__campus_department', 'primary_campus_department'),
             'section': ('section', 'sections'),
         }
     """
@@ -112,7 +112,7 @@ class TicketFilter(filters.FilterSet, OrganizationalScopeFilterMixin):
     ORGANIZATIONAL_FILTER_PATHS = {
         'organization': ('section__department__campus__organization', 'primary_campus'),
         'campus': ('section__department__campus', 'primary_campus'),
-        'department': ('section__department', 'primary_department'),
+        'department': ('section__campus_department', 'primary_campus_department'),
         'section': ('section', 'sections'),
     }
 
@@ -192,7 +192,7 @@ class SectionFilter(filters.FilterSet, OrganizationalScopeFilterMixin):
     ORGANIZATIONAL_FILTER_PATHS = {
         'organization': ('department__campus__organization', 'primary_campus'),
         'campus': ('department__campus', 'primary_campus'),
-        'department': ('department', 'primary_department'),
+        'department': ('department', 'primary_campus_department'),
         'section': ('pk', 'sections'),
     }
 
@@ -216,7 +216,7 @@ class FacilityFilter(filters.FilterSet, OrganizationalScopeFilterMixin):
     ORGANIZATIONAL_FILTER_PATHS = {
         'organization': ('campus__organization', 'primary_campus'),
         'campus': ('campus', 'primary_campus'),
-        'department': ('department', 'primary_department'),
+        'department': ('department', 'primary_campus_department'),
         # Technicians/users see facilities in their campus
         'section': ('campus', 'primary_campus'),
     }

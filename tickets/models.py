@@ -125,6 +125,7 @@ class CustomUser(AbstractUser):
         "Section",
         related_name="technicians",
         blank=True,
+        through="TechnicianSection",
         help_text="Sections the technician is specialized in.",
     )
 
@@ -183,18 +184,39 @@ class CustomUser(AbstractUser):
         else:
             return Department.objects.none()
 
+    def get_primary_campus_department(self):
+        """Resolve the user's primary Department to a CampusDepartment mapping.
+
+        Returns the CampusDepartment instance that maps the user's primary_department
+        to their primary_campus (if any). This helps bridge legacy `Department`
+        usage to the new `CampusDepartment` operational mapping.
+        """
+        if not self.primary_campus or not self.primary_department:
+            return None
+        try:
+            return CampusDepartment.objects.get(
+                campus=self.primary_campus, department_type=self.primary_department.department_type
+            )
+        except Exception:
+            return None
+
+    @property
+    def primary_campus_department(self):
+        """Property alias returning the user's primary CampusDepartment mapping if available."""
+        return self.get_primary_campus_department()
+
 
 # SECTIONS MODEL
 class Section(models.Model):
     """Enhanced section model with departmental hierarchy"""
 
-    # Temporarily nullable for migration
-    department = models.ForeignKey(
-        Department,
+    # Link to campus-scoped department mapping (CampusDepartment)
+    campus_department = models.ForeignKey(
+        "CampusDepartment",
         on_delete=models.CASCADE,
         related_name="sections",
         null=True,
-        blank=True,  # Temporary for migration
+        blank=True,  # Temporary for migration/backfill
     )
     name = models.CharField(max_length=100)
     code = models.CharField(
@@ -222,13 +244,15 @@ class Section(models.Model):
         ordering = ["name"]  # Will update after migration
 
     def __str__(self):
-        if self.department:
-            return f"{self.department.campus.code}-{self.department.code}-{self.code}: {self.name}"
+        if self.campus_department:
+            dept = self.campus_department.department_type
+            campus = self.campus_department.campus
+            return f"{campus.code}-{dept.code}-{self.code}: {self.name}"
         return f"{self.name}"  # Fallback during migration
 
     @property
     def campus(self):
-        return self.department.campus if self.department else None
+        return self.campus_department.campus if self.campus_department else None
 
     @property
     def effective_sla_hours(self):
@@ -242,14 +266,14 @@ class Section(models.Model):
     def full_hierarchy_name(self):
         """Returns: ORG-CAMPUS-DEPT-SECTION"""
         if (
-            self.department
-            and self.department.campus
-            and self.department.campus.organization
+            self.campus_department
+            and self.campus_department.campus
+            and self.campus_department.campus.organization
         ):
             return (
-                f"{self.department.campus.organization.code}-"
-                f"{self.department.campus.code}-"
-                f"{self.department.code}-{self.code}"
+                f"{self.campus_department.campus.organization.code}-"
+                f"{self.campus_department.campus.code}-"
+                f"{self.campus_department.department_type.code}-{self.code}"
             )
         return self.name
 
@@ -316,7 +340,8 @@ class Facility(models.Model):
 
 
 class FacilityFloor(models.Model):
-    facility = models.ForeignKey(Facility, on_delete=models.CASCADE, related_name='floors')
+    facility = models.ForeignKey(
+        Facility, on_delete=models.CASCADE, related_name='floors')
     name = models.CharField(max_length=100)
     order = models.PositiveIntegerField(default=0)
 
@@ -329,7 +354,8 @@ class FacilityFloor(models.Model):
 
 
 class FacilityRoom(models.Model):
-    floor = models.ForeignKey(FacilityFloor, on_delete=models.CASCADE, related_name='rooms')
+    floor = models.ForeignKey(
+        FacilityFloor, on_delete=models.CASCADE, related_name='rooms')
     name = models.CharField(max_length=100)
     code = models.CharField(max_length=20, blank=True)
 
@@ -382,7 +408,8 @@ class Ticket(models.Model):
 
     # Organizational context
     section = models.ForeignKey(
-        Section, on_delete=models.CASCADE, related_name="tickets"
+        Section, on_delete=models.CASCADE, related_name="tickets",
+        null=True, blank=True,
     )
     facility = models.ForeignKey(
         Facility, on_delete=models.SET_NULL, related_name="tickets",
@@ -490,6 +517,39 @@ class Ticket(models.Model):
         related_name="tickets",
         help_text="Service item this ticket was raised against",
     )
+    # Catalogue selection (what the user picked)
+    service_category = models.ForeignKey(
+        "ServiceCategory",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="tickets_by_category",
+        help_text="Service category the user selected",
+    )
+    # Resolved section type (derived from service_category)
+    section_type = models.ForeignKey(
+        "SectionType",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="tickets_by_section_type",
+    )
+    # Resolved campus-department mapping (operational)
+    campus_department = models.ForeignKey(
+        "CampusDepartment",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="tickets",
+    )
+    # Resolved operational section (server-calculated)
+    resolved_section = models.ForeignKey(
+        "Section",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="resolved_tickets",
+    )
     form_data = models.JSONField(
         null=True,
         blank=True,
@@ -551,18 +611,14 @@ class Ticket(models.Model):
         # 1. Handle ticket number generation for new tickets
         if not self.ticket_no:
             # Generate ticket number: CAMPUS-DEPT-XXXXX
-            if (
-                self.section
-                and self.section.department
-                and self.section.department.campus
-            ):
-                campus_code = self.section.department.campus.code
-                dept_code = self.section.department.code
+            if self.section and self.section.campus and self.section.campus_department:
+                campus_code = self.section.campus.code
+                dept_code = self.section.campus_department.department_type.code
 
-                # Get next sequence number for this department
+                # Get next sequence number for this campus+department_type
                 last_ticket = (
                     Ticket.objects.filter(
-                        section__department=self.section.department)
+                        section__campus_department=self.section.campus_department)
                     .order_by("-id")
                     .first()
                 )
@@ -722,8 +778,8 @@ class Ticket(models.Model):
 
     def _find_hod(self):
         """Find HOD for escalation"""
-        if self.section and self.section.department:
-            return self.section.department.head_of_department
+        if self.section and self.section.campus_department:
+            return self.section.campus_department.hod_user
         return None
 
     @property
@@ -744,14 +800,14 @@ class Ticket(models.Model):
         """Return full organizational path"""
         if (
             self.section
-            and self.section.department
-            and self.section.department.campus
-            and self.section.department.campus.organization
+            and self.section.campus_department
+            and self.section.campus_department.campus
+            and self.section.campus_department.campus.organization
         ):
             return (
-                f"{self.section.department.campus.organization.name} > "
-                f"{self.section.department.campus.name} > "
-                f"{self.section.department.name} > "
+                f"{self.section.campus_department.campus.organization.name} > "
+                f"{self.section.campus_department.campus.name} > "
+                f"{self.section.campus_department.department_type.name} > "
                 f"{self.section.name}"
             )
         return "No organizational context"
@@ -960,8 +1016,10 @@ class ServiceCategory(models.Model):
     )
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
-    icon = models.CharField(max_length=50, blank=True, help_text="Icon name or emoji for UI")
-    color = models.CharField(max_length=20, blank=True, help_text="Color code for UI")
+    icon = models.CharField(max_length=50, blank=True,
+                            help_text="Icon name or emoji for UI")
+    color = models.CharField(max_length=20, blank=True,
+                             help_text="Color code for UI")
     order = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)
 
@@ -981,7 +1039,8 @@ class ServiceItem(models.Model):
     )
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True)
-    sla_hours = models.IntegerField(null=True, blank=True, help_text="Overrides SectionType default")
+    sla_hours = models.IntegerField(
+        null=True, blank=True, help_text="Overrides SectionType default")
     requires_approval = models.BooleanField(
         default=False, help_text="Ticket created as pending_approval if True"
     )
@@ -993,7 +1052,8 @@ class ServiceItem(models.Model):
     default_priority = models.CharField(
         max_length=20,
         choices=[
-            ('low', 'Low'), ('medium', 'Medium'), ('high', 'High'), ('critical', 'Critical')
+            ('low', 'Low'), ('medium', 'Medium'), ('high',
+                                                   'High'), ('critical', 'Critical')
         ],
         default='medium',
     )
@@ -1008,3 +1068,43 @@ class ServiceItem(models.Model):
 
 
 # Import authentication models
+
+
+class CampusDepartment(models.Model):
+    """Operational mapping between a Campus and a catalogue DepartmentType.
+
+    This represents the department as it exists at a specific campus and is
+    owned by an HOD (hod_user).
+    """
+
+    campus = models.ForeignKey(
+        Campus, on_delete=models.CASCADE, related_name="campus_departments")
+    department_type = models.ForeignKey(
+        DepartmentType, on_delete=models.CASCADE, related_name="campus_departments"
+    )
+    hod_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="hod_campus_departments"
+    )
+
+    class Meta:
+        unique_together = [["campus", "department_type"]]
+        ordering = ["campus", "department_type"]
+
+    def __str__(self):
+        return f"{self.campus.code} - {self.department_type.code}"
+
+
+class TechnicianSection(models.Model):
+    """Explicit join table for technicians assigned to sections."""
+
+    technician = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="technician_section_links")
+    section = models.ForeignKey(
+        Section, on_delete=models.CASCADE, related_name="technician_links")
+    added_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [["technician", "section"]]
+
+    def __str__(self):
+        return f"{self.technician.username} -> {self.section.name}"

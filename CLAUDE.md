@@ -36,11 +36,11 @@ black tickets/
 python manage.py makemigrations
 python manage.py migrate
 
-# Load fixture (always use --ignorenonexistent until Phase 4 models exist)
-python manage.py loaddata tickets_initial_data --ignorenonexistent
+# Load fixture
+python manage.py loaddata tickets_initial_data
 
 # Flush and reload
-python manage.py flush --no-input && python manage.py loaddata tickets_initial_data --ignorenonexistent
+python manage.py flush --no-input && python manage.py loaddata tickets_initial_data
 
 # Run auto-escalation sweep (normally scheduled via cron)
 python manage.py process_auto_escalations
@@ -176,6 +176,8 @@ section = NestedSectionSerializer(read_only=True)
 section_id = PrimaryKeyRelatedField(queryset=Section.objects.all(), source='section', write_only=True)
 ```
 
+`NestedSectionSerializer` exposes `campus_code` (`department.campus.code`) and `department_code` (`department.code`) as read-only computed fields. The frontend uses these to display sections as `{campus_code}-{name}` (e.g. "NRB-ICT Support"). Both fields are `default=None` so old data without the FK chain doesn't error.
+
 Several serializers have `get_fields()` overrides that strip fields based on `request.user.role`:
 - `FacilitySerializer`: strips `purchase_date`, `warranty_expiry`, `asset_value` below `hod`
 - `SectionSerializer`: strips `technicians` below `head_of_section`
@@ -202,10 +204,10 @@ Magic-link endpoints exist in `simple_auth_views.py` but are commented out. Enab
 ## Fixture & Seed Data
 
 ```bash
-python manage.py loaddata tickets_initial_data --ignorenonexistent
+python manage.py loaddata tickets_initial_data
 ```
 
-`--ignorenonexistent` skips Phase 4 models (DepartmentType, SectionType, ServiceCategory, ServiceItem) until their migrations exist.
+All Phase 4 models are migrated (migrations 0009-0012). `--ignorenonexistent` is no longer needed.
 
 All fixture users share the password: **`adminuser123`**
 
@@ -268,13 +270,29 @@ Live backend: `https://django-resolver.onrender.com/api`
 
 ---
 
-## Service Catalogue (Partially Implemented)
+## Service Catalogue
 
-Models `DepartmentType`, `SectionType`, `ServiceCategory`, `ServiceItem` exist in `models.py` and in fixtures but **tables are not yet migrated**. The fixture records are silently skipped by `--ignorenonexistent`.
+Models `DepartmentType`, `SectionType`, `ServiceCategory`, `ServiceItem` are fully migrated (migrations 0009-0012). The fixture includes seeded data for ICT, Administration, and HR department types.
 
-Once migrated, the ticket creation flow will support `service_item_id`. If `ServiceItem.requires_approval = True`, the ticket starts as `pending_approval` instead of `open`.
+If `ServiceItem.requires_approval = True`, the ticket starts as `pending_approval` instead of `open`.
 
-The `Ticket` model already has `service_item` FK, `request_data` JSONField, and `due_date` DateTimeField. The `save()` method already sets `due_date` from the SLA cascade: `service_item.sla_hours` → `section.effective_sla_hours`.
+The `Ticket` model has `service_item` FK, `form_data` JSONField, and `due_date` DateTimeField. The `save()` method sets `due_date` from the SLA cascade: `service_item.sla_hours` → `section_type.default_sla_hours` → 24h fallback.
+
+All sections in the fixture have `section_type` set, so the frontend wizard always goes through the full 6-step catalogue flow. An "Other / General Request" item exists in every section type as a fallback for uncatalogued requests.
+
+### Fixture summary (tickets_initial_data.json)
+
+| Model | Count | Notes |
+|-------|-------|-------|
+| Department | 11 | pk 1-10 across 5 campuses; pk 11 = HR, campus NRB |
+| Section | 11 | pk 1-10 ICT/ADM; pk 11 = HR Operations (section_type 3) |
+| SectionType | 3 | 1=ICT Support, 2=Administration, 3=Human Resources |
+| ServiceCategory | 15 | pk 13-15 = "Other Request" one per section type (order 99) |
+| ServiceItem | 22 | pk 20-22 = "Other / General Request" fallbacks (order 99) |
+
+### Analytics — `display_name`
+
+`get_tickets_by_section()` in `ticket_analytics.py` uses `select_related("department__campus")` and annotates a `display_name` as `"{campus_code}-{section_name}"`. The same pattern is used in `admin_analytics.py` for `busiest_sections`. Any analytics endpoint that returns section data should include `display_name` alongside `name` so the frontend can render the campus-prefixed label without extra lookups.
 
 ---
 

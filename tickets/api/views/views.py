@@ -91,24 +91,20 @@ from tickets.models import (
     ServiceItem,
 )
 from tickets.pagination import TicketPagination
+from .view_mixins import AdminOnlyCreateMixin
 
 # ============================================================================
 # ORGANIZATION HIERARCHY ENDPOINTS
 # ============================================================================
 
 
-class OrganizationListCreateView(ListCreateAPIView):
+class OrganizationListCreateView(AdminOnlyCreateMixin, ListCreateAPIView):
+    resource_name = "organizations"
     """Organization list and create endpoint. Create is admin-only."""
 
     queryset = Organization.objects.all()
     serializer_class = OrganizationSerializer
     permission_classes = [IsWithinOrganizationalScope]
-
-    def create(self, request, *args, **kwargs):
-        if request.user.role != "admin":
-            raise PermissionDenied(
-                "Only administrators can create organizations")
-        return super().create(request, *args, **kwargs)
 
 
 class OrganizationDetailView(RetrieveUpdateDestroyAPIView):
@@ -119,17 +115,13 @@ class OrganizationDetailView(RetrieveUpdateDestroyAPIView):
     permission_classes = [IsWithinOrganizationalScope, IsAdminOrReadOnly]
 
 
-class CampusListCreateView(ListCreateAPIView):
+class CampusListCreateView(AdminOnlyCreateMixin, ListCreateAPIView):
+    resource_name = "campuses"
     """Campus list and create endpoint. Create is admin-only."""
 
     queryset = Campus.objects.all()
     serializer_class = CampusSerializer
     permission_classes = [IsWithinOrganizationalScope]
-
-    def create(self, request, *args, **kwargs):
-        if request.user.role != "admin":
-            raise PermissionDenied("Only administrators can create campuses")
-        return super().create(request, *args, **kwargs)
 
     def get_queryset(self):
         """Filter campuses based on user's organizational scope"""
@@ -138,9 +130,11 @@ class CampusListCreateView(ListCreateAPIView):
 
         if user.role == "admin":
             return queryset
-        elif user.role == "manager" and user.primary_department:
-            # Manager sees campuses in their department's organization (cross-campus)
-            return queryset.filter(organization=user.primary_department.campus.organization)
+        elif user.role == "manager":
+            pd = user.primary_campus_department
+            if pd:
+                return queryset.filter(organization=pd.campus.organization)
+            return queryset.none()
         elif (
             user.role in ["hod", "head_of_section", "technician", "user"]
             and user.primary_campus
@@ -157,18 +151,13 @@ class CampusDetailView(RetrieveUpdateDestroyAPIView):
     permission_classes = [IsWithinOrganizationalScope, IsAdminOrReadOnly]
 
 
-class DepartmentListCreateView(ListCreateAPIView):
+class DepartmentListCreateView(AdminOnlyCreateMixin, ListCreateAPIView):
+    resource_name = "departments"
     """Department list and create endpoint. Create is admin-only."""
 
     queryset = Department.objects.all()
     serializer_class = DepartmentSerializer
     permission_classes = [IsWithinOrganizationalScope]
-
-    def create(self, request, *args, **kwargs):
-        if request.user.role != "admin":
-            raise PermissionDenied(
-                "Only administrators can create departments")
-        return super().create(request, *args, **kwargs)
 
     def get_queryset(self):
         """Filter departments based on user's organizational scope"""
@@ -179,18 +168,20 @@ class DepartmentListCreateView(ListCreateAPIView):
 
         if user.role == "admin":
             return queryset
-        elif user.role == "manager" and user.primary_department:
-            # Manager sees their department across all campuses in their organization
-            dept_code = user.primary_department.code
-            org = user.primary_department.campus.organization
-            return queryset.filter(code=dept_code, campus__organization=org)
+        elif user.role == "manager":
+            pd = user.primary_campus_department
+            if pd:
+                dept_code = pd.department_type.code
+                org = pd.campus.organization
+                return queryset.filter(code=dept_code, campus__organization=org)
+            return queryset.none()
         elif user.role == "hod" and user.primary_campus:
             return queryset.filter(campus=user.primary_campus)
-        elif (
-            user.role in ["head_of_section", "technician", "user"]
-            and user.primary_department
-        ):
-            return queryset.filter(id=user.primary_department.id)
+        elif user.role in ["head_of_section", "technician", "user"]:
+            pd = user.primary_campus_department
+            if pd:
+                return queryset.filter(id=pd.id)
+            return queryset.none()
         return queryset.none()
 
 
@@ -209,18 +200,13 @@ class DepartmentDetailView(RetrieveUpdateDestroyAPIView):
 # ============================================================================
 
 
-class SectionListCreateView(ListCreateAPIView):
+class SectionListCreateView(AdminOnlyCreateMixin, ListCreateAPIView):
+    resource_name = "sections"
     queryset = Section.objects.all()
     serializer_class = SectionSerializer
     permission_classes = [IsWithinOrganizationalScope]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["department", "is_active"]
-
-    def create(self, request, *args, **kwargs):
-        """Restrict section creation to admins only"""
-        if request.user.role != "admin":
-            raise PermissionDenied("Only administrators can create sections")
-        return super().create(request, *args, **kwargs)
 
     def get_queryset(self):
         """Filter sections based on user's organizational scope"""
@@ -269,7 +255,8 @@ class SectionDetailView(RetrieveUpdateDestroyAPIView):
 # ============================================================================
 
 
-class FacilityListCreateView(ListCreateAPIView):
+class FacilityListCreateView(AdminOnlyCreateMixin, ListCreateAPIView):
+    resource_name = "facilities"
     queryset = Facility.objects.all()
     serializer_class = FacilitySerializer
     permission_classes = [IsWithinOrganizationalScope]
@@ -398,14 +385,13 @@ class TicketListCreateView(ListCreateAPIView):
             section = serializer.validated_data.get("section")
             facility = serializer.validated_data.get("facility")
 
-            if not section:
-                raise serializers.ValidationError("Section is required")
-
-            # Use organizational service to create ticket and get the instance
+            # Use organizational service to create ticket and get the instance.
+            # `section` may be omitted by the client; service will resolve it from
+            # catalogue fields (service_category/service_item) using the user's campus.
             ticket = TicketService.create_ticket(
                 data=serializer.validated_data,
                 created_by=user,
-                section=section,
+                section=serializer.validated_data.get("section"),
                 facility=facility,
                 enable_auto_escalation=serializer.validated_data.get(
                     "auto_escalation_enabled", True
@@ -426,7 +412,13 @@ class TicketDetailView(RetrieveUpdateDestroyAPIView):
 
     queryset = (
         Ticket.objects.select_related(
-            "section", "facility", "raised_by", "assigned_to", "escalated_to"
+            "section",
+            "section__department",
+            "section__department__campus",
+            "facility",
+            "raised_by",
+            "assigned_to",
+            "escalated_to",
         )
         .prefetch_related(
             "comments",
@@ -491,8 +483,10 @@ class TicketDetailView(RetrieveUpdateDestroyAPIView):
                     ticket=ticket,
                     new_status=new_status,
                     updated_by=user,
-                    pending_reason=serializer.validated_data.get("pending_reason"),
-                    pending_comment=serializer.validated_data.get("pending_comment"),
+                    pending_reason=serializer.validated_data.get(
+                        "pending_reason"),
+                    pending_comment=serializer.validated_data.get(
+                        "pending_comment"),
                 )
                 updated = True
 

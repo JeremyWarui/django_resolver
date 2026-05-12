@@ -77,6 +77,82 @@ def test_manager_ticket_scope(
     assert TicketService.get_accessible_tickets(manager).count() == 1
 
 
+def test_manager_scope_includes_same_department_code_across_campuses(
+    organization,
+    campus,
+    department,
+    section,
+    facility,
+    manager_factory,
+    user_factory,
+):
+    """Manager scope is org-wide but constrained to their primary_department code."""
+    second_campus = Campus.objects.create(
+        organization=organization,
+        name="Second Campus",
+        code="SCND",
+        location="West Side",
+    )
+    matching_department = Department.objects.create(
+        campus=second_campus,
+        name="IT Department Branch",
+        code=department.code,
+    )
+    non_matching_department = Department.objects.create(
+        campus=second_campus,
+        name="Finance Department",
+        code="FIN",
+    )
+    matching_section = Section.objects.create(
+        department=matching_department,
+        name="Branch Network",
+        code="BRNET",
+    )
+    non_matching_section = Section.objects.create(
+        department=non_matching_department,
+        name="Finance Ops",
+        code="FINOPS",
+    )
+    second_facility = Facility.objects.create(
+        name="Second Campus HQ",
+        type="building",
+        status="active",
+        location="Second Campus",
+        campus=second_campus,
+    )
+
+    user = user_factory(primary_campus=campus)
+    ticket_primary = Ticket.objects.create(
+        title="Primary Campus IT",
+        description="Manager should see this",
+        section=section,
+        facility=facility,
+        raised_by=user,
+    )
+    ticket_matching_code = Ticket.objects.create(
+        title="Second Campus IT",
+        description="Manager should also see this",
+        section=matching_section,
+        facility=second_facility,
+        raised_by=user,
+    )
+    ticket_non_matching_code = Ticket.objects.create(
+        title="Second Campus Finance",
+        description="Manager should not see this",
+        section=non_matching_section,
+        facility=second_facility,
+        raised_by=user,
+    )
+
+    manager = manager_factory(primary_department=department)
+    manager_tickets = TicketService.get_accessible_tickets(manager)
+    ids = set(manager_tickets.values_list("id", flat=True))
+
+    assert ticket_primary.id in ids
+    assert ticket_matching_code.id in ids
+    assert ticket_non_matching_code.id not in ids
+
+
 def test_hod_campus_scoped_access(
     organization,
     campus,
@@ -392,6 +468,65 @@ def test_assignable_users_endpoint(
 
     # Endpoint should return successfully
     assert response.status_code in [status.HTTP_200_OK, status.HTTP_403_FORBIDDEN]
+
+
+def test_assignable_users_endpoint_forbids_regular_user(
+    authenticated_client, section
+):
+    """Regular users cannot access assignment candidate endpoint."""
+    client = authenticated_client["client"]
+    url = reverse("assignable-users") + f"?section_id={section.id}"
+    response = client.get(url)
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+def test_assignable_users_returns_only_active_section_technicians_for_hod(
+    hod_factory,
+    technician_factory,
+    campus,
+    department,
+    section,
+):
+    """HOD gets only active technicians mapped to requested section."""
+    hod = hod_factory(primary_campus=campus, primary_department=department)
+
+    active_in_section = technician_factory(
+        username="active_in_section",
+        primary_campus=campus,
+        primary_department=department,
+        is_active=True,
+    )
+    active_in_section.sections.add(section)
+
+    inactive_in_section = technician_factory(
+        username="inactive_in_section",
+        primary_campus=campus,
+        primary_department=department,
+        is_active=False,
+    )
+    inactive_in_section.sections.add(section)
+
+    active_other_section = technician_factory(
+        username="active_other_section",
+        primary_campus=campus,
+        primary_department=department,
+        is_active=True,
+    )
+    other_section = Section.objects.create(
+        department=department, name="Other Section", code="OTHER"
+    )
+    active_other_section.sections.add(other_section)
+
+    client = APIClient()
+    client.force_authenticate(user=hod)
+    url = reverse("assignable-users") + f"?section_id={section.id}"
+    response = client.get(url)
+
+    assert response.status_code == status.HTTP_200_OK
+    usernames = {user["username"] for user in response.data["results"]}
+    assert "active_in_section" in usernames
+    assert "inactive_in_section" not in usernames
+    assert "active_other_section" not in usernames
 
 
 def test_organizational_analytics_endpoint(
@@ -789,5 +924,4 @@ def test_auto_escalation_processing(
 # ============================================================================
 # ANALYTICS DASHBOARD TESTS
 # ============================================================================
-
 

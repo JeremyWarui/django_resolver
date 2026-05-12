@@ -19,6 +19,7 @@ from tickets.models import (
     Section,
     Facility,
 )
+from tickets.models import CampusDepartment, ServiceCategory, SectionType
 from tickets.email_service import EmailService
 from .exceptions import (
     TicketServiceException,
@@ -52,7 +53,7 @@ class TicketService:
     def create_ticket(
         data: Dict,
         created_by: CustomUser,
-        section: Section,
+        section: Optional[Section] = None,
         facility: Optional[Facility] = None,
         enable_auto_escalation: bool = True,
     ) -> Ticket:
@@ -73,10 +74,65 @@ class TicketService:
             InsufficientScopeException: User doesn't have access to this section/facility
             DRFValidationError: Invalid ticket data
         """
+        # If client did not provide a section, resolve from catalogue inputs
+        if section is None:
+            # Expect service_category or service_item in data
+            service_category = data.get("service_category")
+            service_item = data.get("service_item")
+            # If service_item provided, infer category
+            if not service_category and service_item:
+                service_category = getattr(service_item, "category", None)
+
+            if not service_category:
+                raise DRFValidationError(
+                    "service_category (or service_item) is required to resolve section")
+
+            # Resolve section_type from category
+            section_type = getattr(service_category, "section_type", None)
+            if not section_type:
+                raise DRFValidationError(
+                    "Invalid service_category: missing section_type")
+
+            # Determine campus: prefer user's primary_campus
+            campus = getattr(created_by, "primary_campus", None)
+            if not campus:
+                raise DRFValidationError(
+                    "User has no primary campus set; cannot resolve operational section")
+
+            # Find campus_department mapping
+            campus_dept = CampusDepartment.objects.filter(
+                campus=campus, department_type=section_type.department_type
+            ).first()
+            if not campus_dept:
+                raise DRFValidationError(
+                    f"No CampusDepartment found for campus {campus.code} and department {section_type.department_type.code}"
+                )
+
+            # Find section for that campus_department + section_type
+            found_section = (
+                Section.objects.filter(
+                    campus_department=campus_dept, section_type=section_type, is_active=True
+                )
+                .order_by("id")
+                .first()
+            )
+            if not found_section:
+                raise DRFValidationError(
+                    f"No operational Section found for campus {campus.code} and section type {section_type.code}"
+                )
+
+            # Set resolved values for later persistence
+            section = found_section
+            # Attach resolved fields into data so the created ticket records them
+            data["section_type"] = section_type
+            data["campus_department"] = campus_dept
+            data["service_category"] = service_category
+            data["resolved_section"] = found_section
+
         # Check user has access to section
         if not TicketService._user_can_access_section(created_by, section):
             raise InsufficientScopeException(
-                f"User {created_by.username} lacks access to section {section.name}"
+                f"User {created_by.username} lacks access to section {getattr(section, 'name', 'unknown')}"
             )
 
         # Check user has access to facility when one is provided
@@ -102,6 +158,10 @@ class TicketService:
                 status=initial_status,
                 service_item=service_item,
                 form_data=data.get("form_data"),
+                service_category=data.get("service_category"),
+                section_type=data.get("section_type"),
+                campus_department=data.get("campus_department"),
+                resolved_section=data.get("resolved_section"),
             )
 
             TicketLog.objects.create(
@@ -169,9 +229,7 @@ class TicketService:
             )
 
         # Check technician's campus matches ticket's campus (handle None department)
-        ticket_campus = (
-            ticket.section.department.campus if ticket.section.department else None
-        )
+        ticket_campus = ticket.section.campus if ticket.section else None
         if ticket_campus and technician.primary_campus != ticket_campus:
             raise InvalidAssignmentException(
                 f"Technician {technician.username} is not assigned to this campus"
@@ -654,20 +712,22 @@ class TicketService:
             queryset = Ticket.objects.all()
         elif user.role == "manager":
             # Manager sees their department's tickets across all campuses in the org
-            if user.primary_department:
-                dept_code = user.primary_department.code
-                org = user.primary_department.campus.organization
+            pd = user.primary_campus_department
+            if pd:
+                dept_code = pd.department_type.code
+                org = pd.campus.organization
                 queryset = Ticket.objects.filter(
-                    section__department__code=dept_code,
-                    section__department__campus__organization=org,
+                    section__campus_department__department_type__code=dept_code,
+                    section__campus_department__campus__organization=org,
                 )
             else:
                 queryset = Ticket.objects.none()
         elif user.role == "hod":
-            # HOD can see all tickets in their department
-            if user.primary_department:
+            # HOD can see all tickets in their campus-department
+            pd = user.primary_campus_department
+            if pd:
                 queryset = Ticket.objects.filter(
-                    section__department=user.primary_department
+                    section__campus_department=pd
                 )
             else:
                 queryset = Ticket.objects.none()
@@ -700,7 +760,14 @@ class TicketService:
 
         return (
             queryset.select_related(
-                "section", "facility", "raised_by", "assigned_to", "escalated_to"
+                "section",
+                "section__department",
+                "section__department__campus",
+                "facility",
+                "raised_by",
+                "assigned_to",
+                "escalated_to",
+                "service_item",
             )
             .distinct()
             .order_by("-created_at")
@@ -780,22 +847,22 @@ class TicketService:
         """Check if user has access to section based on role and organizational scope"""
         if user.role == "admin":
             return True
-
-        if not section or not section.department or not section.department.campus:
+        if not section or not section.campus:
             return False
 
+        # Manager: organization-wide for their primary campus' organization
         if user.role == "manager":
             if not user.primary_campus:
                 return False
-            return (
-                section.department.campus.organization
-                == user.primary_campus.organization
-            )
-        elif user.role == "hod":
-            return section.department.campus == user.primary_campus
-        elif user.role == "head_of_section":
-            return section.department == user.primary_department
-        elif user.role in ["technician", "user"]:
+            return section.campus.organization == user.primary_campus.organization
+        # HOD: scoped to their primary campus
+        if user.role == "hod":
+            return section.campus == user.primary_campus
+        # Head of section: must be the section's head
+        if user.role == "head_of_section":
+            return section.head_of_section == user
+        # Technicians and users: must be linked to the section or be the raiser
+        if user.role in ["technician", "user"]:
             return section in user.sections.all()
 
         return False

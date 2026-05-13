@@ -6,7 +6,7 @@ from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 from unfold.admin import ModelAdmin
 from unfold.decorators import display
 from unfold.contrib.filters.admin import RangeDateFilter
-from tickets.models import CustomUser, Section, Facility, Ticket, Comment, Feedback
+from tickets.models import CustomUser, Section, Facility, Ticket, Comment, Feedback, TechnicianSection
 
 
 # Mixin for display methods shared across multiple admin classes
@@ -25,7 +25,14 @@ class TicketCountDisplayMixin:
 # CustomUser admin
 
 
+class TechnicianSectionInline(admin.TabularInline):
+    model = TechnicianSection
+    extra = 1
+    autocomplete_fields = ("section",)
+
+
 class CustomUserAdmin(ModelAdmin):
+    inlines = [TechnicianSectionInline]
     model = CustomUser
     list_display = (
         "username",
@@ -35,7 +42,7 @@ class CustomUserAdmin(ModelAdmin):
         "is_active",
         "sections_count",
     )
-    list_filter = ("role", "is_staff", "is_active", "sections")
+    list_filter = ("role", "is_staff", "is_active")
     form = UserChangeForm
     add_form = UserCreationForm
 
@@ -76,7 +83,7 @@ class CustomUserAdmin(ModelAdmin):
                 )
             },
         ),
-        ("Role and Sections", {"fields": ("role", "sections")}),
+        ("Role", {"fields": ("role",)}),
         ("Important Dates", {"fields": ("last_login", "date_joined")}),
     )
     add_fieldsets = (
@@ -87,11 +94,11 @@ class CustomUserAdmin(ModelAdmin):
                 "fields": ("username", "password1", "password2", "email"),
             },
         ),
-        ("Role and Sections", {"fields": ("role", "sections")}),
+        ("Role", {"fields": ("role",)}),
     )
     search_fields = ("username", "email", "first_name", "last_name")
     ordering = ("username",)
-    filter_horizontal = ("groups", "user_permissions", "sections")
+    filter_horizontal = ("groups", "user_permissions")
     readonly_fields = ("last_login", "date_joined")
 
     def get_fieldsets(self, request, obj=None):

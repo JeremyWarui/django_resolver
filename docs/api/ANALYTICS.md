@@ -1,15 +1,15 @@
 # Analytics Module
 
-> 📌 **For complete API reference and other endpoints, see [API Integration Guide](../API_INTEGRATION_GUIDE.md)**  
+> **For complete API reference and other endpoints, see [API Integration Guide](../API_INTEGRATION_GUIDE.md)**  
 > This document provides detailed specifications for **analytics endpoints only**.
 
-This module provides comprehensive organization-scoped analytics and reporting for the Django Resolver ticket management system. All analytics respect organizational hierarchy (Organization → Campus → Department → Section) and role-based permissions.
+This module provides comprehensive scope-filtered analytics and reporting for the Django Resolver ticket management system. All analytics respect the organizational hierarchy (Campus → CampusDepartment → Section) and role-based permissions.
 
 ## Available Analytics
 
-### Ticket Analytics (Organization-Scoped)
-- Daily, weekly, and monthly ticket counts within accessible organization units
-- Ticket distribution by campus, department, and section
+### Ticket Analytics (Scope-Filtered)
+- Daily, weekly, and monthly ticket counts within accessible organizational units
+- Ticket distribution by campus department and section (with `display_name` as `{campus_code}-{section_name}`)
 - Ticket status distribution with historical trends
 - SLA compliance tracking and escalation analysis
 - Overdue ticket identification
@@ -23,10 +23,21 @@ This module provides comprehensive organization-scoped analytics and reporting f
 
 ### Role-Based Dashboard Endpoints
 
-- **`/api/analytics/manager/`**: Cross-campus department dashboard for managers
-- **`/api/analytics/hod/`**: Campus-scoped dashboard for Heads of Department
-- **`/api/analytics/section-head/`**: Section-scoped dashboard for Section Heads
-- **`/api/analytics/admin-dashboard/`**: System-wide dashboard for admins
+All 11 analytics endpoints:
+
+| Endpoint | Access |
+|----------|--------|
+| `GET /api/analytics/tickets/` | admin, manager |
+| `GET /api/analytics/admin-dashboard/` | admin, manager |
+| `GET /api/analytics/user/` | all authenticated |
+| `GET /api/analytics/technicians/` | admin, manager, hod, technician (own data) |
+| `GET /api/analytics/technicians/me/` | technician, admin |
+| `GET /api/analytics/manager/` | manager, admin |
+| `GET /api/analytics/hod/` | hod, admin |
+| `GET /api/analytics/section-head/` | head_of_section, admin |
+| `GET /api/analytics/departments/<pk>/` | admin, manager (own dept), hod (own campus) |
+| `GET /api/analytics/campus-departments/<pk>/` | admin, manager, hod (assigned only) |
+| `GET /api/analytics/sections/<pk>/` | admin, manager, hod, head_of_section (own) |
 
 ## API Endpoints
 
@@ -35,30 +46,28 @@ Provides ticket-related analytics data with organizational filtering.
 
 **Query Parameters:**
 - `timeframe`: `day`, `week`, `month` (default: `week`)
-- `campus_id`: Filter by campus (org-scoped)
-- `department_id`: Filter by department (org-scoped)
-- `section_id`: Filter by section (org-scoped)
-- `facility_id`: Filter by facility (org-scoped)
+- `campus_department_id`: Filter by CampusDepartment
+- `section_id`: Filter by section
+- `facility_id`: Filter by facility
 - `group_by`: `day`, `week`, `month` for trend data (default: `day`)
 - `days`: Number of days for historical data (default: 30)
 
 **Access Control:**
 - Users: Own tickets only
-- Technicians: Section-scoped tickets
+- Technicians: Section-scoped tickets (via TechnicianSection)
 - Section Heads: Section-scoped tickets
-- HODs: Campus-scoped tickets
-- Managers: Own department across all campuses in their org
+- HODs: CampusDepartment-scoped tickets
+- Managers: Own department across all campuses
 - Admins: All tickets
 
 **Example Request:**
 ```bash
-GET /api/analytics/tickets/?timeframe=week&campus_id=1&section_id=2
+GET /api/analytics/tickets/?timeframe=week&section_id=2
 ```
 
 **Example Response:**
 ```json
 {
-  "organization": "Kenya School of Government",
   "campus": "Nairobi Campus",
   "period": "Last 7 days",
   "ticket_counts": {
@@ -82,17 +91,15 @@ GET /api/analytics/tickets/?timeframe=week&campus_id=1&section_id=2
     "compliance_percentage": 84.4
   },
   "trend_data": [
-    {"date": "2026-04-03", "count": 6, "escalated": 1},
-    {"date": "2026-04-04", "count": 7, "escalated": 2}
+    {"date": "2026-05-06", "count": 6, "escalated": 1},
+    {"date": "2026-05-07", "count": 7, "escalated": 2}
   ],
   "section_distribution": [
-    {"name": "Software", "count": 18, "avg_resolution_time": 12.5},
-    {"name": "Hardware", "count": 15, "avg_resolution_time": 14.2},
-    {"name": "Network", "count": 12, "avg_resolution_time": 10.8}
+    {"name": "Software", "display_name": "NRB-Software", "count": 18, "avg_resolution_time": 12.5},
+    {"name": "Hardware", "display_name": "NRB-Hardware", "count": 15, "avg_resolution_time": 14.2}
   ],
   "facility_distribution": [
-    {"name": "Server Room A", "count": 25, "escalation_rate": 15},
-    {"name": "Computer Lab 1", "count": 12, "escalation_rate": 20}
+    {"name": "Server Room A", "count": 25, "escalation_rate": 15}
   ]
 }
 ```
@@ -102,26 +109,24 @@ Provides technician performance analytics within organizational scope.
 
 **Query Parameters:**
 - `technician_id`: Optional specific technician ID
-- `campus_id`: Filter by campus
 - `section_id`: Filter by section
 - `days`: Number of days for analysis (default: 30)
 
 **Access Control:**
-- Technicians: Own metrics only
+- Technicians: Own metrics only (`/me/` endpoint)
 - Section Heads: Section technicians
-- HODs: Campus technicians
+- HODs: CampusDepartment technicians
 - Managers: Own department technicians across all campuses
 - Admins: All technicians
 
 **Example Request:**
 ```bash
-GET /api/analytics/technicians/?campus_id=1&days=30
+GET /api/analytics/technicians/?days=30
 ```
 
 **Example Response:**
 ```json
 {
-  "organization": "Kenya School of Government",
   "campus": "Nairobi Campus",
   "period": "Last 30 days",
   "technician_performance": [
@@ -129,7 +134,8 @@ GET /api/analytics/technicians/?campus_id=1&days=30
       "id": 12,
       "username": "tech_alex",
       "full_name": "Alex Kamau",
-      "section": "Software",
+      "section": "ICT Support",
+      "display_name": "NRB-ICT Support",
       "total_tickets": 25,
       "resolved_tickets": 22,
       "pending_tickets": 3,
@@ -143,16 +149,11 @@ GET /api/analytics/technicians/?campus_id=1&days=30
   ],
   "section_rankings": [
     {
-      "section_name": "Software",
+      "section_name": "ICT Support",
+      "display_name": "NRB-ICT Support",
       "technician_count": 3,
       "avg_rating": 4.5,
       "avg_resolution_time": 12.0
-    },
-    {
-      "section_name": "Hardware",
-      "technician_count": 2,
-      "avg_rating": 4.4,
-      "avg_resolution_time": 14.2
     }
   ]
 }
@@ -161,20 +162,19 @@ GET /api/analytics/technicians/?campus_id=1&days=30
 ### Role-Based Dashboard Endpoints
 
 #### `/api/analytics/manager/`
-Cross-campus department dashboard for managers (own department, all campuses in org).
+Cross-campus department dashboard for managers (own department, all campuses).
 
 **Query Parameters:**
 - `days`: Number of days to analyze (default: 30)
 
-**Access Control:** Managers (for their department) and admins
+**Access Control:** Managers (own department) and admins
 
-**Note:** Requires `primary_department` set on the manager user. Returns the same department code across every campus in the organization.
+**Note:** Requires `primary_department` set on the manager user. Returns the same department code across every campus.
 
 **Example Response:**
 ```json
 {
   "department": "ICT",
-  "organization": "Kenya School of Government",
   "period": "Last 30 days",
   "overview": {
     "total_tickets": 450,
@@ -187,6 +187,7 @@ Cross-campus department dashboard for managers (own department, all campuses in 
   "campuses": [
     {
       "name": "Nairobi Campus",
+      "code": "NRB",
       "ticket_count": 250,
       "open": 45,
       "escalated": 6,
@@ -194,6 +195,7 @@ Cross-campus department dashboard for managers (own department, all campuses in 
     },
     {
       "name": "Mombasa Campus",
+      "code": "MSA",
       "ticket_count": 200,
       "open": 40,
       "escalated": 6,
@@ -206,40 +208,33 @@ Cross-campus department dashboard for managers (own department, all campuses in 
     "compliance_percentage": 91.6
   },
   "top_technicians": [
-    {"name": "Alex Kamau", "section": "Software", "rating": 4.8, "tickets_resolved": 22}
+    {"name": "Alex Kamau", "section": "ICT Support", "display_name": "NRB-ICT Support", "rating": 4.8, "tickets_resolved": 22}
   ]
 }
 ```
 
 #### `/api/analytics/hod/`
-Campus-scoped dashboard for Heads of Department (own department on own campus).
+CampusDepartment-scoped dashboard for Heads of Department (own department on own campus).
 
 **Query Parameters:**
 - `days`: Number of days to analyze (default: 30)
 
-**Access Control:** HODs (for their campus) and admins
+**Access Control:** HODs (own CampusDepartment) and admins
 
 **Example Response:**
 ```json
 {
-  "organization": "Kenya School of Government",
   "campus": "Nairobi Campus",
-  "departments": [
+  "department": "ICT",
+  "sections": [
     {
-      "name": "ICT",
+      "name": "ICT Support",
+      "display_name": "NRB-ICT Support",
       "ticket_count": 120,
       "open": 25,
       "escalated": 3,
       "avg_rating": 4.6,
-      "sections": [
-        {"name": "Network", "ticket_count": 60, "technician_count": 3},
-        {"name": "Hardware", "ticket_count": 40, "technician_count": 2},
-        {"name": "Software", "ticket_count": 20, "technician_count": 1}
-      ],
-      "escalation_points": [
-        {"name": "Network", "escalations": 2},
-        {"name": "Hardware", "escalations": 1}
-      ]
+      "technician_count": 3
     }
   ],
   "sla_compliance": {
@@ -261,25 +256,23 @@ Section-scoped dashboard for Section Heads.
 **Query Parameters:**
 - `days`: Number of days to analyze (default: 30)
 
-**Access Control:** Section Heads (for their section) and admins
+**Access Control:** Section Heads (own section) and admins
 
 **Example Response:**
 ```json
 {
-  "organization": "Kenya School of Government",
   "campus": "Nairobi Campus",
   "department": "ICT",
-  "sections": [
-    {
-      "name": "Software",
-      "ticket_count": 60,
-      "open": 12,
-      "escalated": 2,
-      "technician_count": 3,
-      "avg_rating": 4.7,
-      "avg_resolution_time": 8.2
-    }
-  ],
+  "section": {
+    "name": "ICT Support",
+    "display_name": "NRB-ICT Support",
+    "ticket_count": 60,
+    "open": 12,
+    "escalated": 2,
+    "technician_count": 3,
+    "avg_rating": 4.7,
+    "avg_resolution_time": 8.2
+  },
   "technician_workload": [
     {
       "name": "Alex Kamau",
@@ -300,13 +293,12 @@ Section-scoped dashboard for Section Heads.
 ### `/api/analytics/admin-dashboard/`
 System-wide analytics for admin oversight.
 
-**Access Control:** Admins only
+**Access Control:** Admins and managers
 
 **Example Response:**
 ```json
 {
   "system_overview": {
-    "total_organizations": 1,
     "total_tickets": 1250,
     "open_tickets": 180,
     "escalated_tickets": 42,
@@ -318,6 +310,7 @@ System-wide analytics for admin oversight.
   "campuses": [
     {
       "name": "Nairobi Campus",
+      "code": "NRB",
       "ticket_count": 450,
       "resolution_rate": 82.0,
       "escalation_rate": 2.7,
@@ -325,6 +318,7 @@ System-wide analytics for admin oversight.
     },
     {
       "name": "Mombasa Campus",
+      "code": "MSA",
       "ticket_count": 350,
       "resolution_rate": 80.0,
       "escalation_rate": 3.1,
@@ -333,7 +327,7 @@ System-wide analytics for admin oversight.
   ],
   "top_performers": [
     {
-      "campus": "Nairobi Campus",
+      "campus": "NRB",
       "technician": "Alex Kamau",
       "rating": 4.8,
       "tickets": 22
@@ -351,12 +345,16 @@ System-wide analytics for admin oversight.
 
 | Role | Accessible Scope | Analytics Access |
 |------|------------------|------------------|
-| `user` | Own tickets | Ticket analytics (personal only) |
-| `technician` | Section tickets | Ticket analytics, own performance |
+| `user` | Own tickets | User analytics (personal only) |
+| `technician` | Section tickets (via TechnicianSection) | Own performance metrics |
 | `head_of_section` | Section tickets | Section analytics, technician performance |
-| `hod` | Campus tickets | Campus analytics, technician performance |
-| `manager` | Own department, all campuses in org | Manager dashboard (no ticket list/detail) |
+| `hod` | CampusDepartment tickets | CampusDepartment analytics, technician performance |
+| `manager` | Own department, all campuses | Manager dashboard (no direct ticket list/detail) |
 | `admin` | All | System dashboard |
+
+## Section Display Names
+
+Analytics endpoints that return section data include a `display_name` field formatted as `"{campus_code}-{section_name}"` (e.g. `"NRB-ICT Support"`). This allows the frontend to render the campus-prefixed label without extra lookups. The `display_name` is populated via `select_related("campus_department__campus")` and annotated on the queryset.
 
 ## Usage in Frontend
 
@@ -389,20 +387,21 @@ To add new analytics:
    - `TicketAnalytics` (`ticket_analytics.py`): Ticket-specific metrics
    - `TechnicianAnalytics` (`technician_analytics.py`): Technician performance
    - `ManagerAnalytics` (`manager_analytics.py`): Manager cross-campus dashboard
-   - `HODAnalytics` (`hod_analytics.py`): HOD campus dashboard
+   - `HODAnalytics` (`hod_analytics.py`): HOD campus department dashboard
    - `SectionHeadAnalytics` (`section_head_analytics.py`): Section head dashboard
    - `AdminAnalytics` (`admin_analytics.py`): System-wide oversight
+   - `UserAnalytics` (`user_analytics.py`): Personal user analytics
 
 2. **Ensure organizational scope** using user's accessible boundaries:
    - Check `user.primary_department` / `user.primary_campus`
-   - Filter by `user.get_accessible_campuses()`
+   - Filter through `CampusDepartment` relationships, not through a non-existent `Organization` model
    - Validate resource ownership via `TicketService` helpers
 
 3. **Update the view** in [tickets/api/analytics/views.py](../../tickets/api/analytics/views.py) — subclass `RoleBasedDashboardView` and set `analytics_method = staticmethod(YourClass.your_method)`
 
 4. **Add a URL pattern** in [tickets/api/urls.py](../../tickets/api/urls.py)
 
-5. **Add tests** to [tickets/tests/test_analytics.py](../../tickets/tests/)
+5. **Add tests** to the relevant test file in [tickets/tests/](../../tickets/tests/)
 
 ## Examples
 
@@ -412,10 +411,10 @@ curl -H "Authorization: Token YOUR_TOKEN" \
   "http://localhost:8000/api/analytics/tickets/?section_id=1&timeframe=week"
 ```
 
-### Get technician performance for campus
+### Get technician performance
 ```bash
 curl -H "Authorization: Token YOUR_TOKEN" \
-  "http://localhost:8000/api/analytics/technicians/?campus_id=1&days=30"
+  "http://localhost:8000/api/analytics/technicians/?days=30"
 ```
 
 ### Get manager dashboard (cross-campus, own department)
@@ -424,7 +423,7 @@ curl -H "Authorization: Token YOUR_TOKEN" \
   "http://localhost:8000/api/analytics/manager/?days=30"
 ```
 
-### Get HOD dashboard (campus-scoped)
+### Get HOD dashboard (campus-department scoped)
 ```bash
 curl -H "Authorization: Token YOUR_TOKEN" \
   "http://localhost:8000/api/analytics/hod/?days=30"

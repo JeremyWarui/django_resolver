@@ -11,7 +11,13 @@ python manage.py shell
 
 Import models:
 ```python
-from tickets.models import *
+from tickets.models import (
+    Campus, Department, CampusDepartment,
+    SectionType, Section, TechnicianSection,
+    ServiceCategory, ServiceItem,
+    Facility, CustomUser,
+    Ticket, Comment, Feedback, TicketLog,
+)
 from django.db.models import Count, Q, Avg, F, Case, When
 from django.utils import timezone
 from datetime import timedelta
@@ -24,22 +30,24 @@ from datetime import timedelta
 ### Count All Records
 
 ```python
-from tickets.models import *
+from tickets.models import (
+    Campus, Department, CampusDepartment, Section,
+    Facility, CustomUser, Ticket, Comment, Feedback, TicketLog,
+)
 
-# Quick overview
-models = [Organization, Campus, Department, Section, Facility, CustomUser, Ticket, Comment, Feedback, TicketLog]
+models = [Campus, Department, CampusDepartment, Section, Facility, CustomUser, Ticket, Comment, Feedback, TicketLog]
 for model in models:
     print(f"{model.__name__}: {model.objects.count()}")
 ```
 
 **Output Example**:
 ```
-Organization: 1
-Campus: 4
-Department: 8
-Section: 16
+Campus: 5
+Department: 5
+CampusDepartment: 11
+Section: 11
 Facility: 12
-CustomUser: 50+
+CustomUser: 20+
 Ticket: 100+
 Comment: 200+
 Feedback: 50+
@@ -49,15 +57,16 @@ TicketLog: 500+
 ### Show Organizational Hierarchy
 
 ```python
-# Display organization structure
-for org in Organization.objects.all():
-    print(f"\n{org.name} ({org.organization_type})")
-    for campus in org.campuses.all():
-        print(f"  └─ {campus.name} ({campus.code})")
-        for dept in campus.departments.all():
-            print(f"     └─ {dept.name}")
-            for section in dept.sections.all():
-                print(f"        └─ {section.name}")
+# Display structure: Campus → CampusDepartment → Section
+for campus in Campus.objects.prefetch_related(
+    'campus_departments__department',
+    'campus_departments__sections',
+).all():
+    print(f"\n{campus.name} ({campus.code})")
+    for cd in campus.campus_departments.all():
+        print(f"  └─ {cd.department.name} (HOD: {cd.head_of_department.username if cd.head_of_department else 'Unassigned'})")
+        for section in cd.sections.all():
+            print(f"     └─ {section.name}")
 ```
 
 ---
@@ -72,35 +81,53 @@ from tickets.models import CustomUser
 roles = ['user', 'technician', 'head_of_section', 'hod', 'manager', 'admin']
 
 for role in roles:
-    users = CustomUser.objects.filter(role=role)
+    users = CustomUser.objects.filter(role=role).select_related('primary_campus')
     if users.exists():
         print(f"\n{role.upper()}S ({users.count()}):")
         for user in users:
-            campus = user.primary_campus.name if user.primary_campus else "—"
+            campus = user.primary_campus.code if user.primary_campus else "—"
             print(f"  • {user.username} ({user.first_name} {user.last_name}) - Campus: {campus}")
 ```
 
 ### Technicians by Section
 
 ```python
-# Show which technicians work in which sections
-for section in Section.objects.all():
-    techs = section.technicians.all()
-    if techs.exists():
-        tech_list = ", ".join([t.username for t in techs])
-        print(f"{section.name}: {tech_list}")
+# Show which technicians work in which sections (via TechnicianSection)
+from tickets.models import TechnicianSection
+
+for ts in TechnicianSection.objects.select_related('technician', 'section__campus_department__campus'):
+    campus_code = ts.section.campus_department.campus.code
+    print(f"{campus_code}-{ts.section.name}: {ts.technician.username}")
 ```
 
-### Department Hierarchy with Heads
+### Section Head per Section
 
 ```python
-# Show department structure with managers
-for dept in Department.objects.select_related('head_of_department'):
-    head = dept.head_of_department.username if dept.head_of_department else "Unassigned"
-    print(f"{dept.name} (HOD: {head})")
-    for section in dept.sections.select_related('head_of_section'):
-        leader = section.head_of_section.username if section.head_of_section else "Unassigned"
-        print(f"  └─ {section.name} (Leader: {leader})")
+from tickets.models import Section
+
+for section in Section.objects.select_related(
+    'head_of_section',
+    'campus_department__campus',
+    'campus_department__department',
+):
+    cd = section.campus_department
+    leader = section.head_of_section.username if section.head_of_section else "Unassigned"
+    print(f"{cd.campus.code}-{cd.department.code}: {section.name} (HOS: {leader})")
+```
+
+### HOD per CampusDepartment
+
+```python
+from tickets.models import CampusDepartment
+
+for cd in CampusDepartment.objects.select_related(
+    'campus', 'department', 'head_of_department'
+):
+    hod = cd.head_of_department.username if cd.head_of_department else "Unassigned"
+    print(f"{cd.campus.code}-{cd.department.code} (HOD: {hod})")
+    for section in cd.sections.select_related('head_of_section'):
+        hos = section.head_of_section.username if section.head_of_section else "Unassigned"
+        print(f"  └─ {section.name} (HOS: {hos})")
 ```
 
 ---
@@ -124,7 +151,6 @@ for item in status_dist:
 ### Tickets by Priority
 
 ```python
-# Show ticket count by priority level
 priority_dist = Ticket.objects.values('priority').annotate(
     count=Count('id')
 ).order_by('-count')
@@ -136,7 +162,6 @@ for item in priority_dist:
 ### Escalation Status
 
 ```python
-# Show tickets by escalation level
 escalation_dist = Ticket.objects.values('escalation_level').annotate(
     count=Count('id')
 ).order_by('escalation_level')
@@ -146,17 +171,19 @@ for item in escalation_dist:
     print(f"{level}: {item['count']} tickets")
 
 # Get escalated tickets with details
-escalated = Ticket.objects.filter(escalation_level__gt=0).select_related('section', 'escalated_by')
+escalated = Ticket.objects.filter(escalation_level__gt=0).select_related(
+    'section__campus_department__campus', 'section__campus_department__department'
+)
 print(f"\nEscalated tickets: {escalated.count()}")
 for ticket in escalated:
-    by_user = ticket.escalated_by.username if ticket.escalated_by else "System"
-    print(f"  {ticket.ticket_no}: Level {ticket.escalation_level} - escalated by {by_user}")
+    cd = ticket.section.campus_department
+    display = f"{cd.campus.code}-{ticket.section.name}"
+    print(f"  {ticket.ticket_no}: Level {ticket.escalation_level} — section: {display}")
 ```
 
 ### Pending Tickets with Reasons
 
 ```python
-# Get all pending tickets with their reasons and comments
 pending = Ticket.objects.filter(status='pending')
 
 print(f"Pending Tickets: {pending.count()}\n")
@@ -167,58 +194,94 @@ for ticket in pending:
     print()
 ```
 
+### Tickets Pending Approval
+
+```python
+pending_approval = Ticket.objects.filter(status='pending_approval').select_related(
+    'service_item', 'raised_by'
+)
+print(f"Tickets awaiting approval: {pending_approval.count()}")
+for ticket in pending_approval:
+    print(f"  {ticket.ticket_no}: {ticket.service_item.name if ticket.service_item else '—'} — by {ticket.raised_by.username}")
+```
+
 ---
 
 ## Scope and Access Control Queries
 
-### User Accessible Tickets (Org Scope)
+### User Accessible Tickets (Service Layer)
 
 ```python
 # Example: Get tickets accessible to a specific user
-user = CustomUser.objects.filter(role='technician').first()
+# Always use TicketService.get_accessible_tickets(user) in production code
+from tickets.api.services.ticket_service import TicketService
 
+user = CustomUser.objects.filter(role='technician').first()
 if user:
-    accessible = user.get_accessible_tickets()
+    accessible = TicketService.get_accessible_tickets(user)
     print(f"User {user.username} can access {accessible.count()} tickets")
 ```
 
 ### Technician's Current Workload
 
 ```python
-# Show assigned tickets for each technician
-for tech in CustomUser.objects.filter(role='technician'):
-    assigned = tech.assigned_tickets.filter(status__in=['open', 'assigned', 'in_progress'])
+for ts in TechnicianSection.objects.select_related('technician', 'section').all():
+    tech = ts.technician
+    assigned = Ticket.objects.filter(
+        assigned_to=tech,
+        status__in=['assigned', 'in_progress']
+    )
     if assigned.exists():
-        print(f"\n{tech.username}:")
+        print(f"\n{tech.username} ({ts.section.name}):")
         for ticket in assigned:
             print(f"  • {ticket.ticket_no}: {ticket.title} ({ticket.status})")
 ```
 
-### Section Head's Active Tickets
+### Section Head's Escalated Tickets
 
 ```python
-# Get tickets that need section head attention (escalated)
-for section_head in CustomUser.objects.filter(role='head_of_section'):
-    section = section_head.managed_sections.all()
+# Get tickets escalated to section head level (level=1) in their section
+for section in Section.objects.select_related('head_of_section').filter(
+    head_of_section__isnull=False
+):
     escalated = Ticket.objects.filter(
-        section__in=section,
+        section=section,
         escalation_level=1
     )
     if escalated.exists():
-        print(f"\n{section_head.username} has {escalated.count()} escalated tickets:")
+        print(f"\n{section.head_of_section.username} ({section.name}) — {escalated.count()} escalated:")
         for ticket in escalated:
             print(f"  • {ticket.ticket_no} - {ticket.priority}")
 ```
 
-### HOD's Department Tickets
+### HOD's CampusDepartment Tickets
 
 ```python
-# Get tickets in HOD's department
-for hod in CustomUser.objects.filter(role='hod'):
-    dept = hod.head_of_for.first()
-    if dept:
-        tickets = dept.department_tickets.exclude(status='closed')
-        print(f"\n{hod.username} ({dept.name}): {tickets.count()} active tickets")
+# Get open tickets in an HOD's CampusDepartment
+for cd in CampusDepartment.objects.select_related(
+    'head_of_department', 'campus', 'department'
+).filter(head_of_department__isnull=False):
+    tickets = Ticket.objects.filter(
+        section__campus_department=cd
+    ).exclude(status='closed')
+    print(f"\n{cd.head_of_department.username} ({cd.campus.code}-{cd.department.code}): {tickets.count()} active tickets")
+```
+
+### Manager's Cross-Campus View
+
+```python
+# Manager sees their department across ALL campuses
+manager = CustomUser.objects.filter(role='manager').first()
+if manager and manager.primary_department:
+    dept = manager.primary_department
+    tickets = Ticket.objects.filter(
+        section__campus_department__department=dept
+    ).select_related('section__campus_department__campus')
+    print(f"Manager {manager.username} — {dept.code} dept, all campuses: {tickets.count()} tickets")
+    for campus_code, count in tickets.values_list(
+        'section__campus_department__campus__code'
+    ).annotate(count=Count('id')):
+        print(f"  {campus_code}: {count} tickets")
 ```
 
 ---
@@ -228,7 +291,6 @@ for hod in CustomUser.objects.filter(role='hod'):
 ### Tickets with Comments
 
 ```python
-# Find tickets with the most comments
 top_commented = Ticket.objects.annotate(
     comment_count=Count('comments')
 ).filter(comment_count__gt=0).order_by('-comment_count')[:10]
@@ -240,51 +302,21 @@ for ticket in top_commented:
 ### Comment Activity Timeline
 
 ```python
-# Get recent comment activity
 recent = Comment.objects.select_related(
-    'ticket', 'author'
+    'ticket', 'created_by'
 ).order_by('-created_at')[:20]
 
 for comment in recent:
-    print(f"[{comment.created_at.strftime('%Y-%m-%d %H:%M')}] {comment.author.username}: {comment.text[:50]}...")
-```
-
-### Comments by User
-
-```python
-# Count comments per user
-comment_counts = Comment.objects.values(
-    'author__username'
-).annotate(count=Count('id')).order_by('-count')
-
-for item in comment_counts:
-    print(f"{item['author__username']}: {item['count']} comments")
+    print(f"[{comment.created_at.strftime('%Y-%m-%d %H:%M')}] {comment.created_by.username}: {comment.text[:50]}...")
 ```
 
 ---
 
 ## Feedback and Satisfaction Queries
 
-### Tickets with Feedback
-
-```python
-# Get resolved tickets that have feedback
-with_feedback = Ticket.objects.filter(
-    feedback__isnull=False
-).select_related('feedback', 'assigned_to')
-
-for ticket in with_feedback:
-    tech = ticket.assigned_to.username if ticket.assigned_to else "—"
-    rating = "⭐" * ticket.feedback.rating
-    print(f"{ticket.ticket_no}: {rating} (Technician: {tech})")
-    if ticket.feedback.comment:
-        print(f"  Comment: {ticket.feedback.comment[:80]}...")
-```
-
 ### Average Technician Ratings
 
 ```python
-# Average feedback rating by technician
 tech_ratings = Feedback.objects.filter(
     ticket__assigned_to__role='technician'
 ).values(
@@ -296,26 +328,28 @@ tech_ratings = Feedback.objects.filter(
 
 for item in tech_ratings:
     name = item['ticket__assigned_to__first_name'] or item['ticket__assigned_to__username']
-    rating = "⭐" * int(item['avg_rating'])
-    print(f"{name}: {rating} ({item['count']} ratings)")
+    print(f"{name}: {item['avg_rating']:.1f} ({item['count']} ratings)")
 ```
 
-### Satisfaction Trends by Section
+### Satisfaction Trends by Section (with display_name)
 
 ```python
-# Average feedback rating by section
 section_ratings = Feedback.objects.select_related(
-    'ticket__section'
+    'ticket__section__campus_department__campus',
+    'ticket__section__campus_department__department',
 ).values(
-    'ticket__section__name'
+    'ticket__section__name',
+    'ticket__section__campus_department__campus__code',
 ).annotate(
     avg_rating=Avg('rating'),
     count=Count('id')
 ).filter(count__gt=0).order_by('-avg_rating')
 
 for item in section_ratings:
-    rating = item['avg_rating']
-    print(f"{item['ticket__section__name']}: {rating:.1f}⭐ ({item['count']} ratings)")
+    campus_code = item['ticket__section__campus_department__campus__code']
+    section_name = item['ticket__section__name']
+    display = f"{campus_code}-{section_name}"
+    print(f"{display}: {item['avg_rating']:.1f} ({item['count']} ratings)")
 ```
 
 ---
@@ -327,7 +361,6 @@ for item in section_ratings:
 ```python
 from django.db.models import ExpressionWrapper, DurationField
 
-# Tickets with resolution time calculated
 resolved = Ticket.objects.filter(
     status__in=['resolved', 'closed'],
     resolved_at__isnull=False
@@ -343,10 +376,44 @@ for ticket in resolved[:10]:
     print(f"{ticket.ticket_no}: {hours:.1f} hours resolution time")
 ```
 
-### Overdue Tickets (No Recent Activity)
+### SLA Compliance (due_date based)
 
 ```python
-# Tickets without updates for 24+ hours
+# Overdue tickets: due_date has passed and still open
+overdue = Ticket.objects.filter(
+    due_date__lt=timezone.now(),
+    status__in=['open', 'assigned', 'in_progress', 'pending']
+).select_related(
+    'section__campus_department__campus',
+    'assigned_to',
+)
+
+print(f"Overdue tickets: {overdue.count()}")
+for ticket in overdue:
+    hours_overdue = (timezone.now() - ticket.due_date).total_seconds() / 3600
+    print(f"  {ticket.ticket_no}: {hours_overdue:.1f} hours overdue")
+```
+
+### Tickets Approaching Escalation Deadline
+
+```python
+sla_window = timezone.now() + timedelta(hours=48)
+at_risk = Ticket.objects.filter(
+    escalation_level=0,
+    status__in=['open', 'assigned'],
+    next_escalation_due__isnull=False,
+    next_escalation_due__lte=sla_window
+).order_by('next_escalation_due')
+
+print(f"Tickets approaching escalation: {at_risk.count()}")
+for ticket in at_risk:
+    hours_left = (ticket.next_escalation_due - timezone.now()).total_seconds() / 3600
+    print(f"  {ticket.ticket_no}: {hours_left:.1f} hours until escalation")
+```
+
+### Stale Tickets (No Recent Activity)
+
+```python
 cutoff = timezone.now() - timedelta(hours=24)
 stale = Ticket.objects.filter(
     status__in=['open', 'assigned', 'in_progress'],
@@ -359,25 +426,6 @@ for ticket in stale:
     print(f"  {ticket.ticket_no}: {age} days since update")
 ```
 
-### SLA Compliance
-
-```python
-# Check if tickets are approaching SLA deadline
-from datetime import timedelta
-
-sla_window = timezone.now() + timedelta(hours=48)
-at_risk = Ticket.objects.filter(
-    escalation_level=0,
-    status__in=['open', 'assigned'],
-    next_escalation_due__lte=sla_window
-).order_by('next_escalation_due')
-
-print(f"Tickets approaching SLA deadline: {at_risk.count()}")
-for ticket in at_risk:
-    hours_left = (ticket.next_escalation_due - timezone.now()).total_seconds() / 3600
-    print(f"  {ticket.ticket_no}: {hours_left:.1f} hours until escalation")
-```
-
 ---
 
 ## Audit and Activity Queries
@@ -385,7 +433,6 @@ for ticket in at_risk:
 ### Recent Ticket Activity Log
 
 ```python
-# Last 20 ticket changes
 recent_logs = TicketLog.objects.select_related(
     'ticket', 'performed_by'
 ).order_by('-timestamp')[:20]
@@ -398,8 +445,7 @@ for log in recent_logs:
 ### Tickets Created Today
 
 ```python
-# Count tickets created today
-today_start = timezone.make_aware(timezone.now().replace(hour=0, minute=0, second=0, microsecond=0))
+today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
 today_tickets = Ticket.objects.filter(created_at__gte=today_start)
 
 print(f"Tickets created today: {today_tickets.count()}")
@@ -407,76 +453,95 @@ for ticket in today_tickets:
     print(f"  • {ticket.ticket_no}: {ticket.title} (Status: {ticket.status})")
 ```
 
-### Changes by Specific User
-
-```python
-# Show all changes made by a specific user
-username_to_find = "admin"  # Change to desired username
-user = CustomUser.objects.filter(username=username_to_find).first()
-
-if user:
-    user_changes = TicketLog.objects.filter(performed_by=user).order_by('-timestamp')
-    print(f"Changes made by {username_to_find}: {user_changes.count()}")
-    for log in user_changes[:10]:
-        print(f"  • {log.action} on {log.ticket.ticket_no}")
-```
-
 ---
 
 ## Complex Analytical Queries
 
-### Tickets by Facility Type
+### Busiest Sections (with campus prefix)
 
 ```python
-# Count tickets by facility type 
-facility_stats = Ticket.objects.values(
-    'facility__type'
-).annotate(
-    count=Count('id'),
-    avg_resolution=Avg(
-        Case(
-            When(resolved_at__isnull=False,
-                 then=F('resolved_at') - F('created_at')),
-            default=None
-        )
-    )
-).order_by('-count')
-
-for item in facility_stats:
-    print(f"{item['facility__type']}: {item['count']} tickets")
-```
-
-### Busiest Sections
-
-```python
-# Sections with most open tickets
+# Sections with most open tickets, including campus context
 busy_sections = Ticket.objects.filter(
     status__in=['open', 'assigned', 'in_progress']
-).values('section__name').annotate(
+).select_related(
+    'section__campus_department__campus'
+).values(
+    'section__name',
+    'section__campus_department__campus__code',
+).annotate(
     count=Count('id')
 ).order_by('-count')
 
 for item in busy_sections:
-    print(f"{item['section__name']}: {item['count']} active tickets")
+    campus_code = item['section__campus_department__campus__code']
+    section_name = item['section__name']
+    display = f"{campus_code}-{section_name}"
+    print(f"{display}: {item['count']} active tickets")
 ```
 
-### Assignment Patterns
+### Assignment Patterns (Technician Multi-Section)
 
 ```python
 # Show which technicians are assigned to multiple sections
-from django.db.models import Count
-
 multi_section_techs = CustomUser.objects.filter(
     role='technician'
 ).annotate(
-    section_count=Count('sections', distinct=True)
+    section_count=Count('technician_sections', distinct=True)
 ).filter(
     section_count__gt=1
 ).order_by('-section_count')
 
 for tech in multi_section_techs:
-    sections = ", ".join([s.name for s in tech.sections.all()])
-    print(f"{tech.username}: {tech.section_count} sections - {sections}")
+    sections = ", ".join([
+        f"{ts.section.campus_department.campus.code}-{ts.section.name}"
+        for ts in tech.technician_sections.select_related(
+            'section__campus_department__campus'
+        ).all()
+    ])
+    print(f"{tech.username}: {tech.section_count} sections — {sections}")
+```
+
+### Technician Performance Report
+
+```python
+from django.db.models import Count, Q, Avg
+
+technicians = CustomUser.objects.filter(
+    role='technician'
+).annotate(
+    total_assigned=Count('assigned_tickets'),
+    resolved_count=Count('assigned_tickets', filter=Q(assigned_tickets__status__in=['resolved', 'closed'])),
+    avg_rating=Avg('assigned_tickets__feedback__rating')
+).order_by('-resolved_count')
+
+print("Technician Performance Report")
+print("=" * 60)
+for tech in technicians:
+    sections = ", ".join([
+        f"{ts.section.campus_department.campus.code}-{ts.section.name}"
+        for ts in tech.technician_sections.select_related(
+            'section__campus_department__campus'
+        ).all()
+    ])
+    rating = f"{tech.avg_rating:.2f}" if tech.avg_rating else "N/A"
+    print(f"{tech.first_name} {tech.last_name} ({tech.username})")
+    print(f"  Sections: {sections or '—'}")
+    print(f"  Total assigned: {tech.total_assigned}")
+    print(f"  Resolved: {tech.resolved_count}")
+    print(f"  Average rating: {rating}")
+    print()
+```
+
+### Comments on Specific Ticket
+
+```python
+from tickets.models import Ticket
+
+ticket = Ticket.objects.prefetch_related('comments__created_by').get(ticket_no='NRB-ICT-00001')
+print(f"Ticket: {ticket.title}")
+print(f"Comments ({ticket.comments.count()}):")
+for comment in ticket.comments.all():
+    print(f"  [{comment.created_at}] {comment.created_by.username}: {comment.text}")
 ```
 
 ---
@@ -485,7 +550,12 @@ for tech in multi_section_techs:
 
 1. **Always use `select_related()` for foreign keys** to avoid N+1 queries:
    ```python
-   tickets = Ticket.objects.select_related('assigned_to', 'section', 'facility')
+   tickets = Ticket.objects.select_related(
+       'assigned_to',
+       'section__campus_department__campus',
+       'section__campus_department__department',
+       'facility',
+   )
    ```
 
 2. **Use `prefetch_related()` for reverse relationships**:
@@ -499,58 +569,20 @@ for tech in multi_section_techs:
    Ticket.objects.filter(status='closed').values('section').annotate(Count('id'))
    ```
 
-4. **Use raw SQL for complex queries**:
+4. **There is no Organization model** — the hierarchy starts at `Campus`. Queries that previously used `organization__campuses` now start directly from `Campus.objects.all()`.
+
+5. **Technician scope** — use `TechnicianSection` to query which sections a technician belongs to, not `CustomUser.sections`:
    ```python
-   from django.db import connection
-   with connection.cursor() as cursor:
-       cursor.execute("SELECT ...")
+   # Correct
+   TechnicianSection.objects.filter(technician=user).values_list('section_id', flat=True)
    ```
 
-5. **Exit shell and run again to reset loaded data**:
+6. **Exit shell and run again to reset loaded data**:
    ```bash
    python manage.py shell  # Fresh Python environment
    ```
-```
 
-### Comments on Specific Ticket
-
-```python
-from tickets.models import Ticket
-
-# Get ticket with all comments
-ticket = Ticket.objects.prefetch_related('comments').get(ticket_no='TKT-000001')
-print(f"Ticket: {ticket.title}")
-print(f"Comments ({ticket.comments.count()}):")
-for comment in ticket.comments.all():
-    print(f"  [{comment.created_at}] {comment.author.username}: {comment.text}")
-```
-
-### Complex Query: Technician Performance
-
-```python
-from django.db.models import Count, Q, Avg
-from tickets.models import CustomUser
-
-technicians = CustomUser.objects.filter(
-    role='technician'
-).annotate(
-    total_assigned=Count('assigned_tickets'),
-    resolved_count=Count('assigned_tickets', filter=Q(assigned_tickets__status__in=['resolved', 'closed'])),
-    avg_rating=Avg('assigned_tickets__feedback__rating')
-).order_by('-resolved_count')
-
-print("Technician Performance Report")
-print("=" * 60)
-for tech in technicians:
-    sections = ", ".join([s.name for s in tech.sections.all()])
-    rating = f"{tech.avg_rating:.2f}⭐" if tech.avg_rating else "N/A"
-    print(f"{tech.first_name} {tech.last_name} ({tech.username})")
-    print(f"  Specializations: {sections}")
-    print(f"  Total assigned: {tech.total_assigned}")
-    print(f"  Resolved: {tech.resolved_count}")
-    print(f"  Average rating: {rating}")
-    print()
-```
+---
 
 ## API Endpoint Queries
 
@@ -558,80 +590,77 @@ Test these endpoints using curl or your browser:
 
 ### Get All Tickets
 ```bash
-curl http://127.0.0.1:8000/api/tickets/
+curl -H "Authorization: Token YOUR_TOKEN" http://127.0.0.1:8000/api/tickets/
 ```
 
 ### Filter Tickets by Status
 ```bash
-curl "http://127.0.0.1:8000/api/tickets/?status=open"
-curl "http://127.0.0.1:8000/api/tickets/?status=pending"
-```
-
-### Filter by Facility
-```bash
-curl "http://127.0.0.1:8000/api/tickets/?facility=1"
+curl -H "Authorization: Token YOUR_TOKEN" "http://127.0.0.1:8000/api/tickets/?status=open"
+curl -H "Authorization: Token YOUR_TOKEN" "http://127.0.0.1:8000/api/tickets/?status=pending"
 ```
 
 ### Filter by Section
 ```bash
-curl "http://127.0.0.1:8000/api/tickets/?section=1"
+curl -H "Authorization: Token YOUR_TOKEN" "http://127.0.0.1:8000/api/tickets/?section_id=1"
 ```
 
 ### Get Specific Ticket with Details
 ```bash
-curl http://127.0.0.1:8000/api/tickets/1/
+curl -H "Authorization: Token YOUR_TOKEN" http://127.0.0.1:8000/api/tickets/1/
+```
+
+### Create Ticket (Catalogue-Based)
+```bash
+curl -X POST http://127.0.0.1:8000/api/tickets/create/ \
+  -H "Authorization: Token YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"department_id": 1, "service_item_id": 5, "title": "Laptop broken", "description": "Screen cracked"}'
 ```
 
 ### Get All Users
 ```bash
-curl http://127.0.0.1:8000/api/users/
+curl -H "Authorization: Token YOUR_TOKEN" http://127.0.0.1:8000/api/users/
 ```
 
 ### Filter Users by Role
 ```bash
-curl "http://127.0.0.1:8000/api/users/?role=technician"
+curl -H "Authorization: Token YOUR_TOKEN" "http://127.0.0.1:8000/api/users/?role=technician"
 ```
 
 ### Get All Sections
 ```bash
-curl http://127.0.0.1:8000/api/sections/
+curl -H "Authorization: Token YOUR_TOKEN" http://127.0.0.1:8000/api/sections/
 ```
 
-### Get All Facilities
+### Get Campus Departments
 ```bash
-curl http://127.0.0.1:8000/api/facilities/
+curl -H "Authorization: Token YOUR_TOKEN" http://127.0.0.1:8000/api/campus-departments/
+curl -H "Authorization: Token YOUR_TOKEN" "http://127.0.0.1:8000/api/campus-departments/?campus_id=1"
 ```
 
 ### Analytics Endpoints
 
 #### Ticket Analytics
 ```bash
-# All ticket analytics
-curl http://127.0.0.1:8000/api/analytics/tickets/
-
-# Filter by facility
-curl "http://127.0.0.1:8000/api/analytics/tickets/?facility_id=1"
-
-# Filter by section
-curl "http://127.0.0.1:8000/api/analytics/tickets/?section_id=1"
-
-# Filter by timeframe
-curl "http://127.0.0.1:8000/api/analytics/tickets/?timeframe=week"
+curl -H "Authorization: Token YOUR_TOKEN" http://127.0.0.1:8000/api/analytics/tickets/
+curl -H "Authorization: Token YOUR_TOKEN" "http://127.0.0.1:8000/api/analytics/tickets/?section_id=1&timeframe=week"
 ```
 
 #### Technician Analytics
 ```bash
-# All technician performance
-curl http://127.0.0.1:8000/api/analytics/technicians/
-
-# Specific technician
-curl "http://127.0.0.1:8000/api/analytics/technicians/?technician_id=3"
+curl -H "Authorization: Token YOUR_TOKEN" http://127.0.0.1:8000/api/analytics/technicians/
+curl -H "Authorization: Token YOUR_TOKEN" "http://127.0.0.1:8000/api/analytics/technicians/me/"
 ```
 
-#### Admin Dashboard
+#### Role-Based Dashboards
 ```bash
-curl http://127.0.0.1:8000/api/analytics/admin-dashboard/
+curl -H "Authorization: Token YOUR_TOKEN" http://127.0.0.1:8000/api/analytics/manager/
+curl -H "Authorization: Token YOUR_TOKEN" http://127.0.0.1:8000/api/analytics/hod/
+curl -H "Authorization: Token YOUR_TOKEN" http://127.0.0.1:8000/api/analytics/section-head/
+curl -H "Authorization: Token YOUR_TOKEN" http://127.0.0.1:8000/api/analytics/admin-dashboard/
 ```
+
+---
 
 ## SQL Queries
 
@@ -661,12 +690,23 @@ WHERE u.role = 'technician'
 GROUP BY u.id, u.username
 ORDER BY avg_rating DESC;
 
--- Tickets by facility type
-SELECT fa.type, COUNT(t.id) as ticket_count
-FROM tickets_facility fa
-LEFT JOIN tickets_ticket t ON t.facility_id = fa.id
-GROUP BY fa.type
+-- Sections with campus prefix (display_name pattern)
+SELECT
+    c.code || '-' || s.name AS display_name,
+    COUNT(t.id) AS ticket_count
+FROM tickets_section s
+JOIN tickets_campusdepartment cd ON s.campus_department_id = cd.id
+JOIN tickets_campus c ON cd.campus_id = c.id
+LEFT JOIN tickets_ticket t ON t.section_id = s.id
+GROUP BY display_name
 ORDER BY ticket_count DESC;
+
+-- Overdue tickets (based on due_date)
+SELECT ticket_no, title, due_date, status
+FROM tickets_ticket
+WHERE due_date < NOW()
+  AND status NOT IN ('resolved', 'closed', 'rejected')
+ORDER BY due_date ASC;
 
 -- Recent ticket activity
 SELECT tl.timestamp, u.username, tl.action, t.ticket_no
@@ -677,67 +717,6 @@ ORDER BY tl.timestamp DESC
 LIMIT 20;
 ```
 
-## Testing Scenarios
-
-### Scenario 1: Assign a Ticket
-```python
-from tickets.models import Ticket, CustomUser
-
-ticket = Ticket.objects.get(ticket_no='TKT-000002')
-tech = CustomUser.objects.get(username='tech_alex')
-
-# Update ticket
-ticket.assigned_to = tech
-ticket.status = 'assigned'
-ticket.save()
-
-print(f"Assigned {ticket.ticket_no} to {tech.username}")
-```
-
-### Scenario 2: Add a Comment
-```python
-from tickets.models import Ticket, Comment, CustomUser
-
-ticket = Ticket.objects.get(ticket_no='TKT-000002')
-author = CustomUser.objects.get(username='tech_alex')
-
-comment = Comment.objects.create(
-    ticket=ticket,
-    author=author,
-    text="Investigating the server cooling system now."
-)
-
-print(f"Added comment to {ticket.ticket_no}")
-```
-
-### Scenario 3: Resolve a Ticket
-```python
-from tickets.models import Ticket
-
-ticket = Ticket.objects.get(ticket_no='TKT-000002')
-ticket.status = 'resolved'
-ticket.save()
-
-print(f"Resolved {ticket.ticket_no}")
-```
-
-### Scenario 4: Add Feedback
-```python
-from tickets.models import Ticket, Feedback, CustomUser
-
-ticket = Ticket.objects.get(ticket_no='TKT-000004')
-user = CustomUser.objects.get(username='manager_ict')
-
-feedback = Feedback.objects.create(
-    ticket=ticket,
-    rated_by=user,
-    rating=5.0,
-    comment="Excellent work! Fixed quickly and professionally."
-)
-
-print(f"Added feedback to {ticket.ticket_no}")
-```
-
 ---
 
-These queries will help you explore and test all aspects of the enhanced fixture data!
+These queries will help you explore and test all aspects of the fixture data.

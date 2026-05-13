@@ -24,7 +24,9 @@ def validate_status_transition(
         "assigned": ["in_progress", "pending", "escalated"],
         "in_progress": ["pending", "resolved", "escalated"],
         "pending": ["in_progress", "resolved", "escalated"],
+        "pending_approval": ["open", "rejected"],  # HOD approval flow
         "resolved": ["closed"],
+        "rejected": [],  # No transitions from rejected state
         "closed": [],  # No transitions allowed from closed state
         "escalated": ["in_progress", "pending", "resolved"],
     }
@@ -39,13 +41,22 @@ def validate_status_transition(
             "resolved",
             "escalated",
         ],
-        "head_of_section": ["in_progress", "pending", "resolved", "escalated"],
-        "hod": ["in_progress", "pending", "resolved", "escalated"],
+        "head_of_section": ["assigned", "in_progress", "pending", "resolved", "escalated"],
+        "hod": [
+            "assigned",  # Can assign tickets
+            "open",  # Can approve pending_approval tickets
+            "rejected",  # Can reject pending_approval tickets
+            "in_progress",
+            "pending",
+            "resolved",
+            "escalated",
+        ],
         "admin": [
             "open",
             "assigned",
             "in_progress",
             "pending",
+            "rejected",
             "resolved",
             "closed",
             "escalated",

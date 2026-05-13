@@ -122,7 +122,7 @@ source .venv/bin/activate  # macOS/Linux
 pip install -r requirements.txt
 
 # Verify installation
-pip list | grep -i django    # Should show Django 5.2.7
+pip list | grep -i django    # Should show Django 6.0.3
 ```
 
 ---
@@ -195,23 +195,23 @@ python manage.py showmigrations tickets
 
 ## Load Test Data
 
-### Step 1: Load Organizational Fixture (Recommended)
+### Step 1: Load Fixture (Recommended)
 
 This fixture includes:
-- 4 campuses with proper hierarchy
-- 8+ departments
-- 16+ sections
-- 50+ users with different roles
-- 100+ sample tickets
-- Comments and feedback
+- 5 campuses
+- 5 global departments, 11 CampusDepartments
+- 11 sections with SectionTypes
+- 22 ServiceItems across 15 ServiceCategories
+- Users with different roles
+- Sample tickets, comments and feedback
 
 ```bash
-python manage.py loaddata tickets/fixtures/tickets_initial_data_org.json
+python manage.py loaddata tickets/fixtures/tickets_initial_data.json
 ```
 
 Expected output:
 ```
-Installed 118 object(s) from ...
+Installed N object(s) from ...
 ```
 
 ### Step 2: Verify Data Loaded
@@ -219,11 +219,11 @@ Installed 118 object(s) from ...
 ```bash
 python manage.py shell
 
-from tickets.models import Organization, Campus, Department, Section, CustomUser, Ticket
+from tickets.models import Campus, Department, CampusDepartment, Section, CustomUser, Ticket
 
-print(f"Organizations: {Organization.objects.count()}")
 print(f"Campuses: {Campus.objects.count()}")
 print(f"Departments: {Department.objects.count()}")
+print(f"CampusDepartments: {CampusDepartment.objects.count()}")
 print(f"Sections: {Section.objects.count()}")
 print(f"Users: {CustomUser.objects.count()}")
 print(f"Tickets: {Ticket.objects.count()}")
@@ -233,11 +233,11 @@ exit()
 
 Expected output:
 ```
-Organizations: 1
-Campuses: 4
-Departments: 8
-Sections: 12
-Users: 50+
+Campuses: 5
+Departments: 5
+CampusDepartments: 11
+Sections: 11
+Users: 20+
 Tickets: 100+
 ```
 
@@ -364,9 +364,9 @@ Expected response:
 
 ```bash
 # Run all tests to verify everything works
-python manage.py test tickets -v 2
+pytest tickets/tests/ -v
 
-# Expected: All tests pass (150+ tests)
+# Expected: All tests pass (~258 tests)
 ```
 
 ---
@@ -429,16 +429,16 @@ python manage.py test tickets -v 2
 1. Check fixture path: ls tickets/fixtures/
 2. Verify migrations ran: python manage.py showmigrations
 3. Check database connection: python manage.py dbshell
-4. Try specific fixture: python manage.py loaddata tickets/fixtures/tickets_initial_data_org.json
+4. Try specific fixture: python manage.py loaddata tickets/fixtures/tickets_initial_data.json
 ```
 
 **❌ Problem**: Tests fail with `OperationalError: relation does not exist`
 ```
 ✅ Solution:
-1. Clear test database: python manage.py flush --noinput
+1. Clear test database: pytest --create-db
 2. Run migrations again: python manage.py migrate
-3. Reload fixtures: python manage.py loaddata tickets/fixtures/tickets_initial_data_org.json
-4. Run tests: python manage.py test tickets
+3. Reload fixtures: python manage.py loaddata tickets/fixtures/tickets_initial_data.json
+4. Run tests: pytest tickets/tests/
 ```
 
 ### Getting Help

@@ -14,17 +14,20 @@ from tickets.api.simple_auth_views import (
 
 # Import resource views
 from tickets.api.views.index import (
-    OrganizationListCreateView,
-    OrganizationDetailView,
     CampusListCreateView,
     CampusDetailView,
     DepartmentListCreateView,
     DepartmentDetailView,
+    CampusDepartmentListCreateView,
+    CampusDepartmentDetailView,
+    AssignHODView,
+    AssignHOSView,
     SectionListCreateView,
     SectionDetailView,
     FacilityListCreateView,
     FacilityDetailView,
     TicketListCreateView,
+    TicketCreateView,
     TicketDetailView,
     TicketEscalationView,
     TicketCloseView,
@@ -38,14 +41,16 @@ from tickets.api.views.index import (
     BulkTicketStatusUpdateView,
     OrganizationalTicketListView,
     AssignableUsersView,
-    DepartmentTypeListView,
-    ServiceCategoryListView,
-    ServiceItemListView,
     SectionTypeDetailView,
     ServiceCategoriesBySectionTypeView,
     ServiceItemsByCategoryView,
+    ServiceCategoryListCreateView,
+    ServiceCategoryDetailView,
+    ServiceItemListCreateView,
     ServiceItemDetailView,
     SectionTechniciansView,
+    TechnicianSectionListCreateView,
+    TechnicianSectionDestroyView,
     AddTechnicianToSectionView,
     RemoveTechnicianFromSectionView,
 )
@@ -54,11 +59,16 @@ from tickets.api.views.index import (
 from tickets.api.analytics.index import (
     TicketAnalyticsView,
     TechnicianAnalyticsView,
+    TechnicianSelfAnalyticsView,
     AdminDashboardAnalyticsView,
-    OrganizationalAnalyticsView,
+
+    UserAnalyticsView,
     ManagerDashboardView,
     HODDashboardView,
     SectionHeadDashboardView,
+    DepartmentAnalyticsView,
+    HODAnalyticsView,
+    HOSAnalyticsView,
 )
 
 # Import report views
@@ -79,47 +89,17 @@ urlpatterns = [
     path("auth/profile/", user_profile, name="user_profile"),
     path("auth/register/", register_user, name="register_user"),
     # ORGANIZATION HIERARCHY
-    path(
-        "organizations/",
-        OrganizationListCreateView.as_view(),
-        name="organization-list",
-    ),
-    path(
-        "organizations/<int:pk>/",
-        OrganizationDetailView.as_view(),
-        name="organization-detail",
-    ),
-    path(
-        "campuses/",
-        CampusListCreateView.as_view(),
-        name="campus-list",
-    ),
-    path(
-        "campuses/<int:pk>/",
-        CampusDetailView.as_view(),
-        name="campus-detail",
-    ),
-    path(
-        "departments/",
-        DepartmentListCreateView.as_view(),
-        name="department-list",
-    ),
-    path(
-        "departments/<int:pk>/",
-        DepartmentDetailView.as_view(),
-        name="department-detail",
-    ),
+    path("campuses/",                    CampusListCreateView.as_view(),           name="campus-list"),
+    path("campuses/<int:pk>/",           CampusDetailView.as_view(),               name="campus-detail"),
+    path("departments/",                 DepartmentListCreateView.as_view(),        name="department-list"),
+    path("departments/<int:pk>/",        DepartmentDetailView.as_view(),            name="department-detail"),
+    path("campus-departments/",          CampusDepartmentListCreateView.as_view(), name="campus-department-list"),
+    path("campus-departments/<int:pk>/", CampusDepartmentDetailView.as_view(),     name="campus-department-detail"),
+    path("campus-departments/<int:pk>/assign-hod/", AssignHODView.as_view(),       name="campus-department-assign-hod"),
     # SECTION
-    path(
-        "sections/",
-        SectionListCreateView.as_view(),
-        name="section-list",
-    ),
-    path(
-        "sections/<int:pk>/",
-        SectionDetailView.as_view(),
-        name="section-detail",
-    ),
+    path("sections/",                    SectionListCreateView.as_view(),          name="section-list"),
+    path("sections/<int:pk>/",           SectionDetailView.as_view(),              name="section-detail"),
+    path("sections/<int:pk>/assign-hos/", AssignHOSView.as_view(),                 name="section-assign-hos"),
     # FACILITY
     path(
         "facilities/",
@@ -136,6 +116,11 @@ urlpatterns = [
         "tickets/",
         TicketListCreateView.as_view(),
         name="ticket-list",
+    ),
+    path(
+        "tickets/create/",
+        TicketCreateView.as_view(),
+        name="ticket-create",
     ),
     path(
         "tickets/<int:pk>/",
@@ -182,11 +167,7 @@ urlpatterns = [
         AssignableUsersView.as_view(),
         name="assignable-users",
     ),
-    path(
-        "analytics/organizational/",
-        OrganizationalAnalyticsView.as_view(),
-        name="analytics-organizational",
-    ),
+
     # COMMENT
     path(
         "comments/",
@@ -233,37 +214,18 @@ urlpatterns = [
         name="ticket-feedback",
     ),
     # ANALYTICS ENDPOINTS
-    path(
-        "analytics/tickets/",
-        TicketAnalyticsView.as_view(),
-        name="analytics-tickets",
-    ),
-    path(
-        "analytics/technicians/",
-        TechnicianAnalyticsView.as_view(),
-        name="analytics-technicians",
-    ),
-    path(
-        "analytics/admin-dashboard/",
-        AdminDashboardAnalyticsView.as_view(),
-        name="analytics-admin",
-    ),
+    path("analytics/tickets/",                          TicketAnalyticsView.as_view(),             name="analytics-tickets"),
+    path("analytics/admin-dashboard/",                  AdminDashboardAnalyticsView.as_view(),      name="analytics-admin"),
+    path("analytics/user/",                             UserAnalyticsView.as_view(),                name="analytics-user"),
+    path("analytics/technicians/",                      TechnicianAnalyticsView.as_view(),          name="analytics-technicians"),
+    path("analytics/technicians/me/",                   TechnicianSelfAnalyticsView.as_view(),      name="analytics-technician-self"),
     # ORGANIZATIONAL ANALYTICS ENDPOINTS
-    path(
-        "analytics/manager/",
-        ManagerDashboardView.as_view(),
-        name="analytics-manager",
-    ),
-    path(
-        "analytics/hod/",
-        HODDashboardView.as_view(),
-        name="analytics-hod",
-    ),
-    path(
-        "analytics/section-head/",
-        SectionHeadDashboardView.as_view(),
-        name="analytics-section-head",
-    ),
+    path("analytics/manager/",                              ManagerDashboardView.as_view(),     name="analytics-manager"),
+    path("analytics/hod/",                                 HODDashboardView.as_view(),          name="analytics-hod"),
+    path("analytics/section-head/",                        SectionHeadDashboardView.as_view(),  name="analytics-section-head"),
+    path("analytics/departments/<int:pk>/",                DepartmentAnalyticsView.as_view(),   name="analytics-department"),
+    path("analytics/campus-departments/<int:pk>/",         HODAnalyticsView.as_view(),          name="analytics-campus-department"),
+    path("analytics/sections/<int:pk>/",                   HOSAnalyticsView.as_view(),          name="analytics-section"),
     # REPORT ENDPOINTS
     path(
         "reports/generate/",
@@ -275,57 +237,19 @@ urlpatterns = [
         ReportTypesView.as_view(),
         name="report-types",
     ),
-    # SECTION TECHNICIAN MANAGEMENT
-    path(
-        "sections/<int:pk>/technicians/",
-        SectionTechniciansView.as_view(),
-        name="section-technicians",
-    ),
-    path(
-        "sections/<int:pk>/add-technician/",
-        AddTechnicianToSectionView.as_view(),
-        name="section-add-technician",
-    ),
-    path(
-        "sections/<int:pk>/remove-technician/",
-        RemoveTechnicianFromSectionView.as_view(),
-        name="section-remove-technician",
-    ),
-    # PHASE 4: SERVICE CATALOGUE ENDPOINTS
-    path(
-        "service-catalogue/department-types/",
-        DepartmentTypeListView.as_view(),
-        name="department-types-list",
-    ),
-    path(
-        "service-catalogue/section-types/<int:pk>/",
-        SectionTypeDetailView.as_view(),
-        name="section-type-detail",
-    ),
-    path(
-        "service-catalogue/service-categories/",
-        ServiceCategoryListView.as_view(),
-        name="service-categories-list",
-    ),
-    path(
-        "service-catalogue/service-items/",
-        ServiceItemListView.as_view(),
-        name="service-items-list",
-    ),
-    # Nested catalogue routes consumed by the frontend wizard
-    path(
-        "section-types/<int:pk>/categories/",
-        ServiceCategoriesBySectionTypeView.as_view(),
-        name="section-type-categories",
-    ),
-    path(
-        "categories/<int:pk>/items/",
-        ServiceItemsByCategoryView.as_view(),
-        name="category-items",
-    ),
-    path(
-        "service-items/<int:pk>/",
-        ServiceItemDetailView.as_view(),
-        name="service-item-detail",
-    ),
+    # SERVICE CATALOGUE
+    path("service-catalogue/section-types/<int:pk>/",  SectionTypeDetailView.as_view(),           name="section-type-detail"),
+    path("service-catalogue/service-categories/",      ServiceCategoryListCreateView.as_view(),   name="service-category-list"),
+    path("service-catalogue/service-categories/<int:pk>/", ServiceCategoryDetailView.as_view(),   name="service-category-detail"),
+    path("service-catalogue/service-items/",           ServiceItemListCreateView.as_view(),        name="service-item-list"),
+    path("service-catalogue/service-items/<int:pk>/",  ServiceItemDetailView.as_view(),            name="service-item-detail"),
+    # Nested catalogue routes for the frontend wizard
+    path("section-types/<int:pk>/categories/",         ServiceCategoriesBySectionTypeView.as_view(), name="section-type-categories"),
+    path("categories/<int:pk>/items/",                 ServiceItemsByCategoryView.as_view(),          name="category-items"),
+    # TECHNICIAN MANAGEMENT
+    path("sections/<int:pk>/technicians/",             SectionTechniciansView.as_view(),              name="section-technicians"),
+    path("sections/<int:pk>/add-technician/",          AddTechnicianToSectionView.as_view(),          name="section-add-technician"),
+    path("sections/<int:pk>/technician-sections/<int:ts_pk>/", RemoveTechnicianFromSectionView.as_view(), name="section-remove-technician"),
+    path("technician-sections/",                       TechnicianSectionListCreateView.as_view(),     name="technician-section-list"),
+    path("technician-sections/<int:pk>/",              TechnicianSectionDestroyView.as_view(),        name="technician-section-destroy"),
 ]

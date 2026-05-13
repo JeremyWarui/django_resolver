@@ -1,8 +1,8 @@
 # Architecture Guide - Django Resolver
 
-[← Back to Index](INDEX.md) | [← Back to README](../README.md) | [Detailed Reference →](CODEBASE_ARCHITECTURE.md)
+[← Back to Index](INDEX.md) | [← Back to README](../README.md)
 
-**Complete system architecture overview for developers.** This guide explains how Django Resolver is designed. For detailed technical reference, see [Codebase Architecture](CODEBASE_ARCHITECTURE.md).
+**Complete system architecture overview for developers.** This guide explains how Django Resolver is designed.
 
 **Audience**: Backend developers, systems architects  
 **Time to read**: 15-20 minutes
@@ -27,22 +27,22 @@
 ## System Overview
 
 ### Technology Stack
-- **Framework**: Django 5.2.7 + Django REST Framework 3.16.1
+- **Framework**: Django 6.0.3 + Django REST Framework 3.16.1
 - **Database**: PostgreSQL 12+
 - **Authentication**: Token-based (password-based login)
 - **API Style**: REST with JSON requests/responses
-- **Testing**: pytest with 157+ test cases
+- **Testing**: pytest with ~258 test cases
 
 ### Core Purpose
-Enterprise-grade REST API for managing maintenance tickets in organizations with multi-level hierarchies (Organization → Campus → Department → Section).
+Enterprise-grade REST API for managing maintenance tickets in organizations with multi-level hierarchies (Campus → CampusDepartment → Section).
 
 ### Key Features
-- ✅ **Organizational Hierarchy**: Multi-level department structures
-- ✅ **Role-Based Access Control**: 6 roles with scope-based permissions
-- ✅ **Automatic Escalation**: 2-level escalation workflow
-- ✅ **Ticket Numbering**: `CAMPUS-DEPT-XXXXX` format
-- ✅ **Analytics**: Role-specific dashboards and reporting
-- ✅ **Audit Logging**: Complete change history
+- **Organizational Hierarchy**: Multi-level department structures
+- **Role-Based Access Control**: 6 roles with scope-based permissions
+- **Automatic Escalation**: 2-level escalation workflow
+- **Ticket Numbering**: `CAMPUS-DEPT-XXXXX` format
+- **Analytics**: Role-specific dashboards and reporting
+- **Audit Logging**: Complete change history
 
 ---
 
@@ -62,28 +62,27 @@ Django Resolver uses a **4-layer architecture** separating concerns:
 └─────────────────────────────────────┘
 ```
 
-### Layer 1: Models (`tickets/models.py`)
+### Layer 1: Models (`tickets/models/` package)
 **Responsibility**: Data schema and validation
-- Single file contains all models (Django best practice)
-- 8 core models: Organization, Campus, Department, Section, Facility, CustomUser, Ticket, TicketLog
+- Split into modules by domain (`organisation.py`, `sections.py`, `catalogue.py`, `facilities.py`, `tickets.py`, `users.py`)
 - Includes model methods for business logic
 - Automatic ticket number generation on save
 
 **Key Models**:
-```python
-# Organization → Campus → Department → Section hierarchy
-Organization (name, type: gov/education/healthcare/corporate)
-  ├─ Campus (code, location)
-  │   ├─ Department (head_of_department FK)
-  │   │   ├─ Section (head_of_section FK)
-  │   │   └─ Facility (for section)
-  │   └─ Ticket (created by campus users)
-CustomUser (role: user/tech/head_of_section/hod/manager/admin)
-Ticket (status, priority, escalation_level, pending_reason/comment)
+```
+Campus  (root entity — no Organization above it)
+  └── CampusDepartment  (Campus + Department + HOD)
+        └── Section  (CampusDepartment + SectionType + HOS)
+              ├── TechnicianSection  (M2M: Technician ↔ Section)
+              └── Ticket
+                    ├── ServiceItem → ServiceCategory → SectionType
+                    └── Facility
 ```
 
-### Layer 2: Services (`tickets/api/services/services.py`)
-**Responsibility**: Business logic and validation (consolidated in single `TicketService` class)
+`Department` is **global** (not owned by any campus). `CampusDepartment` is the join table linking a Campus and a Department.
+
+### Layer 2: Services (`tickets/api/services/`)
+**Responsibility**: Business logic and validation
 - **Create operations**: `create_ticket()` with scope validation
 - **Update operations**: `update_ticket_status()` with state machine validation
 - **Escalation**: `escalate_ticket()` with level tracking
@@ -98,27 +97,24 @@ Ticket (status, priority, escalation_level, pending_reason/comment)
 - `close_ticket()` - User/admin closure permissions
 - `process_auto_escalations()` - Scheduled escalation
 
-### Layer 3: Views (`tickets/api/views/views.py`)
-**Responsibility**: HTTP request handling and permissions (consolidated in single file with 20+ view classes)
-- DRF generic views for CRUD: `ListCreateAPIView`, `RetrieveUpdateDestroyAPIView`
-- Custom views for complex operations: `APIView` subclasses for escalation
-- **Permissions**: All views require `IsWithinOrganizationalScope` permission
+### Layer 3: Views (`tickets/api/views/` package)
+**Responsibility**: HTTP request handling and permissions
+- Split into modules by domain:
+  - `ticket_views.py` — TicketListCreateView, TicketCreateView, TicketDetailView
+  - `org_views.py` — Campus, Department, CampusDepartment, Section CRUD
+  - `technician_views.py` — TechnicianSection assignment
+  - `catalogue_views.py` — ServiceCategory, ServiceItem
+  - `user_views.py` — UserListCreateView, TechniciansBySectionView
+- DRF generic views for CRUD; custom `APIView` subclasses for complex operations
 - **Delegation**: Views delegate to TicketService, not direct ORM access
 
-**View Organization**:
-- Hierarchy: Organization, Campus, Department, Section views
-- Tickets: List, detail, create, escalation endpoints
-- Analytics: Role-specific dashboard views
-- Bulk operations: BulkTicketStatusUpdateView
-
-### Layer 4: Serializers (`tickets/serializers.py`)
+### Layer 4: Serializers (`tickets/serializers/` package)
 **Responsibility**: Data transformation (request/response serialization)
+- Split into modules: `org.py`, `sections.py`, `catalogue.py`, `facilities.py`, `tickets.py`, `users.py`, `common.py`
 - TicketSerializer with conditional nested object inclusion
-- UserSerializer for user representation
-- SectionSerializer with campus context fields (R1 Enhancement)
-- CommentSerializer, FeedbackSerializer for related data
+- Read/write split pattern used throughout
 
-**Optimization**: List views skip expensive nested queries for performance (100x faster)
+**Optimization**: List views skip expensive nested queries for performance
 
 ---
 
@@ -129,23 +125,22 @@ Complete flow from HTTP request to response:
 ```
 1. HTTP Request arrives
    ↓
-2. Django URL Router (urls.py)
+2. Django URL Router (tickets/api/urls.py)
    - Matches path to View class
    ↓
-3. View Class (views.py)
+3. View Class (tickets/api/views/<module>.py)
    - Checks authentication (token required)
-   - Validates IsWithinOrganizationalScope permission
+   - Validates permission class
    ↓
-4. Service Layer (services.py)
+4. Service Layer (tickets/api/services/)
    - Validates business rules
    - Checks organizational scope
    - Performs operation on models
    - Logs changes to TicketLog
    ↓
-5. Model Layer (models.py)
+5. Model Layer (tickets/models/)
    - Updates database
    - Runs model validations
-   - Triggers signals if configured
    ↓
 6. Service returns result/exceptions
    ↓
@@ -162,7 +157,7 @@ POST /api/tickets/1/update-status/
   ↓
 POST data: {"new_status": "in_progress"}
   ↓
-View: TicketUpdateView validates permission + org scope
+View: validates permission + org scope
   ↓
 Service: TicketService.update_ticket_status() checks:
   - Valid status transition
@@ -198,7 +193,7 @@ Response: 200 OK with updated ticket
      ├─→ (needs info from user)
      │   ↓
      │  ┌─────────┐
-     │  │ PENDING │ ← Waiting for response (Spec requirement)
+     │  │ PENDING │ ← Waiting for response
      │  └────┬────┘
      │       │ (user responds)
      │       →─ (back to IN_PROGRESS)
@@ -215,24 +210,30 @@ Response: 200 OK with updated ticket
     └──────────┘
 ```
 
+Additionally:
+```
+pending_approval → (approve) → open
+pending_approval → (reject)  → rejected
+```
+
 ### Escalation Levels
 
-Automatic escalation triggered by time thresholds:
+Automatic escalation triggered by time thresholds (measured from `assigned_at`):
 
 ```
 Level 0 (No Escalation)
-  ↓ [After 48 hours]
+  ↓ [After 48 hours from assignment]
 Level 1 (Section Head Escalation)
-  ↓ [After 72 hours total]
+  ↓ [After 24 hours more]
 Level 2 (HOD Escalation)
   → Max level reached
 ```
 
-**Priority Auto-Escalation** (Spec feature):
-- `OPEN` ticket starts as `LOW` priority
+**Priority Auto-Escalation**:
+- Ticket starts as `LOW` priority
 - On Level 1 escalation → `MEDIUM`
 - On Level 2 escalation → `HIGH`
-- After 72hrs total → Auto-marked `CRITICAL`
+- After 72 hrs total → Auto-marked `CRITICAL`
 
 ---
 
@@ -241,23 +242,26 @@ Level 2 (HOD Escalation)
 ### Structure
 
 ```
-Organization (e.g., "Government Institution")
-  ├─ Campus MAIN (Nairobi)
-  │   ├─ Department IT (Head: hod_alex)
-  │   │   ├─ Section Network (Leader: head_of_section_ben)
-  │   │   │   ├─ Technician: tech_alex
-  │   │   │   └─ Technician: tech_john
-  │   │   └─ Section OSS (Leader: head_of_section_mike)
-  │   │
-  │   └─ Department Operations (Head: hod_maria)
-  │       ├─ Section Plumbing (Leader: head_of_section_linda)
-  │       └─ Section Electrical (Leader: head_of_section_david)
-  │
-  ├─ Campus WEST (Mombasa)
-  │   └─ [Similar Department/Section structure]
-  │
-  └─ Campus DOWNTOWN (Downtown Nairobi)
-      └─ [Similar Department/Section structure]
+Campus  (root entity — no Organization above it)
+  └── CampusDepartment  (Campus + Department + HOD)
+        └── Section  (CampusDepartment + SectionType + HOS)
+              ├── TechnicianSection  (M2M: Technician ↔ Section)
+              └── Ticket
+```
+
+`Department` is a global entity. `CampusDepartment` is the join table that binds a Department to a specific Campus and records its HOD.
+
+**Example**:
+```
+Campus NRB (Nairobi)
+  └── CampusDepartment: NRB + ICT (HOD: hod_ict_nrb)
+        └── Section: ICT Support NRB  (HOS: hos_ict_nrb)
+              ├── Technician: tech_alex
+              └── Ticket: NRB-ICT-00001
+
+Campus MSA (Mombasa)
+  └── CampusDepartment: MSA + ICT (separate CampusDepartment row)
+        └── Section: ICT Support MSA
 ```
 
 ### Ticket Placement Logic
@@ -267,14 +271,20 @@ Organization (e.g., "Government Institution")
 ```
 Ticket created with section_id=1
   ↓ Via FK relationships:
-  Section 1 → Department 1 → Campus 1
+  Section 1 → CampusDepartment 1 → Campus 1
   ↓
 Automatic derivation:
   ticket_no = f"{campus.code}-{department.code}-{ticket.id:05d}"
-  Example: "MAIN-IT-00001"
+  Example: "NRB-ICT-00001"
 ```
 
-**Benefit**: Handles multi-campus sections with same name without collision
+### Ticket Creation via Catalogue
+
+`POST /api/tickets/create/` auto-resolves the org structure:
+- Request: `{ department_id, service_item_id, title, description }`
+- Uses `user.primary_campus` + `department_id` to find `CampusDepartment`
+- Uses `service_item → category → section_type` to find the appropriate `Section`
+- Response: `{ ticket, campus_department, section, eligible_technicians }`
 
 ---
 
@@ -284,70 +294,52 @@ Automatic derivation:
 
 | Role | Scope | Permissions |
 |------|-------|-------------|
-| `user` | Section | Create tickets, comment own, submit feedback |
-| `technician` | Section | + Update status, assign within section |
-| `head_of_section` | Section | + Escalate, manage escalations |
-| `hod` | Department | View all dept tickets, final escalation point |
-| `manager` | Own department, all campuses in org | Analytics only, no ticket list/detail |
+| `user` | Own tickets only | Create tickets, comment on own, submit feedback |
+| `technician` | Tickets in assigned sections (via TechnicianSection) | + Update status |
+| `head_of_section` | Own section | + Assign tickets, manage technicians |
+| `hod` | Own CampusDepartment (campus + department pair) | View all dept tickets on own campus |
+| `manager` | Own department across all campuses | Analytics only, no direct ticket list/detail |
 | `admin` | System | Full access, bypass all checks |
+
+### Permissions Package (`tickets/api/permissions/`)
+- `org.py` → `IsWithinOrganizationalScope`, `CanManageSectionTechnicians`
+- `tickets.py` → `CanViewTicket`, `CanEditTicket`, `CanAssignTickets`, `CanEscalateTickets`
+- `users.py` → `CanManageUsers`, `IsTechnicianOrAdmin`
 
 ### Scope Enforcement
 
-Every view enforces:
-```python
-@permission_classes([IsWithinOrganizationalScope])
-def view_function(...):
-    # Only users in same org can access
-    # Tickets filtered to user's accessible campus/dept/section
-```
+**Method**: `TicketService.get_accessible_tickets(user)` returns scope-limited queryset
 
-**Method**: `user.get_accessible_tickets()` returns scope-limited queryset
+`manager` ticket scope: `section__campus_department__department__code == user.primary_department.code` across all campuses.
 
 ---
 
 ## Data Models
 
-### Consolidated in Single File (`tickets/models.py`)
+### Model Package (`tickets/models/`)
 
-**Organization Models**:
-- `Organization` - Root entity, tracks type and location
-- `Campus` - Geographic/operational divisions
-- `Department` - Functional divisions within campus
-- `Section` - Specialized units (where technicians work)
-- `Facility` - Physical assets/locations for tickets
+| File | Models |
+|------|--------|
+| `organisation.py` | Campus, Department, CampusDepartment |
+| `sections.py` | SectionType, Section, TechnicianSection |
+| `catalogue.py` | ServiceCategory, ServiceItem |
+| `facilities.py` | Facility |
+| `tickets.py` | Ticket, Comment, Feedback, TicketLog |
+| `users.py` | CustomUser |
 
-**User Models**:
-- `CustomUser` - Extended Django User with roles and scope
-  - Roles: user, technician, head_of_section, hod, manager, admin
-  - Fields: primary_campus, primary_department, sections (M2M)
+**CustomUser**:
+- Roles: `user`, `technician`, `head_of_section`, `hod`, `manager`, `admin`
+- Fields: `primary_campus`, `primary_department`
+- `TechnicianSection` M2M links technicians to sections
 
-**Ticket Models**:
-- `Ticket` - Core ticket entity
-  - Fields: section (FK), facility (FK), raised_by (FK), assigned_to (FK)
-  - Status options: open, assigned, in_progress, pending, resolved, closed
-  - Priority: low, medium, high, critical (auto-escalates)
-  - Escalation: level 0-2, next_escalation_due, auto_escalation_enabled
-  - Pending: pending_reason, pending_comment (both required for status=pending)
-  - Auto-generates: ticket_no in format `CAMPUS-DEPT-XXXXX`
+**Ticket**:
+- Status: `open`, `assigned`, `in_progress`, `pending`, `resolved`, `closed`, `pending_approval`, `rejected`
+- Priority: `low`, `medium`, `high`, `critical` (auto-escalates)
+- Escalation: `escalation_level` 0–2, `next_escalation_due` (based on `assigned_at`)
+- Pending: `pending_reason`, `pending_comment` (both required for `status=pending`)
+- Auto-generates: `ticket_no` in format `CAMPUS-DEPT-XXXXX`
 
-- `TicketLog` - Immutable audit trail
-  - Records: status changes, assignments, escalations, closures
-
-- `Comment`, `Feedback` - Ticket-related data
-
-### Relationships
-
-```
-Organization ← Campus → Department → Section
-                           ↓
-                       Facility
-                           ↓
-Ticket (section FK) ← Comment (ticket FK)
-    ↓
-    ├─ assigned_to (CustomUser FK)
-    ├─ raised_by (CustomUser FK)
-    └─ facility (Facility FK)
-```
+**TicketLog**: Immutable audit trail recording status changes, assignments, escalations
 
 ---
 
@@ -369,7 +361,7 @@ Ticket (section FK) ← Comment (ticket FK)
    for all subsequent requests
 ```
 
-**All roles use password login** - determined by user.role field
+**All roles use password login** — determined by `user.role` field.
 
 ### Magic Link (Future)
 
@@ -384,7 +376,7 @@ Code is preserved but commented out for future implementation when email service
 ```
 Runs via: python manage.py process_auto_escalations (or scheduled task)
 
-For each ticket:
+For each assigned ticket:
   1. Check if next_escalation_due <= now()
   2. Check if auto_escalation_enabled = True
   3. Check escalation_level < 2
@@ -393,9 +385,10 @@ For each ticket:
     - Level 1: Notify head_of_section, set priority=MEDIUM
     - Level 2: Notify HOD, set priority=HIGH
     - After 72h: Auto-mark priority=CRITICAL
-    - Create notification record
     - Log in TicketLog
 ```
+
+**Important**: Escalation clock starts at `assigned_at`, not `created_at`. Unassigned tickets never escalate.
 
 ### Manual Escalation
 
@@ -412,7 +405,6 @@ Then:
   - Update escalation_level
   - Update priority (per spec)
   - Log the escalation reason
-  - Notify escalation recipient
 ```
 
 ---
@@ -426,28 +418,28 @@ Then:
 
 ### 2. **Scope-Based Access Control**
 - Every operation validates org scope
-- `user.get_accessible_tickets()` returns properly filtered queryset
-- No "accidental" cross-org data access
+- `TicketService.get_accessible_tickets(user)` returns properly filtered queryset
+- No "accidental" cross-campus data access
 
 ### 3. **State Machine for Ticket Status**
 - `validate_status_transition()` enforces valid flows
-- PENDING status requires both reason + comment
+- `PENDING` status requires both `pending_reason` + `pending_comment`
 - Cannot transition from invalid states
 
 ### 4. **Immutable Audit Trail**
 - TicketLog records all changes
-- Timestamps, performed_by user, action description
+- Timestamps, `performed_by` user, action description
 - Enables compliance reporting
 
 ### 5. **Automatic Ticket Numbering**
 - `CAMPUS-DEPT-XXXXX` format generated on ticket creation
 - Includes organizational context
-- Auto-incrementing within department
+- Auto-incrementing within department (all sections in the same department share one counter)
 
 ### 6. **Conditional Serialization**
 - List views: simplified serialization (faster queries)
 - Detail views: full nested objects
-- Controlled via `skip_available_technicians` context flag
+- Role-based `get_fields()` overrides strip fields below required role thresholds
 
 ---
 
@@ -469,7 +461,6 @@ class Ticket(models.Model):
 - `select_related()` for FK: section, assigned_to, facility
 - `prefetch_related()` for reverse: comments, logs (only detail views)
 - List views exclude M2M relationships
-- Result: 66x faster for organizational queries
 
 ---
 
@@ -488,9 +479,9 @@ class Ticket(models.Model):
        │
 ┌──────▼──────────────────┐
 │  Django Application     │ (This project)
-│  - Models              │
-│  - Views               │
-│  - Services            │
+│  - models/             │
+│  - api/views/          │
+│  - api/services/       │
 └──────┬──────────────────┘
        │
 ┌──────▼──────────────────┐
@@ -503,19 +494,17 @@ class Ticket(models.Model):
 ## Next Steps
 
 ### Learn More
-- **How to add features**: See "Adding New Features" in [Codebase Architecture](CODEBASE_ARCHITECTURE.md)
-- **Complete technical details**: [Codebase Architecture](CODEBASE_ARCHITECTURE.md)
 - **API integration**: [API Integration Guide](API_INTEGRATION_GUIDE.md)
 - **Ticket workflow rules**: [Workflow Specification](specifications/WORKFLOW_SPEC.md)
+- **Analytics endpoints**: [Analytics API](api/ANALYTICS.md)
 
 ### Start Building
 1. Review this guide for architecture concepts
 2. Check [Testing Guide](testing/TESTING.md) for test patterns
 3. Use [Sample Queries](testing/SAMPLE_QUERIES.md) for ORM examples
-4. Reference [Codebase Architecture](CODEBASE_ARCHITECTURE.md) for implementation details
 
 ---
 
-**Last Updated**: March 18, 2026  
-**Version**: 1.0  
-**Compliance**: ✅ 96% (See [Compliance Audit](compliance/AUDIT_STATUS.md))
+**Last Updated**: May 13, 2026  
+**Version**: 2.0  
+**Compliance**: See [Compliance Audit](compliance/AUDIT_STATUS.md)

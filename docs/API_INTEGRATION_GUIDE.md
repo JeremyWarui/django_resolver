@@ -44,7 +44,7 @@ curl -X POST http://localhost:8000/api/auth/login/ \
     "id": 2,
     "username": "user_sarah",
     "email": "jane@example.com",
-    "role": "technician"
+    "role": "user"
   }
 }
 
@@ -55,7 +55,7 @@ curl http://localhost:8000/api/tickets/ \
 
 ### API Base URL
 - **Development**: `http://localhost:8000/api/`
-- **Production**: `https://your-domain.com/api/`
+- **Production**: `https://django-resolver.onrender.com/api/`
 
 ---
 
@@ -88,11 +88,11 @@ POST /api/auth/login/
     "email": "jane@example.com",
     "first_name": "Jane",
     "last_name": "Doe",
-    "role": "technician",
+    "role": "user",
     "primary_campus": {
       "id": 1,
-      "name": "MAIN",
-      "code": "MAIN"
+      "name": "Nairobi Campus",
+      "code": "NRB"
     }
   }
 }
@@ -147,8 +147,6 @@ const instance = axios.create({
 
 Email-based magic links are commented out for future implementation. Enable when email service is configured.
 
-See [Authentication Details](AUTHENTICATION.md) for future implementation.
-
 ---
 
 ## API Conventions
@@ -163,11 +161,11 @@ All responses are JSON with these conventions:
   "count": 42,
   "next": "http://api/tickets/?page=2",
   "previous": null,
-  "page_size": 10,
-  "total_pages": 5,
+  "page_size": 20,
+  "total_pages": 3,
   "current_page": 1,
   "results": [
-    { "id": 1, "ticket_no": "MAIN-IT-00001", ... }
+    { "id": 1, "ticket_no": "NRB-ICT-00001", ... }
   ]
 }
 ```
@@ -176,7 +174,7 @@ All responses are JSON with these conventions:
 ```json
 {
   "id": 1,
-  "ticket_no": "MAIN-IT-00001",
+  "ticket_no": "NRB-ICT-00001",
   "status": "open",
   "created_at": "2024-01-15T10:30:00Z",
   ...
@@ -193,7 +191,7 @@ All responses are JSON with these conventions:
 
 ### Pagination
 
-Default behavior: **10 items per page**
+Default behavior: **20 items per page** (max 100)
 
 **Query parameters**:
 - `page=1` - Retrieve specific page
@@ -210,17 +208,13 @@ Many endpoints support filtering via query parameters.
 
 **Common filters**:
 - `status=open` - Filter by status
-- `campus_id=1` - Filter by campus
 - `section_id=1` - Filter by section
 - `assigned_to__isnull=true` - Unassigned tickets
 - `escalation_level=1` - Escalated to section head
 
-**Multiple values**:
-- `status=open&status=assigned` - OR logic
-
 **Combined example**:
 ```
-GET /api/tickets/?status=open&section_id=1&campus_id=1
+GET /api/tickets/?status=open&section_id=1
 ```
 
 ### Ordering
@@ -232,7 +226,7 @@ Supported fields:
 
 **Example**:
 ```
-GET /api/tickets/?ordering=-created_at&ordering=status
+GET /api/tickets/?ordering=-created_at
 ```
 
 ### Timestamps
@@ -246,102 +240,16 @@ All timestamps use ISO 8601 format with UTC timezone:
 
 ## Organizational Hierarchy Endpoints
 
-### Organizations
+The hierarchy is: **Campus → CampusDepartment → Section**
 
-#### List All Organizations
-```
-GET /api/organizations/
-```
-
-**Response** (truncated):
-```json
-{
-  "count": 2,
-  "results": [
-    {
-      "id": 1,
-      "name": "Government Institution",
-      "type": "government",
-      "description": "Main organization"
-    }
-  ]
-}
-```
-
-#### Create Organization (Admin only)
-```
-POST /api/organizations/
-{
-  "name": "New Organization",
-  "type": "education",
-  "description": "..."
-}
-```
-
-#### Retrieve Organization
-```
-GET /api/organizations/{id}/
-```
-
-#### Update Organization (Org admin only)
-```
-PATCH /api/organizations/{id}/
-{
-  "name": "Updated name"
-}
-```
-
----
+`Department` is a global entity. `CampusDepartment` is the join table binding a Department to a Campus (with its HOD).
 
 ### Campuses
 
-#### List Campuses (Filtered to User's Accessible Campuses)
+#### List Campuses
 ```
 GET /api/campuses/
 ```
-
-**Filters**:
-- `organization_id=1` - By organization
-
-**Response** (truncated):
-```json
-{
-  "count": 3,
-  "results": [
-    {
-      "id": 1,
-      "name": "MAIN Campus",
-      "code": "MAIN",
-      "organization": 1,
-      "location": "Nairobi"
-    }
-  ]
-}
-```
-
-#### Create Campus
-```
-POST /api/campuses/
-{
-  "name": "West Campus",
-  "code": "WEST",
-  "organization": 1,
-  "location": "Mombasa"
-}
-```
-
----
-
-### Departments
-
-#### List Departments (Filtered to Accessible Departments)
-```
-GET /api/departments/
-```
-
-**Filters**:
-- `campus_id=1` - By campus
-- `organization_id=1` - By organization
 
 **Response** (truncated):
 ```json
@@ -350,12 +258,72 @@ GET /api/departments/
   "results": [
     {
       "id": 1,
-      "name": "IT Department",
-      "code": "IT",
-      "campus": 1,
+      "name": "Nairobi Campus",
+      "code": "NRB"
+    }
+  ]
+}
+```
+
+#### Create Campus (Admin only)
+```
+POST /api/campuses/
+{
+  "name": "Mombasa Campus",
+  "code": "MSA"
+}
+```
+
+---
+
+### Departments
+
+#### List Departments (Global — not campus-scoped)
+```
+GET /api/departments/
+```
+
+**Response** (truncated):
+```json
+{
+  "count": 5,
+  "results": [
+    {
+      "id": 1,
+      "name": "ICT",
+      "code": "ICT"
+    }
+  ]
+}
+```
+
+---
+
+### Campus Departments
+
+`CampusDepartment` is the join between a Campus and a Department. It also holds the HOD for that campus+department pair.
+
+#### List CampusDepartments
+```
+GET /api/campus-departments/
+```
+
+**Filters**:
+- `campus_id=1` - By campus
+- `department_id=1` - By department
+
+**Response** (truncated):
+```json
+{
+  "count": 8,
+  "results": [
+    {
+      "id": 1,
+      "campus": { "id": 1, "code": "NRB", "name": "Nairobi Campus" },
+      "department": { "id": 1, "code": "ICT", "name": "ICT" },
       "head_of_department": {
         "id": 5,
-        "username": "alex_smith",
+        "username": "hod_ict_nrb",
         "role": "hod"
       }
     }
@@ -373,39 +341,36 @@ GET /api/sections/
 ```
 
 **Filters**:
-- `department_id=1` - By department
-- `campus_id=1` - By campus
+- `campus_department_id=1` - By CampusDepartment
 
-**Response** (includes campus context - R1 Enhancement):
+**Response** (includes campus context):
 ```json
 {
   "count": 4,
   "results": [
     {
       "id": 1,
-      "name": "Network Section",
-      "code": "NETWORK",
-      "department": 1,
-      "campus_id": 1,
-      "campus_display": "MAIN",
-      "organization_id": 1,
-      "section_head": {
+      "name": "ICT Support",
+      "campus_code": "NRB",
+      "department_code": "ICT",
+      "display_name": "NRB-ICT Support",
+      "section_type": 1,
+      "head_of_section": {
         "id": 6,
-        "username": "ben_lucas"
+        "username": "hos_ict_nrb"
       }
     }
   ]
 }
 ```
 
-#### Create Section
+#### Create Section (Admin/HOD)
 ```
 POST /api/sections/
 {
-  "name": "Plumbing",
-  "code": "PLUMB",
-  "department": 1,
-  "section_head": 10
+  "name": "Networking",
+  "campus_department": 1,
+  "section_type": 1
 }
 ```
 
@@ -415,46 +380,38 @@ POST /api/sections/
 
 ### List Tickets
 
-#### Get All Tickets (Org-Scoped)
+#### Get All Tickets (Scope-filtered by role)
 ```
 GET /api/tickets/
 ```
 
 **Filters**:
-- `status=open` - Filter by status: open, assigned, in_progress, pending, resolved, closed
-- `campus_id=1` - Filter by campus
+- `status=open` - Filter by status: `open`, `assigned`, `in_progress`, `pending`, `resolved`, `closed`
 - `section_id=1` - Filter by section
 - `assigned_to__isnull=true` - Unassigned tickets only
 - `is_overdue=true` - Overdue tickets only
 - `escalation_level=1` - Escalated to section head
 - `escalation_level=2` - Escalated to HOD
-- `priority=high` - Filter by priority: low, medium, high, critical
+- `priority=high` - Filter by priority: `low`, `medium`, `high`, `critical`
 
 **Ordering**:
 - Default: `-updated_at` (newest first)
-- `ordering=created_at` - By creation time
-- `ordering=status` - By status
-
-**Example**:
-```
-GET /api/tickets/?status=open&section_id=1&escalation_level=1&ordering=-created_at
-```
 
 **Response** (list view - simplified for performance):
 ```json
 {
   "count": 42,
-  "page_size": 10,
-  "total_pages": 5,
+  "page_size": 20,
+  "total_pages": 3,
   "results": [
     {
       "id": 1,
-      "ticket_no": "MAIN-IT-00001",
+      "ticket_no": "NRB-ICT-00001",
       "title": "Printer not working",
       "status": "open",
       "priority": "low",
       "escalation_level": 0,
-      "assigned_to_name": "john_tech",
+      "assigned_to_name": "tech_alex",
       "raised_by": {
         "username": "user_sarah"
       },
@@ -465,43 +422,38 @@ GET /api/tickets/?status=open&section_id=1&escalation_level=1&ordering=-created_
 }
 ```
 
-### Create Ticket
+### Create Ticket (Catalogue-based flow)
 
 #### Create New Ticket
 ```
-POST /api/tickets/
+POST /api/tickets/create/
 {
+  "department_id": 1,
+  "service_item_id": 5,
   "title": "Internet connection down",
-  "description": "Floor 3 network not responding",
-  "section": 1,
-  "facility": 1,
-  "priority": "medium"
+  "description": "Floor 3 network not responding"
 }
 ```
 
-**Required fields**:
-- `title` - Ticket title
-- `section` - Section ID where issue occurs
-- `description` - Back-end requires, optional in API
+The system uses `user.primary_campus` + `department_id` to find the `CampusDepartment`, then uses `service_item → category → section_type` to find the correct `Section`.
 
-**Optional fields**:
-- `facility` - Facility/location
-- `priority` - low, medium, high, critical (default: low)
+If `service_item.requires_approval = True`, the ticket starts as `pending_approval` instead of `open`.
 
 **Response** (201 Created):
 ```json
 {
-  "id": 42,
-  "ticket_no": "MAIN-IT-00042",
-  "title": "Internet connection down",
-  "description": "Floor 3 network not responding",
-  "status": "open",
-  "priority": "medium",
-  "section": { "id": 1, "name": "Network" },
-  "raised_by": { "id": 2, "username": "user_sarah" },
-  "assigned_to": null,
-  "created_at": "2024-01-15T15:00:00Z",
-  "updated_at": "2024-01-15T15:00:00Z"
+  "ticket": {
+    "id": 42,
+    "ticket_no": "NRB-ICT-00042",
+    "title": "Internet connection down",
+    "status": "open",
+    "priority": "low"
+  },
+  "campus_department": { "id": 1, "campus": "NRB", "department": "ICT" },
+  "section": { "id": 1, "name": "ICT Support", "display_name": "NRB-ICT Support" },
+  "eligible_technicians": [
+    { "id": 10, "username": "tech_alex" }
+  ]
 }
 ```
 
@@ -516,7 +468,7 @@ GET /api/tickets/{id}/
 ```json
 {
   "id": 1,
-  "ticket_no": "MAIN-IT-00001",
+  "ticket_no": "NRB-ICT-00001",
   "title": "Printer not working",
   "description": "HP printer on floor 2",
   "status": "in_progress",
@@ -526,9 +478,10 @@ GET /api/tickets/{id}/
   "pending_comment": null,
   "section": {
     "id": 1,
-    "name": "Network",
-    "department": { "id": 1, "name": "IT" },
-    "campus": { "id": 1, "name": "MAIN" }
+    "name": "ICT Support",
+    "display_name": "NRB-ICT Support",
+    "campus_code": "NRB",
+    "department_code": "ICT"
   },
   "facility": {
     "id": 5,
@@ -537,23 +490,22 @@ GET /api/tickets/{id}/
   },
   "raised_by": {
     "id": 2,
-    "username": "user_sarah",
-    "email": "jane@example.com"
+    "username": "user_sarah"
   },
   "assigned_to": {
     "id": 10,
-    "username": "tech_john",
+    "username": "tech_alex",
     "role": "technician"
   },
   "available_technicians": [
-    { "id": 10, "username": "tech_john" },
+    { "id": 10, "username": "tech_alex" },
     { "id": 11, "username": "tech_alice" }
   ],
   "comments": [
     {
       "id": 1,
       "text": "Looking into it",
-      "created_by": { "username": "tech_john" },
+      "created_by": { "username": "tech_alex" },
       "created_at": "2024-01-15T11:00:00Z"
     }
   ],
@@ -561,6 +513,8 @@ GET /api/tickets/{id}/
   "updated_at": "2024-01-15T14:20:00Z"
 }
 ```
+
+Note: `available_technicians` and `organizational_path` are stripped for roles below `head_of_section`.
 
 ### Update Ticket
 
@@ -573,24 +527,12 @@ PATCH /api/tickets/{id}/
 ```
 
 **Valid status transitions**:
-- `open` → `assigned` (auto-set when assigned_to assigned)
+- `open` → `assigned` (auto-set when `assigned_to` is assigned)
 - `assigned` → `in_progress`
-- `in_progress` → `pending` (requires pending_reason + pending_comment)
+- `in_progress` → `pending` (requires `pending_reason` + `pending_comment`)
 - `in_progress` → `resolved`
-- `resolved` → `closed` (Admin/User only, see "Close Ticket")
+- `resolved` → `closed` (user who raised it or admin)
 - `pending` ↔ `in_progress` (cycle)
-
-#### Update Ticket with Assignment
-```
-PATCH /api/tickets/{id}/
-{
-  "assigned_to": 10
-}
-```
-
-**Assignment rules**:
-- Only technicians can be assigned
-- Technician must have ticket's section in their sections M2M
 
 #### Transition to Pending Status
 ```
@@ -602,7 +544,7 @@ PATCH /api/tickets/{id}/
 }
 ```
 
-**Requirement**: Both `pending_reason` and `pending_comment` required for pending status
+**Requirement**: Both `pending_reason` and `pending_comment` required for pending status.
 
 #### Response (200 OK)
 ```json
@@ -629,17 +571,6 @@ POST /api/tickets/{id}/close/
 - User who raised ticket can close
 - Admin can always close
 
-**Response** (200 OK):
-```json
-{
-  "id": 1,
-  "status": "closed",
-  "closed_by": { "id": 2, "username": "user_sarah" },
-  "closed_at": "2024-01-15T17:00:00Z",
-  "updated_at": "2024-01-15T17:00:00Z"
-}
-```
-
 ---
 
 ## Escalation Endpoints
@@ -659,204 +590,85 @@ POST /api/tickets/{id}/escalate/
 - Level 1 (Section Head) → Level 2 (HOD)
 - Cannot escalate from Level 2
 
-**Permissions**:
-- Any user in org scope can escalate
-- Closed tickets cannot be escalated
-
 **Response** (200 OK):
 ```json
 {
   "id": 1,
   "escalation_level": 1,
-  "escalated_to": {
-    "id": 6,
-    "username": "section_head_ben",
-    "role": "head_of_section"
-  },
   "escalation_reason": "No response from technician",
   "escalated_at": "2024-01-15T16:30:00Z",
   "priority": "medium"
 }
 ```
 
-### Auto-Escalation Query
-
-#### Get Tickets Pending Auto-Escalation
-```
-GET /api/tickets/?next_escalation_due__lte={date}
-```
-
-**Example**:
-```
-GET /api/tickets/?next_escalation_due__lte=2024-01-15T18:00:00Z
-```
-
-**Response**: Lists tickets due for automatic escalation
-
 ---
 
 ## User Management Endpoints
 
-### List Users (Org-Scoped)
+### List Users (Scope-filtered)
 ```
 GET /api/users/
 ```
 
 **Filters**:
 - `role=technician` - By role
-- `campus_id=1` - By campus
-
-**Response** (truncated):
-```json
-{
-  "count": 15,
-  "results": [
-    {
-      "id": 10,
-      "username": "tech_john",
-      "email": "john@example.com",
-      "role": "technician",
-      "primary_campus": { "id": 1, "name": "MAIN" }
-    }
-  ]
-}
-```
 
 ### Get Technicians by Section
 
 #### Get Available Technicians for Assignment
 ```
-GET /api/technicians/?section_id=1&campus_id=1
+GET /api/technicians/?section_id=1
 ```
 
-**Returns**: Only technicians in the specified section and campus
+**Returns**: Only technicians assigned to the specified section (via `TechnicianSection`).
 
 **Response**:
 ```json
 {
   "count": 3,
   "results": [
-    { "id": 10, "username": "tech_john" },
-    { "id": 11, "username": "tech_alice" },
-    { "id": 12, "username": "tech_bob" }
+    { "id": 10, "username": "tech_alex" },
+    { "id": 11, "username": "tech_alice" }
   ]
 }
 ```
-
-### Get Assignable Users
-```
-GET /api/assignable-users/?section_id=1
-```
-
-**Returns**: Users who can be assigned to tickets in this section
-
-**Response**: Same format as technicians endpoint
 
 ---
 
 ## Analytics Endpoints
 
-### Ticket Analytics
+All 11 analytics endpoints are available. See [Analytics API](api/ANALYTICS.md) for full documentation.
 
-#### Get Ticket Metrics
-```
-GET /api/analytics/tickets/
-```
+### Quick Reference
 
-**Query parameters**:
-- `timeframe=week` - day, week, month, custom
-- `campus_id=1` - Filter by campus
-- `section_id=1` - Filter by section
-- `facility_id=1` - Filter by facility
-- `days=30` - Custom days (with timeframe=custom)
-- `group_by=day` - Group by: day, week, month, section, technician
+| Endpoint | Access |
+|----------|--------|
+| `GET /api/analytics/tickets/` | admin, manager |
+| `GET /api/analytics/admin-dashboard/` | admin, manager |
+| `GET /api/analytics/user/` | all authenticated |
+| `GET /api/analytics/technicians/` | admin, manager, hod, technician (own data) |
+| `GET /api/analytics/technicians/me/` | technician, admin |
+| `GET /api/analytics/manager/` | manager, admin |
+| `GET /api/analytics/hod/` | hod, admin |
+| `GET /api/analytics/section-head/` | head_of_section, admin |
+| `GET /api/analytics/departments/<pk>/` | admin, manager (own dept), hod (own campus) |
+| `GET /api/analytics/campus-departments/<pk>/` | admin, manager, hod (assigned only) |
+| `GET /api/analytics/sections/<pk>/` | admin, manager, hod, head_of_section (own) |
 
-**Response**:
-```json
-{
-  "total_tickets": 156,
-  "open_tickets": 23,
-  "closed_tickets": 89,
-  "average_resolution_time": "4.2 hours",
-  "resolution_rate": 85.5,
-  "trend": [
-    {
-      "period": "2024-01-15",
-      "created": 5,
-      "resolved": 3,
-      "open": 22
-    }
-  ],
-  "by_status": {
-    "open": 23,
-    "assigned": 15,
-    "in_progress": 18,
-    "pending": 2,
-    "resolved": 89,
-    "closed": 9
-  },
-  "by_priority": {
-    "low": 45,
-    "medium": 78,
-    "high": 28,
-    "critical": 5
-  }
-}
-```
-
-### Technician Analytics
-
-#### Get Technician Performance Metrics
-```
-GET /api/analytics/technicians/
-```
-
-**Query parameters**:
-- `technician_id=10` - Specific technician (required or returns all)
-- `campus_id=1` - Filter by campus
-- `days=30` - Time period
-
-**Response**:
-```json
-{
-  "technician": { "id": 10, "username": "tech_john" },
-  "total_assigned": 34,
-  "total_closed": 28,
-  "closure_rate": 82.4,
-  "average_resolution_time": "3.5 hours",
-  "pending_tickets": 6,
-  "escalated_tickets": 2,
-  "workload": [
-    {
-      "department": "IT",
-      "section": "Network",
-      "assigned": 15,
-      "closed": 12
-    }
-  ]
-}
-```
-
-### Manager Dashboard (Analytics-Only Role)
-
-#### Get Manager Dashboard (Managers/Admins only)
+### Manager Dashboard
 ```
 GET /api/analytics/manager/
 ```
 
-**Query parameters**:
-- `days=30` - Time period
-
-**Response** (own department across all org campuses):
+**Response** (own department across all campuses):
 ```json
 {
   "department": "ICT",
-  "organization": "Kenya School of Government",
+  "period": "Last 30 days",
   "overview": {
     "total_tickets": 342,
     "open_tickets": 47,
-    "closure_rate": 86.2,
-    "average_response_time": "2.1 hours"
+    "closure_rate": 86.2
   },
   "campuses": [
     {
@@ -864,32 +676,31 @@ GET /api/analytics/manager/
       "total": 156,
       "open": 23,
       "closure_rate": 85.5
+    },
+    {
+      "campus": "MSA",
+      "total": 186,
+      "open": 24,
+      "closure_rate": 87.1
     }
-  ],
-  "escalation_trend": [
-    { "date": "2024-01-15", "level_1": 3, "level_2": 1 }
   ],
   "sla_compliance": 92.3
 }
 ```
 
 ### HOD Dashboard
-
-#### Get HOD Dashboard (HODs/Admins only)
 ```
 GET /api/analytics/hod/
 ```
 
-**Response**: Campus-level metrics for own department
+**Response**: Campus-level metrics for own CampusDepartment.
 
 ### Section Head Dashboard
-
-#### Get Section Head Dashboard (Section Heads/Admins only)
 ```
 GET /api/analytics/section-head/
 ```
 
-**Response**: Section-specific metrics
+**Response**: Section-specific metrics.
 
 ---
 
@@ -906,17 +717,6 @@ POST /api/comments/
 }
 ```
 
-**Response** (201 Created):
-```json
-{
-  "id": 15,
-  "ticket": 1,
-  "text": "Looking into issue, will update shortly",
-  "created_by": { "id": 10, "username": "tech_john" },
-  "created_at": "2024-01-15T11:00:00Z"
-}
-```
-
 ### Submit Feedback
 
 #### Post Feedback on Resolved Ticket
@@ -926,18 +726,6 @@ POST /api/feedback/
   "ticket": 1,
   "rating": 5,
   "comment": "Technician was very helpful"
-}
-```
-
-**Response** (201 Created):
-```json
-{
-  "id": 8,
-  "ticket": 1,
-  "rating": 5,
-  "comment": "Technician was very helpful",
-  "submitted_by": { "id": 2, "username": "user_sarah" },
-  "created_at": "2024-01-15T17:30:00Z"
 }
 ```
 
@@ -986,12 +774,12 @@ POST /api/feedback/
 {
   "error": "Invalid assignment",
   "details": {
-    "assigned_to": ["Technician must have this section in their assignments"]
+    "assigned_to": ["Technician must have this section in their TechnicianSection assignments"]
   }
 }
 ```
 
-**Cross-org access attempt**:
+**Out-of-scope access attempt**:
 ```json
 {
   "error": "Access denied",
@@ -1048,7 +836,7 @@ HEADERS = {"Authorization": f"Token {TOKEN}"}
 ticket_res = requests.get(f"{BASE_URL}/tickets/1/", headers=HEADERS)
 ticket = ticket_res.json()
 
-# 2. Get available technicians
+# 2. Get available technicians for the section
 techs_res = requests.get(
     f"{BASE_URL}/technicians/?section_id={ticket['section']['id']}",
     headers=HEADERS
@@ -1100,48 +888,44 @@ async function transitionToPending(ticketId, token) {
 
 ```python
 import requests
-from datetime import datetime, timedelta
 
 TOKEN = "abc123xyz789"
 BASE_URL = "http://localhost:8000/api"
 HEADERS = {"Authorization": f"Token {TOKEN}"}
 
-# Get ticket metrics for last 7 days
-start_date = (datetime.now() - timedelta(days=7)).isoformat()
-
+# Get manager dashboard (cross-campus, own department)
 analytics_res = requests.get(
-    f"{BASE_URL}/analytics/tickets/",
-    params={
-        'timeframe': 'week',
-        'campus_id': 1,
-        'group_by': 'day'
-    },
+    f"{BASE_URL}/analytics/manager/",
+    params={'days': 30},
     headers=HEADERS
 )
 
 metrics = analytics_res.json()
-print(f"Total tickets: {metrics['total_tickets']}")
-print(f"Resolution rate: {metrics['resolution_rate']}%")
-print(f"Trends: {metrics['trend']}")
+print(f"Department: {metrics['department']}")
+print(f"Total tickets: {metrics['overview']['total_tickets']}")
+for campus in metrics['campuses']:
+    print(f"  {campus['campus']}: {campus['total']} tickets")
 ```
 
 ---
 
 ## Testing Your Integration
 
-### Postman Collection
-
-Import the HTTP requests from [test-requests.http](api/test-requests.http):
-
-1. Open Postman
-2. Import the HTTP file (File → Import)
-3. Set `baseUrl` variable to `http://localhost:8000/api`
-4. Set `token` variable after login request
-5. Run requests from the collection
-
 ### Test Credentials
 
-See [Default Credentials](DEFAULT_CREDENTIALS.md) for 20+ test accounts with different roles.
+See [Default Credentials](DEFAULT_CREDENTIALS.md) for test accounts with different roles. All fixture users share the password `adminuser123`.
+
+Key seed users:
+
+| Username | Role | Campus |
+|----------|------|--------|
+| `admin_user` | admin | NRB |
+| `manager_ict` | manager | NRB |
+| `hod_ict_nrb` | hod | NRB |
+| `hos_ict_nrb` | head_of_section | NRB |
+| `tech_alex` | technician | NRB |
+| `user_sarah` | user | NRB |
+| `user_msa` | user | MSA |
 
 ---
 
@@ -1150,7 +934,6 @@ See [Default Credentials](DEFAULT_CREDENTIALS.md) for 20+ test accounts with dif
 ### Learn More
 - **Workflow rules**: [Workflow Specification](specifications/WORKFLOW_SPEC.md)
 - **System architecture**: [Architecture Guide](ARCHITECTURE_GUIDE.md)
-- **All endpoints documented in this guide**
 - **Analytics details**: [Analytics Guide](api/ANALYTICS.md)
 
 ### Start Integrating
@@ -1161,7 +944,7 @@ See [Default Credentials](DEFAULT_CREDENTIALS.md) for 20+ test accounts with dif
 
 ---
 
-**Last Updated**: March 18, 2026  
-**Version**: 1.0  
+**Last Updated**: May 13, 2026  
+**Version**: 2.0  
 **Status**: Production Ready  
-**Compliance**: ✅ 96% (See [Compliance Audit](compliance/AUDIT_STATUS.md))
+**Compliance**: See [Compliance Audit](compliance/AUDIT_STATUS.md)

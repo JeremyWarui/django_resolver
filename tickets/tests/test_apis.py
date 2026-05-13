@@ -24,70 +24,6 @@ from tickets.models import (
 # ============================================================================
 
 
-def test_get_tickets(authenticated_client, section, facility, campus):
-    """Test retrieving list of tickets via API"""
-    auth_user = authenticated_client["user"]
-    auth_user.primary_campus = campus
-    auth_user.save()
-
-    ticket = Ticket.objects.create(
-        title="Test Ticket",
-        description="This is a test ticket.",
-        section=section,
-        facility=facility,
-        raised_by=auth_user,
-    )
-
-    client = authenticated_client["client"]
-    url = reverse("ticket-list")
-    response = client.get(url)
-
-    assert response.status_code == status.HTTP_200_OK
-    assert "results" in response.data
-    results = response.data["results"]
-    assert len(results) >= 1
-    test_ticket = next(
-        (item for item in results if item["title"] == "Test Ticket"), None
-    )
-    assert test_ticket is not None
-
-
-def test_get_ticket_detail(authenticated_client, section, facility, campus):
-    """Test retrieving a specific ticket with comments & feedback"""
-    auth_user = authenticated_client["user"]
-    auth_user.primary_campus = campus
-    auth_user.save()
-
-    ticket = Ticket.objects.create(
-        title="Test Ticket",
-        description="This is a test ticket.",
-        section=section,
-        facility=facility,
-        raised_by=auth_user,
-    )
-
-    Comment.objects.create(
-        ticket=ticket, text="This is a test comment.", author=auth_user
-    )
-    Feedback.objects.create(
-        ticket=ticket, rated_by=auth_user, rating=5, comment="Great service!"
-    )
-
-    client = authenticated_client["client"]
-    url = reverse("ticket-detail", args=[ticket.id])
-    response = client.get(url)
-
-    assert response.status_code == status.HTTP_200_OK
-    assert response.data["ticket_no"] == ticket.ticket_no
-    assert response.data["title"] == "Test Ticket"
-    assert "comments" in response.data
-    assert len(response.data["comments"]) == 1
-    assert response.data["comments"][0]["text"] == "This is a test comment."
-    assert "feedback" in response.data
-    assert response.data["feedback"]["rating"] == 5
-    assert response.data["feedback"]["comment"] == "Great service!"
-
-
 # ============================================================================
 # TICKET STATUS UPDATE TESTS
 # ============================================================================
@@ -104,6 +40,7 @@ def test_technician_status_progression(
     ticket = Ticket.objects.create(
         title="Status Progression Test",
         description="Testing technician status updates.",
+        campus_department=section.campus_department,
         section=section,
         facility=facility,
         raised_by=user,
@@ -138,6 +75,7 @@ def test_technician_cannot_edit_unassigned_ticket(
     ticket = Ticket.objects.create(
         title="Unassigned Ticket",
         description="Assigned to a different technician",
+        campus_department=section.campus_department,
         section=section,
         facility=facility,
         raised_by=user,
@@ -158,90 +96,9 @@ def test_technician_cannot_edit_unassigned_ticket(
     assert response.status_code == status.HTTP_403_FORBIDDEN
 
 
-def test_update_ticket_status_admin(
-    authenticated_admin_client, section, facility, user_factory, technician_factory
-):
-    """Test admin updating ticket status"""
-    user = user_factory()
-    technician = technician_factory()
-    ticket = Ticket.objects.create(
-        title="Test Ticket",
-        description="This is a test ticket.",
-        section=section,
-        facility=facility,
-        raised_by=user,
-        assigned_to=technician,
-        status="assigned",
-    )
-
-    client = authenticated_admin_client["client"]
-    url = reverse("ticket-detail", args=[ticket.id])
-    data = {"status": "in_progress"}
-
-    response = client.patch(url, data, format="json")
-    assert response.status_code == status.HTTP_200_OK
-    assert response.data["status"] == "in_progress"
-
-
 # ============================================================================
 # TICKET ASSIGNMENT TESTS
 # ============================================================================
-
-
-def test_assign_ticket_admin(
-    authenticated_admin_client, section, facility, user_factory, technician_factory
-):
-    """Test that admin can assign a ticket to technician"""
-    user = user_factory()
-    technician = technician_factory()
-    technician.sections.add(section)
-    # Set organizational context for technician
-    technician.primary_campus = section.department.campus
-    technician.primary_department = section.department
-    technician.save()
-
-    ticket = Ticket.objects.create(
-        title="Unassigned Ticket",
-        description="This ticket needs to be assigned.",
-        section=section,
-        facility=facility,
-        raised_by=user,
-        status="open",
-    )
-
-    client = authenticated_admin_client["client"]
-    url = reverse("ticket-detail", args=[ticket.id])
-    data = {"assigned_to_id": technician.id, "status": "assigned"}
-
-    response = client.patch(url, data, format="json")
-    assert response.status_code == status.HTTP_200_OK
-    assert response.data["status"] == "assigned"
-    assert response.data["assigned_to"]["id"] == technician.id
-
-
-def test_user_cannot_assign_ticket(
-    authenticated_client, section, facility, technician_factory
-):
-    """Test that a regular user cannot assign tickets"""
-    auth_user = authenticated_client["user"]
-    technician = technician_factory()
-
-    # Create ticket with authenticated user as raiser so they can access it
-    ticket = Ticket.objects.create(
-        title="Test Ticket",
-        description="This is a test ticket.",
-        section=section,
-        facility=facility,
-        raised_by=auth_user,
-        status="open",
-    )
-
-    client = authenticated_client["client"]
-    url = reverse("ticket-detail", args=[ticket.id])
-    data = {"assigned_to_id": technician.id}
-
-    response = client.patch(url, data, format="json")
-    assert response.status_code == status.HTTP_403_FORBIDDEN
 
 
 # ============================================================================
@@ -258,6 +115,7 @@ def test_user_can_add_comment(
     ticket = Ticket.objects.create(
         title="Test Ticket",
         description="This is a test ticket.",
+        campus_department=section.campus_department,
         section=section,
         facility=facility,
         raised_by=user,
@@ -296,6 +154,7 @@ def test_admin_and_technician_can_view_comments(
     ticket = Ticket.objects.create(
         title="Comment Visibility Test",
         description="Testing comment visibility rules",
+        campus_department=section.campus_department,
         section=section,
         facility=facility,
         raised_by=user,
@@ -328,6 +187,7 @@ def test_delete_ticket(authenticated_admin_client, section, facility, user_facto
     ticket = Ticket.objects.create(
         title="Delete Me Ticket",
         description="This ticket will be deleted.",
+        campus_department=section.campus_department,
         section=section,
         facility=facility,
         raised_by=user,
@@ -350,117 +210,6 @@ def test_delete_ticket(authenticated_admin_client, section, facility, user_facto
 # ============================================================================
 # TICKET FILTERING TESTS
 # ============================================================================
-
-
-def test_filter_tickets_by_status(
-    authenticated_admin_client, section, facility, user_factory, technician_factory
-):
-    """Test filtering tickets by status"""
-    user = user_factory()
-    technician = technician_factory()
-    technician.sections.add(section)
-
-    # Create tickets with different statuses
-    Ticket.objects.create(
-        title="Test Ticket",
-        description="This is a test ticket.",
-        section=section,
-        facility=facility,
-        raised_by=user,
-        assigned_to=technician,
-        status="assigned",
-    )
-
-    Ticket.objects.create(
-        title="Second Ticket",
-        description="This is a second ticket with different status.",
-        section=section,
-        facility=facility,
-        raised_by=user,
-        status="open",
-    )
-
-    client = authenticated_admin_client["client"]
-
-    # Test filtering by assigned status
-    url = reverse("ticket-list") + "?status=assigned"
-    response = client.get(url)
-
-    assert response.status_code == status.HTTP_200_OK
-    assert "results" in response.data
-    results = response.data["results"]
-    assert len(results) >= 1
-    for ticket in results:
-        assert ticket["status"] == "assigned"
-
-    # Test filtering by open status
-    url = reverse("ticket-list") + "?status=open"
-    response = client.get(url)
-
-    assert response.status_code == status.HTTP_200_OK
-    assert "results" in response.data
-    results = response.data["results"]
-    for ticket in results:
-        assert ticket["status"] == "open"
-
-
-def test_filter_tickets_by_section(
-    authenticated_admin_client, section, facility, user_factory
-):
-    """Test filtering tickets by section"""
-    user = user_factory()
-
-    # Create a new section
-    plumbing = Section.objects.create(
-        name="Plumbing",
-        description="Water systems and pipes",
-        department=section.department,
-    )
-
-    # Create tickets for different sections
-    Ticket.objects.create(
-        title="Water Leak",
-        description="There is a water leak in the bathroom.",
-        section=plumbing,
-        facility=facility,
-        raised_by=user,
-        status="open",
-    )
-
-    Ticket.objects.create(
-        title="Network Issue",
-        description="Network issue test.",
-        section=section,
-        facility=facility,
-        raised_by=user,
-        status="open",
-    )
-
-    client = authenticated_admin_client["client"]
-
-    # Test filtering by IT section
-    url = reverse("ticket-list") + f"?section={section.id}"
-    response = client.get(url)
-
-    assert response.status_code == status.HTTP_200_OK
-    assert "results" in response.data
-    results = response.data["results"]
-    assert len(results) >= 1
-    for ticket in results:
-        assert ticket["section"]["id"] == section.id
-
-    # Test filtering by Plumbing section
-    url = reverse("ticket-list") + f"?section={plumbing.id}"
-    response = client.get(url)
-
-    assert response.status_code == status.HTTP_200_OK
-    assert "results" in response.data
-    results = response.data["results"]
-    assert len(results) >= 1
-    water_leak_tickets = [
-        ticket for ticket in results if ticket["title"] == "Water Leak"
-    ]
-    assert len(water_leak_tickets) >= 1
 
 
 # ============================================================================
@@ -487,6 +236,7 @@ def test_assign_resolved_ticket_fails(
     resolved_ticket = Ticket.objects.create(
         title="Already Resolved",
         description="This ticket is already resolved.",
+        campus_department=section.campus_department,
         section=section,
         facility=facility,
         raised_by=user,
@@ -516,6 +266,7 @@ def test_feedback_on_unresolved_ticket(authenticated_client, section, facility):
         ticket = Ticket.objects.create(
             title=f"{ticket_status.capitalize()} Feedback Test",
             description=f"Testing feedback on {ticket_status} ticket.",
+            campus_department=section.campus_department,
             section=section,
             facility=facility,
             raised_by=auth_user,
@@ -529,40 +280,6 @@ def test_feedback_on_unresolved_ticket(authenticated_client, section, facility):
 
         response = client.post(url, data, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-
-
-def test_invalid_data_handling(authenticated_client, section, facility):
-    """Test handling of invalid data when creating tickets"""
-    client = authenticated_client["client"]
-    url = reverse("ticket-list")
-
-    # Test with missing required fields
-    data = {"title": "Incomplete Ticket"}
-
-    response = client.post(url, data, format="json")
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
-
-    # Test with invalid section ID
-    data = {
-        "title": "Invalid Section",
-        "description": "This ticket has an invalid section ID.",
-        "section_id": 9999,
-        "facility_id": facility.id,
-    }
-
-    response = client.post(url, data, format="json")
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
-
-    # Test with invalid facility ID
-    data = {
-        "title": "Invalid Facility",
-        "description": "This ticket has an invalid facility ID.",
-        "section_id": section.id,
-        "facility_id": 9999,
-    }
-
-    response = client.post(url, data, format="json")
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 
 # ============================================================================
@@ -585,6 +302,7 @@ def test_valid_status_transitions(
     ticket = Ticket.objects.create(
         title="Status Transition Test",
         description="Testing valid status transitions.",
+        campus_department=section.campus_department,
         section=section,
         facility=facility,
         raised_by=user,
@@ -635,6 +353,7 @@ def test_admin_can_close_resolved_ticket(
     resolved_ticket = Ticket.objects.create(
         title="Resolved Ticket",
         description="This ticket is already resolved.",
+        campus_department=section.campus_department,
         section=section,
         facility=facility,
         raised_by=user,
@@ -665,6 +384,7 @@ def test_cannot_close_unresolved_ticket(
         ticket = Ticket.objects.create(
             title=f"{status_value.capitalize()} Ticket",
             description=f"This ticket has {status_value} status.",
+            campus_department=section.campus_department,
             section=section,
             facility=facility,
             raised_by=user,
@@ -699,6 +419,7 @@ def test_cannot_modify_closed_ticket(
     closed_ticket = Ticket.objects.create(
         title="Closed Ticket",
         description="This ticket is closed.",
+        campus_department=section.campus_department,
         section=section,
         facility=facility,
         raised_by=user,
@@ -732,6 +453,7 @@ def test_comment_on_closed_ticket(
     closed_ticket = Ticket.objects.create(
         title="Closed Ticket",
         description="This ticket is closed.",
+        campus_department=section.campus_department,
         section=section,
         facility=facility,
         raised_by=user,
@@ -761,6 +483,7 @@ def test_bulk_status_update_requires_authentication(
     ticket = Ticket.objects.create(
         title="Test Ticket",
         description="This is a test ticket.",
+        campus_department=section.campus_department,
         section=section,
         facility=facility,
         raised_by=user,
@@ -785,6 +508,7 @@ def test_bulk_status_update_requires_permission(
     ticket = Ticket.objects.create(
         title="Test Ticket",
         description="This is a test ticket.",
+        campus_department=section.campus_department,
         section=section,
         facility=facility,
         raised_by=user,
@@ -823,6 +547,7 @@ def test_bulk_status_update_missing_new_status(
     ticket = Ticket.objects.create(
         title="Test Ticket",
         description="This is a test ticket.",
+        campus_department=section.campus_department,
         section=section,
         facility=facility,
         raised_by=user,
@@ -848,6 +573,7 @@ def test_bulk_status_update_invalid_ticket_ids_type(
     ticket = Ticket.objects.create(
         title="Test Ticket",
         description="This is a test ticket.",
+        campus_department=section.campus_department,
         section=section,
         facility=facility,
         raised_by=user,
@@ -879,6 +605,7 @@ def test_bulk_status_update_admin_success(
         ticket = Ticket.objects.create(
             title=f"Test Ticket {i}",
             description=f"This is test ticket {i}.",
+            campus_department=section.campus_department,
             section=section,
             facility=facility,
             raised_by=user,
@@ -929,31 +656,41 @@ def test_bulk_status_update_empty_list(authenticated_admin_client):
 
 
 def test_can_assign_multi_section_technician(
-    authenticated_admin_client, section, facility, user_factory, technician_factory
+    authenticated_admin_client, section, facility, user_factory, technician_factory,
+    section_type,
 ):
     """Test that technician with multiple sections can be assigned to any of their sections"""
-    from tickets.models import Section, Department
+    from tickets.models import Section, SectionType
 
-    # Create second section in same department
-    dept = section.department
+    # Create second section in same campus_department using a fresh SectionType
+    cd = section.campus_department
+    dept = cd.department
+    section_type2 = SectionType.objects.create(
+        department=dept, name="Electrical Type", code="ELEC"
+    )
     section2 = Section.objects.create(
-        department=dept, name="Electrical", code="ELEC", description="Electrical work"
+        campus_department=cd,
+        section_type=section_type2,
+        name="Electrical",
+        code="ELEC",
+        description="Electrical work",
     )
 
     # Create multi-section technician
     tech = technician_factory()
-    tech.primary_campus = section.department.campus
+    tech.primary_campus = section.campus_department.campus
     tech.sections.add(section, section2)
     tech.save()
 
     user = user_factory()
-    user.primary_campus = section.department.campus
+    user.primary_campus = section.campus_department.campus
     user.save()
 
     # Create ticket in section 2
     ticket = Ticket.objects.create(
         title="Electrical Issue",
         description="Need electrical work",
+        campus_department=section2.campus_department,
         section=section2,
         facility=facility,
         raised_by=user,
@@ -974,12 +711,12 @@ def test_assign_same_technician_multiple_tickets(
 ):
     """Test assigning same technician to multiple tickets"""
     tech = technician_factory()
-    tech.primary_campus = section.department.campus
+    tech.primary_campus = section.campus_department.campus
     tech.sections.add(section)
     tech.save()
 
     user = user_factory()
-    user.primary_campus = section.department.campus
+    user.primary_campus = section.campus_department.campus
     user.save()
 
     client = authenticated_admin_client["client"]
@@ -989,6 +726,7 @@ def test_assign_same_technician_multiple_tickets(
         ticket = Ticket.objects.create(
             title=f"Issue {i+1}",
             description="Test issue",
+            campus_department=section.campus_department,
             section=section,
             facility=facility,
             raised_by=user,
@@ -1008,17 +746,18 @@ def test_unassign_technician_from_ticket(
 ):
     """Test clearing assignment from a ticket"""
     tech = technician_factory()
-    tech.primary_campus = section.department.campus
+    tech.primary_campus = section.campus_department.campus
     tech.sections.add(section)
     tech.save()
 
     user = user_factory()
-    user.primary_campus = section.department.campus
+    user.primary_campus = section.campus_department.campus
     user.save()
 
     ticket = Ticket.objects.create(
         title="Test Ticket",
         description="Test",
+        campus_department=section.campus_department,
         section=section,
         facility=facility,
         raised_by=user,

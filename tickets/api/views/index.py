@@ -1,101 +1,98 @@
-"""
-Index file for exporting all views.
-This makes imports more convenient in other modules.
+"""Re-exports all views for convenient import in urls.py."""
 
-Consolidated views with organizational hierarchy awareness.
-"""
-
-# All views are now consolidated in views.py
-from .views import (
-    # Organization Hierarchy
-    OrganizationListCreateView,
-    OrganizationDetailView,
+from .org_views import (
     CampusListCreateView,
     CampusDetailView,
     DepartmentListCreateView,
     DepartmentDetailView,
-    # Sections
+    CampusDepartmentListCreateView,
+    CampusDepartmentDetailView,
+    AssignHODView,
     SectionListCreateView,
     SectionDetailView,
-    # Facilities
+    AssignHOSView,
     FacilityListCreateView,
     FacilityDetailView,
-    # Tickets
+)
+from .ticket_views import (
     TicketListCreateView,
+    TicketCreateView,
     TicketDetailView,
     TicketEscalationView,
     TicketCloseView,
     ApproveTicketView,
     RejectTicketView,
+    BulkTicketStatusUpdateView,
     OrganizationalTicketListView,
-    # Comments
     CommentListCreateView,
-    # Feedback
     FeedbackListCreateView,
-    # Users
+)
+from .user_views import (
     UserListCreateView,
     UserDetailView,
     TechniciansBySectionView,
     AssignableUsersView,
-    # Bulk Operations
-    BulkTicketStatusUpdateView,
-    # Phase 4: Service Catalogue
-    DepartmentTypeListView,
+)
+from .catalogue_views import (
     SectionTypeDetailView,
-    ServiceCategoryListView,
-    ServiceItemListView,
+    ServiceCategoryListCreateView,
+    ServiceCategoryDetailView,
+    ServiceItemListCreateView,
+    ServiceItemDetailView,
     ServiceCategoriesBySectionTypeView,
     ServiceItemsByCategoryView,
-    ServiceItemDetailView,
-    # Section Technician Management
+)
+from .technician_views import (
     SectionTechniciansView,
+    TechnicianSectionListCreateView,
+    TechnicianSectionDestroyView,
     AddTechnicianToSectionView,
     RemoveTechnicianFromSectionView,
 )
 
 __all__ = [
-    # Organization Hierarchy
-    "OrganizationListCreateView",
-    "OrganizationDetailView",
+    # Org hierarchy
     "CampusListCreateView",
     "CampusDetailView",
     "DepartmentListCreateView",
     "DepartmentDetailView",
-    # Sections
+    "CampusDepartmentListCreateView",
+    "CampusDepartmentDetailView",
+    "AssignHODView",
     "SectionListCreateView",
     "SectionDetailView",
-    # Facilities
+    "AssignHOSView",
     "FacilityListCreateView",
     "FacilityDetailView",
     # Tickets
     "TicketListCreateView",
+    "TicketCreateView",
     "TicketDetailView",
     "TicketEscalationView",
     "TicketCloseView",
     "ApproveTicketView",
     "RejectTicketView",
+    "BulkTicketStatusUpdateView",
     "OrganizationalTicketListView",
-    # Comments
     "CommentListCreateView",
-    # Feedback
     "FeedbackListCreateView",
     # Users
     "UserListCreateView",
     "UserDetailView",
     "TechniciansBySectionView",
     "AssignableUsersView",
-    # Bulk Operations
-    "BulkTicketStatusUpdateView",
-    # Phase 4: Service Catalogue
-    "DepartmentTypeListView",
+    # Catalogue
     "SectionTypeDetailView",
-    "ServiceCategoryListView",
-    "ServiceItemListView",
+    "ServiceCategoryListCreateView",
+    "ServiceCategoryDetailView",
+    "ServiceItemListCreateView",
+    "ServiceItemDetailView",
     "ServiceCategoriesBySectionTypeView",
     "ServiceItemsByCategoryView",
-    "ServiceItemDetailView",
-    # Section Technician Management
+    # Technician management
     "SectionTechniciansView",
+    "TechnicianSectionListCreateView",
+    "TechnicianSectionDestroyView",
     "AddTechnicianToSectionView",
     "RemoveTechnicianFromSectionView",
 ]

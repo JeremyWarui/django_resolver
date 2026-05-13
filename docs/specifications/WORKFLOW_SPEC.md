@@ -1,4 +1,4 @@
-# Ticket Management System Workflow - REVISED (March 2026)
+# Ticket Management System Workflow - REVISED (May 2026)
 
 [← Back to Index](../INDEX.md) | [Compliance Audit →](../compliance/AUDIT_STATUS.md)
 
@@ -11,24 +11,26 @@
 The system follows a hierarchical structure:
 
 ```
-Organisation
-└── Campus
-    └── Department (e.g. Administration, ICT)
-        └── Section (e.g. Electrical, Plumbing, Network Support)
+Campus  (root entity — no Organization above it)
+  └── CampusDepartment  (Campus + Department + HOD)
+        └── Section  (CampusDepartment + SectionType + HOS)
+              ├── TechnicianSection  (M2M: Technician ↔ Section)
+              └── Ticket
 ```
+
+`Department` is a **global** entity (not owned by any campus). `CampusDepartment` is the join table that binds a Department to a specific Campus and records its Head of Department.
 
 ### Rules:
 
-* A **Section belongs to a Department**
-* A **Department belongs to a Campus**
-* A **User belongs to a Campus and Department**
-* A User may optionally belong to a Section
-* **Technician MUST belong to a section** (one or more via M2M)
+* A **Section belongs to a CampusDepartment** (which links a Campus and a Department)
+* A **CampusDepartment belongs to a Campus**
+* A **User belongs to a Campus** (`primary_campus`) and may have a `primary_department`
+* **Technician MUST be linked to one or more sections** (via `TechnicianSection` M2M)
 * A **Ticket must belong to a Section**
 
 ---
 
-## 1.1 Organizational Scope & Ticket Placement (ARCHITECTURAL - NEW)
+## 1.1 Organizational Scope & Ticket Placement (ARCHITECTURAL)
 
 ### Ticket Placement: Primary Key-Based (NOT Name-Based)
 
@@ -38,37 +40,32 @@ Organisation
 
 Multiple sections can share the same name across different campuses:
 ```
-Campus MAIN → Department IT → Section "Networks" (ID=1)
-Campus WEST → Department IT → Section "Networks" (ID=5)
+Campus NRB → CampusDepartment NRB+ICT → Section "ICT Support" (ID=1)
+Campus MSA → CampusDepartment MSA+ICT → Section "ICT Support" (ID=5)
 ```
 
-These are **two different sections** with different IDs. Naming collisions cause **no ambiguity** because:
+These are **two different sections** with different IDs. Naming collisions cause **no ambiguity**.
 
-### Ticket Creation Flow:
+### Ticket Creation Flow (Catalogue-Based):
 
-1. **User authenticates** with organizational context (Campus + Department)
-   - System knows: `User.primary_campus = MAIN`
-   - System knows: `User.primary_department = IT`
+1. **User authenticates** with organizational context
+   - System knows: `User.primary_campus = NRB`
 
-2. **User selects Section** when creating ticket
-   - Frontend shows: `Section ID=1, name="Networks"`
-   - System stores: `ticket.section_id = 1` (NOT the name)
+2. **User selects Department and ServiceItem** when creating ticket
+   - Request: `{ department_id, service_item_id, title, description }`
 
-3. **Ticket belongs to Section #1**
-   - `ticket.section_id = 1` (deterministic FK to specific section)
-   - `ticket.section.department.campus_id = 1` (MAIN campus guaranteed by FK chain)
+3. **System auto-resolves org structure**
+   - `user.primary_campus` + `department_id` → finds `CampusDepartment`
+   - `service_item → category → section_type` → finds the correct `Section`
+   - `ticket.section_id = N` (deterministic FK to specific section)
 
-### Consequence:
-
-- **No naming conflicts** - sections identified by ID, not name
-- **No scope leakage** - user in MAIN campus cannot accidentally create ticket in WEST campus
-- **Organizational hierarchy is namespace** - same section name in different campuses = different records with different IDs
-- **Filters always use IDs** - `GET /api/tickets/?section_id=1` is unambiguous
+4. **Response includes resolved context**
+   - `{ ticket, campus_department, section, eligible_technicians }`
 
 ### Rules (ENFORCED):
 
 ✅ Tickets created ONLY in sections the user can access (FK validation)  
-✅ Only sections within user's campus are shown in selection (business logic filtering)  
+✅ Only sections within user's campus are eligible (business logic filtering)  
 ✅ Ticket-to-campus mapping is deterministic (derived from section FK chain)  
 ✅ No manual campus assignment needed (automatically derived)
 
@@ -80,44 +77,39 @@ These are **two different sections** with different IDs. Naming collisions cause
 
 | Role | Original Name | Responsibilities | Org Scope |
 |------|--------------|------------------|-----------|
-| **user** | Requester | Creates tickets, views own tickets, confirms/rejects resolution, closes own tickets | Section (own tickets only) |
-| **technician** | Officer/Technician | Works on assigned tickets, updates progress, marks resolved/pending, can escalate | Section (assigned + own) |
-| **head_of_section** | **Supervisor** | Assigns tickets to technicians, monitors section-level tickets, receives 24h delay alerts, acts on PENDING tickets | Department (via Section management) |
-| **hod** | Head of Department | Monitors department performance per campus, receives 48h escalations, resolves bottlenecks | Campus (department-wide) |
-| **manager** | Manager | **Analytics & Reports ONLY** - no direct ticket management access | Own department across all campuses in org |
-| **admin** | System Admin | Full system access, configuration, migrations | System (all access) |
+| **user** | Requester | Creates tickets, views own tickets, confirms/rejects resolution, closes own tickets | Own tickets only |
+| **technician** | Officer/Technician | Works on assigned tickets, updates progress, marks resolved/pending, can escalate | Sections (via TechnicianSection) |
+| **head_of_section** | Supervisor | Assigns tickets to technicians, monitors section-level tickets, receives escalation alerts, acts on PENDING tickets | Own section |
+| **hod** | Head of Department | Monitors department performance per campus, receives escalations, resolves bottlenecks | Own CampusDepartment |
+| **manager** | Manager | **Analytics & Reports ONLY** — no direct ticket list/detail access | Own department across all campuses |
+| **admin** | System Admin | Full system access, configuration, migrations | All (system-wide) |
 
-### 🔑 **KEY CLARIFICATION: Supervisor = Section Head**
+### KEY CLARIFICATION: Supervisor = Section Head
 
 **Original Spec**: Used term "Supervisor"  
-**Implementation**: Use role name `head_of_section` (more specific than generic "supervisor")  
-**Decision**: These are semantically identical:
-- Supervisor supervises a **Section** → Section Head is responsible for a **Section**
-- Supervisor assigns tickets → Section Head assigns tickets to team members
-- Supervisor acts on PENDING → Section Head resolves PENDING issues
+**Implementation**: Use role name `head_of_section`  
+These are semantically identical — `head_of_section` IS the supervisor role.
 
-> **No separate "Supervisor" role needed.** The `head_of_section` role IS the supervisor role.
+### Manager Role — ANALYTICS ONLY
 
-### Director Role - ANALYTICS ONLY (REVISED)
+**Original Spec Implied**: Manager (formerly "Director") has "global visibility across all campuses"  
+**Clarification**: Manager should NOT view individual tickets directly. Instead:
+- Manager accesses **dashboard/analytics endpoints only**
+- Manager sees **metrics, trends, SLA compliance, technician performance**
+- Manager does NOT browse individual tickets
 
-**Original Spec Implied**: Director has "global visibility across all campuses"  
-**Clarification**: Director should NOT view tickets directly. Instead:
-- Director accesses **dashboard/analytics endpoints only**
-- Director sees **metrics, trends, SLA compliance, technician performance**
-- Director does NOT browse individual tickets
-- Director role: Strategic oversight (not operational)
+**Manager does NOT see:**
+- Individual ticket details
+- Ticket status listings
+- Assigned technicians (operational detail)
 
-**Director does NOT see:**
-- ❌ Individual ticket details
-- ❌ Ticket status listings
-- ❌ Assigned technicians (operational detail)
+**Manager sees:**
+- Department-wide analytics across all campuses
+- SLA compliance reports
+- Escalation trends
+- Technician productivity metrics
 
-**Director sees:**
-- ✅ Organization-wide analytics
-- ✅ Department performance metrics
-- ✅ SLA compliance reports
-- ✅ Escalation trends
-- ✅ Technician productivity metrics
+> **Note**: There is NO "director" role. The `manager` role fulfils the strategic oversight function previously attributed to "director" in older documentation.
 
 ---
 
@@ -130,7 +122,10 @@ OPEN → ASSIGNED → IN_PROGRESS → RESOLVED → CLOSED
               ↓                      ↑
               └──→ PENDING ──────────┘
 
-ESCALATED: Parallel flag (can occur from any active state)
+pending_approval → (approve) → open
+pending_approval → (reject)  → rejected
+
+ESCALATED: Parallel flag (escalation_level tracks this)
 ```
 
 ### State Definitions:
@@ -141,7 +136,8 @@ ESCALATED: Parallel flag (can occur from any active state)
 * **PENDING**: Work blocked due to external dependency (material, approval, etc.)
 * **RESOLVED**: Work completed, awaiting user confirmation
 * **CLOSED**: User confirms resolution or admin closes
-* **ESCALATED**: Escalation in progress (status + escalation_level = state tracking)
+* **PENDING_APPROVAL**: Ticket requires approval (when `service_item.requires_approval = True`)
+* **REJECTED**: Ticket rejected during approval flow
 
 ---
 
@@ -152,26 +148,27 @@ ESCALATED: Parallel flag (can occur from any active state)
 User provides:
 * Title
 * Description
-* Department (user's department)
-* Section (responsible section)
-* Facility
-* Location
+* Department (ID)
+* ServiceItem (ID)
 
 System:
-* Assigns Campus automatically (derived from Section)
-* Status → OPEN
+* Resolves `CampusDepartment` from `user.primary_campus` + `department_id`
+* Resolves `Section` from `service_item → category → section_type`
+* Sets `due_date` from SLA cascade: `service_item.sla_hours` → `section_type.default_sla_hours` → 24h fallback
+* Status → OPEN (or PENDING_APPROVAL if `service_item.requires_approval = True`)
 * **Priority → LOW** (default)
 
 ---
 
 ### Step 2: Assignment
 
-Supervisor (Section Head):
+Section Head:
 * Views OPEN tickets in their Section
-* Assigns to Technician
+* Assigns to Technician (must be in `TechnicianSection` for this section)
 
 System:
 * Status → ASSIGNED
+* Records `assigned_at` timestamp (escalation clock starts here)
 
 ---
 
@@ -183,20 +180,13 @@ Technician:
 
 ---
 
-### Step 4: Pending (Blocked Work) - REVISED
+### Step 4: Pending (Blocked Work)
 
 Technician may mark ticket as PENDING when work cannot proceed.
 
-#### Requirements (REVISED - Now Enforced):
+#### Requirements (Enforced):
 
-* **MUST select a Pending Reason** from defined list:
-  - Material Shortage
-  - Awaiting Procurement
-  - Awaiting Approval
-  - Vendor Dependency
-  - Access Issue
-  - Other
-
+* **MUST select a Pending Reason** from defined list
 * **MUST provide a Pending Comment** (detailed explanation)
 
 #### System Actions:
@@ -204,7 +194,7 @@ Technician may mark ticket as PENDING when work cannot proceed.
 * Status → PENDING
 * `pending_reason` = selected reason
 * `pending_comment` = detailed comment
-* Notify Supervisor (via system)
+* Notify Section Head (via system)
 * Log activity in TicketLog
 * **SLA timer CONTINUES running** (PENDING does NOT pause escalation)
 
@@ -224,11 +214,11 @@ Technician:
 
 ---
 
-### Step 7: User Confirmation - REVISED (Enabled Now)
+### Step 7: User Confirmation
 
 User (Requester):
 * Reviews outcome
-* **Can now close their own ticket** ✅ (NEW)
+* **Can close their own ticket** (user closure enabled)
 
 Outcomes:
 * Accept → CLOSED (user closes own ticket)
@@ -236,11 +226,11 @@ Outcomes:
 
 User may:
 * Provide feedback
-* Provide rating (1-5 stars)
+* Provide rating (1–5 stars)
 
 ---
 
-## 5. Priority Management - NEW FEATURE
+## 5. Priority Management
 
 ### Priority Levels:
 
@@ -252,53 +242,45 @@ LOW (default) → MEDIUM (first escalation) → HIGH (second escalation) → CRI
 
 **Initial Priority**: `LOW` (default when ticket created)
 
-**On First Escalation** (T+48h):
+**On First Escalation** (T+48h from `assigned_at`):
 * Priority → `MEDIUM`
-* Status → ESCALATED
-* Escalation Level → 1 (Section Head)
+* Escalation Level → 1 (Section Head notified)
 
-**On Second Escalation** (T+72h):
+**On Second Escalation** (T+72h, 24h after first):
 * Priority → `HIGH`
-* Status → ESCALATED
-* Escalation Level → 2 (HOD)
+* Escalation Level → 2 (HOD notified)
 
 **After 72 Hours Without Resolution**:
 * Priority → `CRITICAL` (automatic, regardless of escalation level)
-* Notify system administrators
-* Mark as urgent
 
 ### Priority Usage:
 
 * **Filtering**: `GET /api/tickets/?priority=high`
 * **Sorting**: Default sort by `-priority, -created_at` (high priority first)
-* **SLA thresholds**: Based on priority (future feature)
+* **SLA thresholds**: Based on priority
 
 ---
 
-## 6. Escalation Rules (SLA) - REVISED
+## 6. Escalation Rules (SLA)
 
-### Timeline:
+### Timeline (measured from `assigned_at`, NOT `created_at`):
 
-* **After 24 Hours**: Notify Supervisor (head_of_section) - ⚠️ Advisory
-* **After 48 Hours**: Escalate to Section Head
-  - Status → ESCALATED
+* **Unassigned tickets**: NO auto-escalation — escalation clock does not start until `assigned_at` is set
+
+* **After 48 Hours from assignment**: Escalate to Section Head
   - Escalation Level → 1
   - Priority → MEDIUM
-  - Next escalation due: T+72h
-  
-* **After 72 Hours (24h after first escalation)**: Escalate to HOD
-  - Status → ESCALATED
+  - Next escalation due: T+24h more
+
+* **After 72 Hours total** (24h after first escalation): Escalate to HOD
   - Escalation Level → 2
   - Priority → HIGH
-  - Next escalation due: None (max level)
 
-* **After 72 Hours Total**: Auto-mark as CRITICAL priority
-  - Regardless of escalation level
-  - Alert system admins
+* **After 72 Hours Total Without Resolution**: Auto-mark as CRITICAL priority
 
 ### Important:
 
-* **PENDING does NOT pause SLA timers** - ticket continues to escalate
+* **PENDING does NOT pause SLA timers** — ticket continues to escalate
 * Ticket can remain PENDING indefinitely but still escalates
 * Escalation and resolution are independent
 
@@ -306,67 +288,61 @@ LOW (default) → MEDIUM (first escalation) → HIGH (second escalation) → CRI
 
 ## 7. Facility & Location Model
 
-### FacilityType
-
-* name
-
 ### Facility
 
-* name
-* type
-* campus
-* department
-* status
-
-### Location
-
-* (Stored as `location_details` string field for simplicity)
+* `name`
+* `type`
+* `section` (FK)
+* `status`
+* `location_details` (string)
+* Optional asset fields: `purchase_date`, `warranty_expiry`, `asset_value` (visible to `hod` and above)
 
 ---
 
-## 8. Ticket Data Requirements (REVISED - Fields Now Complete)
+## 8. Ticket Data Requirements
 
 Each ticket must include:
 
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
-| title | String(100) | ✅ Yes | Ticket subject |
-| description | Text(500) | ✅ Yes | Ticket details |
-| campus | FK → Campus | ✅ Yes | Derived from section.department.campus |
-| department | FK → Department | ✅ Yes | Derived from section.department |
-| section | FK → Section | ✅ Yes | Where ticket belongs |
-| facility | FK → Facility | ✅ Yes | Asset/location being worked on |
-| location_details | String(200) | ❌ Optional | Room/building specifics |
-| created_by | FK → User | ✅ Yes | Ticket creator (raised_by) |
-| assigned_to | FK → User | ❌ Optional | Technician assigned |
-| supervisor | *Derived* (via section.head_of_section) | ✅ Derived | Not stored as field |
-| status | Choice | ✅ Yes | Current state |
-| **priority** | Choice | ✅ Yes | LOW, MEDIUM, HIGH, CRITICAL |
-| pending_reason | Choice | ❌ Optional | Only when PENDING |
-| **pending_comment** | Text(500) | ❌ Optional | Only when PENDING |
-| created_at | DateTime | ✅ Auto | Auto-set |
-| updated_at | DateTime | ✅ Auto | Auto-updated |
-| resolved_at | DateTime | ❌ Optional | Set when resolved |
-| closed_at | DateTime | ❌ Optional | Set when closed |
-| escalation_level | Integer (0-2) | ✅ Yes | 0=none, 1=head_of_section, 2=hod |
-| escalated_to | FK → User | ❌ Optional | Who ticket escalated to |
-| escalated_at | DateTime | ❌ Optional | When escalation occurred |
-| escalation_reason | Text(500) | ❌ Optional | Why escalated |
+| title | String(100) | Yes | Ticket subject |
+| description | Text(500) | Yes | Ticket details |
+| section | FK → Section | Yes (derived) | Resolved from service_item + user campus |
+| facility | FK → Facility | Yes | Asset/location being worked on |
+| service_item | FK → ServiceItem | Yes | Drives section resolution and SLA |
+| form_data | JSONField | Optional | Service-specific form data |
+| due_date | DateTime | Auto | Set from SLA cascade on creation |
+| location_details | String(200) | Optional | Room/building specifics |
+| raised_by | FK → CustomUser | Auto | Ticket creator |
+| assigned_to | FK → CustomUser | Optional | Technician assigned (must be in TechnicianSection) |
+| status | Choice | Yes | Current state |
+| priority | Choice | Yes | LOW, MEDIUM, HIGH, CRITICAL |
+| pending_reason | Choice | Conditional | Required when status=PENDING |
+| pending_comment | Text(500) | Conditional | Required when status=PENDING |
+| created_at | DateTime | Auto | Auto-set |
+| updated_at | DateTime | Auto | Auto-updated |
+| assigned_at | DateTime | Optional | Set when assigned; starts escalation clock |
+| resolved_at | DateTime | Optional | Set when resolved |
+| closed_at | DateTime | Optional | Set when closed |
+| escalation_level | Integer (0-2) | Yes | 0=none, 1=head_of_section, 2=hod |
+| escalated_to | FK → CustomUser | Optional | Who ticket escalated to |
+| escalated_at | DateTime | Optional | When escalation occurred |
+| escalation_reason | Text(500) | Optional | Why escalated |
 
 ---
 
-## 9. Visibility Rules (REVISED - Director Changes)
+## 9. Visibility Rules
 
 * **Requester (user)** → own tickets only
-* **Technician** → assigned tickets + own tickets
+* **Technician** → tickets in their assigned sections (via TechnicianSection)
 * **Section Head** → all section tickets
-* **HOD** → all department tickets (per campus)
-* **Director** → **analytics dashboard only** (NOT ticket listings)
+* **HOD** → all CampusDepartment tickets (own campus + own department)
+* **Manager** → **analytics dashboard only** (NOT individual ticket listings)
 * **Admin** → full access to all data
 
 ---
 
-## 10. Pending Reason Choices - NEW
+## 10. Pending Reason Choices
 
 When ticket status = PENDING, system enforces one of:
 
@@ -385,15 +361,19 @@ PENDING_REASON_CHOICES = [
 
 ## 11. System Requirements
 
-* ✅ Role-based permissions enforced per spec
+* ✅ Role-based permissions enforced per spec (6 roles, no "director")
 * ✅ State transitions strictly validated
 * ✅ Escalation automated (hourly cron/management command)
 * ✅ All actions logged to TicketLog (audit trail)
 * ✅ PENDING does NOT pause SLA timers
 * ✅ Priority automatically escalates with ticket level
-* ✅ Users can close own resolved tickets (NEW)
-* ✅ Director role: analytics only, no ticket access (NEW)
-* ✅ Pending reason + comment required when marking PENDING (NEW)
+* ✅ Escalation clock starts at `assigned_at` (not `created_at`)
+* ✅ Unassigned tickets do NOT auto-escalate
+* ✅ Users can close own resolved tickets
+* ✅ Manager role: analytics only, no ticket access
+* ✅ Pending reason + comment required when marking PENDING
+* ✅ `ServiceItem.requires_approval` → ticket starts as `pending_approval`
+* ✅ `due_date` set from SLA cascade on ticket creation
 
 ---
 
@@ -401,19 +381,23 @@ PENDING_REASON_CHOICES = [
 
 | Change | Reason | Impact |
 |--------|--------|--------|
-| **Ticket placement via Section ID** (not name) | Deterministic scope enforcement, prevents naming collisions | API always uses section_id parameter |
-| **Organizational scope enforcement** | User in campus X → can only create tickets in sections within campus X | Frontend section selector filters by user's campus |
-| Supervisor = Section Head (role clarification) | Naming consistency with implementation | No code changes needed (semantic) |
-| Add Priority field | SLA tracking and user severity indication | Model migration required |
-| Add Pending Comment field | Spec compliance - track reason + comment separately | Model migration required |
-| Pending Reason as ENUM | Consistency and data validation | Model migration required |
-| Director: Analytics only | Operational vs Strategic separation | API endpoint changes |
-| User can close own tickets | Enable core workflow step | Service layer + endpoint changes |
-| Auto-increment priority on escalation | Better SLA tracking | Service logic update |
-| Auto-mark CRITICAL after 72h | Urgent escalation for long-standing tickets | Scheduler logic update |
+| **Campus is root** (no Organization above it) | Matches actual data model | All FK chains start at Campus |
+| **CampusDepartment join table** | Department is global; CampusDepartment links Campus + Department | Queries go through CampusDepartment |
+| **TechnicianSection M2M** (not `sections` M2M on CustomUser) | Explicit join model | Technician scope queries via TechnicianSection |
+| **Ticket placement via Section ID** (not name) | Deterministic scope enforcement | API always uses section_id parameter |
+| **Catalogue-based ticket creation** | Auto-resolves org structure | `POST /api/tickets/create/` with `{ department_id, service_item_id }` |
+| Supervisor = Section Head (role clarification) | Naming consistency | No code changes needed (semantic) |
+| "Director" renamed to "manager" | Consistent with implementation | All references to "director" removed |
+| Add Priority field | SLA tracking and user severity indication | Model field |
+| Add Pending Comment field | Spec compliance — track reason + comment separately | Model field |
+| Pending Reason as ENUM | Consistency and data validation | Model field |
+| Manager: Analytics only | Operational vs Strategic separation | Permission classes |
+| User can close own tickets | Enable core workflow step | Service layer + endpoint |
+| Auto-increment priority on escalation | Better SLA tracking | Service logic |
+| Auto-mark CRITICAL after 72h | Urgent escalation for long-standing tickets | Scheduler logic |
+| Escalation clock from `assigned_at` | Unassigned tickets should not escalate | `assigned_at` field + service validation |
 
 ---
 
-**This document is the definitive source of truth for the ticket management system.**
-**Updated: March 18, 2026**
-
+**This document is the definitive source of truth for the ticket management system.**  
+**Updated: May 13, 2026**

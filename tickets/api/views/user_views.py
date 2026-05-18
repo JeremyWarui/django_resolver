@@ -30,12 +30,55 @@ class UserListCreateView(ListCreateAPIView):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["role", "sections"]
     permission_classes = [CanManageUsers]
+    pagination_class = None
 
 
 class UserDetailView(RetrieveUpdateDestroyAPIView):
     queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
     permission_classes = [CanManageUsers]
+
+
+class TechnicianListView(generics.ListAPIView):
+    """GET /api/technicians/
+
+    Returns active technicians with their sections, campus, and department.
+    Unpaginated — intended for dropdowns, admin tables, and dashboard contexts.
+
+    Optional query params for scoping:
+        campus_department_id — only technicians in sections under this CampusDepartment
+        section_id           — only technicians assigned to this specific section
+        campus_id            — only technicians whose primary campus matches
+    """
+
+    serializer_class = UserSerializer
+    pagination_class = None
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = (
+            CustomUser.objects.filter(role="technician", is_active=True)
+            .select_related("primary_campus", "primary_department")
+            .prefetch_related("sections__campus_department__campus")
+            .order_by("primary_campus__name", "username")
+        )
+
+        campus_department_id = self.request.query_params.get("campus_department_id")
+        section_id = self.request.query_params.get("section_id")
+        section_ids = self.request.query_params.get("section_ids")  # comma-separated
+        campus_id = self.request.query_params.get("campus_id")
+
+        if campus_department_id:
+            qs = qs.filter(sections__campus_department_id=campus_department_id).distinct()
+        elif section_ids:
+            ids = [i.strip() for i in section_ids.split(",") if i.strip().isdigit()]
+            qs = qs.filter(sections__id__in=ids).distinct()
+        elif section_id:
+            qs = qs.filter(sections__id=section_id).distinct()
+        elif campus_id:
+            qs = qs.filter(primary_campus_id=campus_id).distinct()
+
+        return qs
 
 
 class TechniciansBySectionView(generics.ListAPIView):

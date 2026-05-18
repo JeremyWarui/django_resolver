@@ -21,6 +21,15 @@ from tickets.serializers import (
 from tickets.models import SectionType, ServiceCategory, ServiceItem
 
 
+class SectionTypeListView(ListAPIView):
+    """GET /service-catalogue/section-types/ — all section types with department info."""
+
+    queryset = SectionType.objects.select_related("department").order_by("department__name", "name")
+    serializer_class = SectionTypeSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = None
+
+
 class SectionTypeDetailView(generics.RetrieveAPIView):
     """Retrieve a specific section type with all its service categories and items."""
 
@@ -43,7 +52,7 @@ class ServiceCategoryListCreateView(ListCreateAPIView):
     serializer_class = ServiceCategorySerializer
     permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
     filter_backends = [DjangoFilterBackend, OrderingFilter]
-    filterset_fields = ["section_type"]
+    filterset_fields = ["section_type", "section_type__department", "is_active"]
     ordering_fields = ["order", "name"]
     ordering = ["order", "name"]
 

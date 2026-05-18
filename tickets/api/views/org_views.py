@@ -5,6 +5,7 @@ Covers: Campus, Department, CampusDepartment, Section, Facility CRUD endpoints
 plus the AssignHOD and AssignHOS actions.
 """
 
+from django.db.models import Count
 from rest_framework.generics import (
     ListCreateAPIView,
     RetrieveUpdateDestroyAPIView,
@@ -176,7 +177,7 @@ class SectionListCreateView(AdminOnlyCreateMixin, ListCreateAPIView):
             "campus_department__department",
             "section_type",
             "head_of_section",
-        )
+        ).annotate(technician_count_annotated=Count("technician_links", distinct=True))
         if user.role == "admin":
             return qs
         if user.role == "manager":

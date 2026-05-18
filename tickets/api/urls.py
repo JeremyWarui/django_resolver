@@ -37,10 +37,12 @@ from tickets.api.views.index import (
     FeedbackListCreateView,
     UserListCreateView,
     UserDetailView,
+    TechnicianListView,
     TechniciansBySectionView,
     BulkTicketStatusUpdateView,
     OrganizationalTicketListView,
     AssignableUsersView,
+    SectionTypeListView,
     SectionTypeDetailView,
     ServiceCategoriesBySectionTypeView,
     ServiceItemsByCategoryView,
@@ -53,6 +55,12 @@ from tickets.api.views.index import (
     TechnicianSectionDestroyView,
     AddTechnicianToSectionView,
     RemoveTechnicianFromSectionView,
+    TechnicianDashboardView,
+    HODDashboardView,
+    SectionHeadDashboardView,
+    ManagerDashboardView,
+    UserDashboardView,
+    AdminDashboardView,
 )
 
 # Import analytics views
@@ -63,9 +71,9 @@ from tickets.api.analytics.index import (
     AdminDashboardAnalyticsView,
 
     UserAnalyticsView,
-    ManagerDashboardView,
-    HODDashboardView,
-    SectionHeadDashboardView,
+    ManagerDashboardView as ManagerAnalyticsDashboardView,
+    HODDashboardView as HODAnalyticsDashboardView,
+    SectionHeadDashboardView as SectionHeadAnalyticsDashboardView,
     DepartmentAnalyticsView,
     HODAnalyticsView,
     HOSAnalyticsView,
@@ -88,6 +96,14 @@ urlpatterns = [
     path("auth/logout/", simple_logout, name="simple_logout"),
     path("auth/profile/", user_profile, name="user_profile"),
     path("auth/register/", register_user, name="register_user"),
+
+    # DASHBOARD ENDPOINTS (must be before generic resource routes to avoid path conflicts)
+    path("admin/me/dashboard/", AdminDashboardView.as_view(), name="admin-dashboard"),
+    path("technicians/me/dashboard/", TechnicianDashboardView.as_view(), name="technician-dashboard"),
+    path("hod/me/dashboard/", HODDashboardView.as_view(), name="hod-dashboard"),
+    path("section-head/me/dashboard/", SectionHeadDashboardView.as_view(), name="section-head-dashboard"),
+    path("manager/me/dashboard/", ManagerDashboardView.as_view(), name="manager-dashboard"),
+    path("user/me/dashboard/", UserDashboardView.as_view(), name="user-dashboard"),
     # ORGANIZATION HIERARCHY
     path("campuses/",                    CampusListCreateView.as_view(),           name="campus-list"),
     path("campuses/<int:pk>/",           CampusDetailView.as_view(),               name="campus-detail"),
@@ -180,6 +196,9 @@ urlpatterns = [
         FeedbackListCreateView.as_view(),
         name="feedback-list",
     ),
+    # TECHNICIANS
+    path("technicians/", TechnicianListView.as_view(), name="technician-list"),
+
     # USER
     path(
         "users/me/",
@@ -220,9 +239,9 @@ urlpatterns = [
     path("analytics/technicians/",                      TechnicianAnalyticsView.as_view(),          name="analytics-technicians"),
     path("analytics/technicians/me/",                   TechnicianSelfAnalyticsView.as_view(),      name="analytics-technician-self"),
     # ORGANIZATIONAL ANALYTICS ENDPOINTS
-    path("analytics/manager/",                              ManagerDashboardView.as_view(),     name="analytics-manager"),
-    path("analytics/hod/",                                 HODDashboardView.as_view(),          name="analytics-hod"),
-    path("analytics/section-head/",                        SectionHeadDashboardView.as_view(),  name="analytics-section-head"),
+    path("analytics/manager/",                              ManagerAnalyticsDashboardView.as_view(),     name="analytics-manager"),
+    path("analytics/hod/",                                 HODAnalyticsDashboardView.as_view(),          name="analytics-hod"),
+    path("analytics/section-head/",                        SectionHeadAnalyticsDashboardView.as_view(),  name="analytics-section-head"),
     path("analytics/departments/<int:pk>/",                DepartmentAnalyticsView.as_view(),   name="analytics-department"),
     path("analytics/campus-departments/<int:pk>/",         HODAnalyticsView.as_view(),          name="analytics-campus-department"),
     path("analytics/sections/<int:pk>/",                   HOSAnalyticsView.as_view(),          name="analytics-section"),
@@ -238,6 +257,7 @@ urlpatterns = [
         name="report-types",
     ),
     # SERVICE CATALOGUE
+    path("service-catalogue/section-types/",           SectionTypeListView.as_view(),             name="section-type-list"),
     path("service-catalogue/section-types/<int:pk>/",  SectionTypeDetailView.as_view(),           name="section-type-detail"),
     path("service-catalogue/service-categories/",      ServiceCategoryListCreateView.as_view(),   name="service-category-list"),
     path("service-catalogue/service-categories/<int:pk>/", ServiceCategoryDetailView.as_view(),   name="service-category-detail"),

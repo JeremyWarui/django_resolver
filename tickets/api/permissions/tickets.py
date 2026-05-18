@@ -121,3 +121,38 @@ class IsOwnerOrTechnicianOrAdmin(permissions.BasePermission):
             return True
 
         return False
+
+
+class CanCloseTicket(permissions.BasePermission):
+    """
+    Permission for closing tickets.
+
+    Allowed for:
+    - Users can close their own tickets (raised_by == user)
+    - Admins can close any ticket
+
+    Note: Ticket closure is restricted to users (customers) closing their own tickets
+    and admins. Technicians, HOD, HOS, and managers should use status updates instead
+    if they need to modify ticket state.
+    """
+
+    def has_permission(self, request, view):
+        return request.user.is_authenticated
+
+    def has_object_permission(self, request, view, obj):
+        user = request.user
+
+        # Admin can close any ticket
+        if user.role == "admin":
+            return True
+
+        # For tickets only
+        if not isinstance(obj, Ticket):
+            return False
+
+        # User can close their own tickets (tickets they raised)
+        if user.role == "user":
+            return obj.raised_by == user
+
+        # No other roles can close tickets
+        return False

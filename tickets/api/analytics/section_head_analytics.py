@@ -90,7 +90,8 @@ class SectionHeadAnalytics:
     @staticmethod
     def _compute_multi_section(user, sections, days: int) -> dict:
         since = timezone.now() - timedelta(days=days)
-        base_qs = Ticket.objects.filter(section__in=sections, created_at__gte=since)
+        all_qs = Ticket.objects.filter(section__in=sections)
+        base_qs = all_qs.filter(created_at__gte=since)
 
         section_ids = list(sections.values_list("id", flat=True))
         section_rows = (
@@ -139,7 +140,7 @@ class SectionHeadAnalytics:
                 "sections_count": sections.count(),
             },
             "period_days": days,
-            "overview": SectionHeadAnalytics._overview(base_qs),
+            "overview": SectionHeadAnalytics._overview(all_qs),
             "by_section": by_section,
             "technician_workload": SectionHeadAnalytics._technician_workload(base_qs),
             "pending_reasons": SectionHeadAnalytics._pending_reasons(base_qs),

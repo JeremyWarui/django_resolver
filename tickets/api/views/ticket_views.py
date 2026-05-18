@@ -31,6 +31,7 @@ from tickets.api.permissions import (
     CanEscalateTickets,
     CanManageUsers,
     CanViewAndEditTickets,
+    CanCloseTicket,
 )
 from tickets.serializers import (
     TicketSerializer,
@@ -497,19 +498,23 @@ class TicketEscalationView(CreateAPIView):
 
 class TicketCloseView(CreateAPIView):
     """
-    Close a resolved ticket.
+    Close a ticket (customer feedback endpoint).
 
     POST /api/tickets/{ticket_id}/close/
     {
         "closure_notes": "Issue resolved successfully"
     }
 
-    Permission:
-    - Ticket raiser (user who created the ticket) can close their own tickets
-    - Admin/Manager roles can close any resolved ticket
+    Permission (CanCloseTicket):
+    - Users (customers) can close their own tickets (raised_by == user)
+    - Admins can close any ticket
+    - Other roles (technician, hod, hos, manager) should use status updates via
+      PATCH /api/tickets/<id>/ to change ticket state.
+
+    This endpoint is primarily for customers to confirm ticket closure/satisfaction.
     """
 
-    permission_classes = [IsWithinOrganizationalScope]
+    permission_classes = [IsAuthenticated, CanCloseTicket]
     serializer_class = TicketSerializer
 
     def create(self, request, *args, **kwargs):

@@ -38,6 +38,7 @@ class SectionSerializer(serializers.ModelSerializer):
     section_type_name = serializers.CharField(source="section_type.name", read_only=True)
     head_of_section = serializers.SerializerMethodField()
     effective_sla_hours = serializers.IntegerField(read_only=True)
+    technician_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Section
@@ -54,10 +55,17 @@ class SectionSerializer(serializers.ModelSerializer):
             "sla_hours",
             "effective_sla_hours",
             "head_of_section",
+            "technician_count",
         ]
 
     def get_head_of_section(self, obj):
         return format_user_info(obj.head_of_section)
+
+    def get_technician_count(self, obj):
+        # Use annotated value if available (avoids N+1), otherwise query
+        if hasattr(obj, "technician_count_annotated"):
+            return obj.technician_count_annotated
+        return obj.technician_links.count()
 
 
 class SectionTypeSerializer(serializers.ModelSerializer):

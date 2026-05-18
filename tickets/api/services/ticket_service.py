@@ -575,10 +575,9 @@ class TicketService:
                 queryset = Ticket.objects.none()
 
         elif user.role == "hod":
-            if user.primary_campus:
-                queryset = Ticket.objects.filter(
-                    campus_department__campus=user.primary_campus
-                )
+            campus_dept = user.primary_campus_department
+            if campus_dept:
+                queryset = Ticket.objects.filter(campus_department=campus_dept)
             else:
                 queryset = Ticket.objects.none()
 
@@ -586,11 +585,12 @@ class TicketService:
             queryset = Ticket.objects.filter(section__head_of_section=user)
 
         elif user.role == "technician":
+            # Union of three querysets — distinct() required to prevent duplicates.
             queryset = (
                 Ticket.objects.filter(section__in=user.sections.all())
                 | Ticket.objects.filter(assigned_to=user)
                 | Ticket.objects.filter(raised_by=user)
-            )
+            ).distinct()
 
         else:  # user
             queryset = Ticket.objects.filter(raised_by=user)
@@ -605,22 +605,18 @@ class TicketService:
             if "escalation_level" in filters:
                 queryset = queryset.filter(escalation_level=filters["escalation_level"])
 
-        return (
-            queryset.select_related(
-                "campus_department__campus",
-                "campus_department__department",
-                "campus_department__head_of_department",
-                "section__head_of_section",
-                "section__section_type",
-                "facility",
-                "raised_by",
-                "assigned_to",
-                "escalated_to",
-                "service_item",
-            )
-            .distinct()
-            .order_by("-created_at")
-        )
+        return queryset.select_related(
+            "campus_department__campus",
+            "campus_department__department",
+            "campus_department__head_of_department",
+            "section__head_of_section",
+            "section__section_type",
+            "facility",
+            "raised_by",
+            "assigned_to",
+            "escalated_to",
+            "service_item",
+        ).order_by("-created_at")
 
     # =========================================================================
     # COMMENTS

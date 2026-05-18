@@ -5,6 +5,7 @@ from .tickets import (
     CanAssignTickets,
     CanEscalateTickets,
     IsOwnerOrTechnicianOrAdmin,
+    CanCloseTicket,
 )
 from .users import CanManageUsers, IsTechnicianOrAdmin, CanViewAnalytics
 
@@ -15,6 +16,7 @@ __all__ = [
     "CanViewAndEditTickets",
     "CanAssignTickets",
     "CanEscalateTickets",
+    "CanCloseTicket",
     "IsOwnerOrTechnicianOrAdmin",
     "CanManageUsers",
     "IsTechnicianOrAdmin",

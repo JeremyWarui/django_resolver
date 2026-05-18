@@ -6,7 +6,7 @@ from django.db.models import Avg, Count, DurationField, ExpressionWrapper, F, Q
 from django.db.models.functions import TruncDay
 from django.utils import timezone
 
-from tickets.models import Ticket, CustomUser, Section
+from tickets.models import Ticket, CustomUser, Section, TechnicianSection
 from .base_analytics import (
     ACTIVE_STATUSES,
     TERMINAL_STATUSES,
@@ -44,13 +44,15 @@ class HODAnalytics:
         campus = campus_department.campus
         department = campus_department.department
 
-        base_qs = Ticket.objects.filter(
-            campus_department=campus_department,
-            created_at__gte=since,
-        )
+        # All tickets for this campus department (no date window) — used for
+        # live status counts that must match the ticket table.
+        all_qs = Ticket.objects.filter(campus_department=campus_department)
 
-        # ── 1. Overview ───────────────────────────────────────────────────────
-        agg = base_qs.aggregate(
+        # Time-windowed subset — used for trend, SLA, and section/technician analytics.
+        base_qs = all_qs.filter(created_at__gte=since)
+
+        # ── 1. Overview (all-time counts so stat cards match the ticket table) ─
+        agg = all_qs.aggregate(
             total=Count("id"),
             open_count=Count("id", filter=Q(status__in=ACTIVE_STATUSES)),
             closed_count=Count("id", filter=Q(status__in=TERMINAL_STATUSES)),
@@ -157,6 +159,18 @@ class HODAnalytics:
             )
             .order_by("-open_count", "-total_assigned")
         )
+        tech_ids = [row["technician_id"] for row in workload_rows]
+        tech_sections: dict[int, list[dict]] = {}
+        for ts in TechnicianSection.objects.filter(
+            technician_id__in=tech_ids,
+            section__campus_department=campus_department,
+        ).values("technician_id", "section__id", "section__name", "section__code"):
+            tech_sections.setdefault(ts["technician_id"], []).append({
+                "id": ts["section__id"],
+                "name": ts["section__name"],
+                "code": ts["section__code"],
+            })
+
         technician_workload = [
             {
                 "technician": {
@@ -164,6 +178,7 @@ class HODAnalytics:
                     "username": row["username"],
                     "name": f"{row['first_name']} {row['last_name']}".strip() or row["username"],
                 },
+                "sections": tech_sections.get(row["technician_id"], []),
                 "total_assigned": row["total_assigned"],
                 "open": row["open_count"],
                 "resolved": row["resolved_count"],

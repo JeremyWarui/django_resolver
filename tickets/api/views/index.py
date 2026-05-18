@@ -30,10 +30,12 @@ from .ticket_views import (
 from .user_views import (
     UserListCreateView,
     UserDetailView,
+    TechnicianListView,
     TechniciansBySectionView,
     AssignableUsersView,
 )
 from .catalogue_views import (
+    SectionTypeListView,
     SectionTypeDetailView,
     ServiceCategoryListCreateView,
     ServiceCategoryDetailView,
@@ -49,6 +51,12 @@ from .technician_views import (
     AddTechnicianToSectionView,
     RemoveTechnicianFromSectionView,
 )
+from .technician_dashboard_view import TechnicianDashboardView
+from .hod_dashboard_view import HODDashboardView
+from .section_head_dashboard_view import SectionHeadDashboardView
+from .manager_dashboard_view import ManagerDashboardView
+from .user_dashboard_view import UserDashboardView
+from .admin_dashboard_view import AdminDashboardView
 
 __all__ = [
     # Org hierarchy
@@ -95,4 +103,11 @@ __all__ = [
     "TechnicianSectionDestroyView",
     "AddTechnicianToSectionView",
     "RemoveTechnicianFromSectionView",
+    # Dashboard endpoints
+    "TechnicianDashboardView",
+    "HODDashboardView",
+    "SectionHeadDashboardView",
+    "ManagerDashboardView",
+    "UserDashboardView",
+    "AdminDashboardView",
 ]

@@ -1,1 +1,0 @@
-"""Views package for the tickets app API."""

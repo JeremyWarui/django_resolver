@@ -34,6 +34,17 @@
 ### Architecture
 - [Architecture Guide](ARCHITECTURE_GUIDE.md) — System design, org hierarchy, service layer, request flow
 
+### Code Layout
+- `apps/` — main Django apps and domain split. Key apps in this repo:
+      - `accounts` — users, profiles, JWT auth, `RoleAssignment`
+      - `org` — Campus, Department, CampusDepartment, Section, SectionTechnician
+      - `catalog` — ServiceCategory, ServiceItem, catalogue visibility
+      - `sla` — Priority, EscalationRule, escalation engine
+      - `facilities` — FacilityType, Facility registry, location validators
+      - `tickets` — Ticket, TicketLocation, TicketLog, TicketComment, TicketFeedback, services
+      - `analytics` — read-only aggregation endpoints
+      - `realtime` — Django Channels consumers and WS utilities
+      - `common` — shared helpers, permissions, pagination
 ### Specifications
 - [Workflow Specification](specifications/WORKFLOW_SPEC.md) — Ticket state machine, transition rules, role permissions
 

@@ -29,9 +29,9 @@
 ### Technology Stack
 - **Framework**: Django 6.0.3 + Django REST Framework 3.16.1
 - **Database**: PostgreSQL 12+
-- **Authentication**: Token-based (password-based login)
+- **Authentication**: JWT (access + refresh), e.g. SimpleJWT — used for REST and WebSocket auth
 - **API Style**: REST with JSON requests/responses
-- **Testing**: pytest with ~258 test cases
+- **Testing**: pytest
 
 ### Core Purpose
 Enterprise-grade REST API for managing maintenance tickets in organizations with multi-level hierarchies (Campus → CampusDepartment → Section).
@@ -345,23 +345,25 @@ Automatic derivation:
 
 ## Authentication Flow
 
-### Password-Based Login (Current)
+### Authentication Flow (JWT)
 
 ```
-1. Client POST /api/auth/login/
-   {username, password}
-   ↓
-2. Django auth backend validates credentials
-   ↓
-3. Token created/retrieved from Token model
-   ↓
-4. Response: {token, user_data}
-   ↓
-5. Client uses: Authorization: Token {token}
-   for all subsequent requests
+1. Client POST /api/auth/login/ (username + password)
+  ↓
+2. Auth backend validates credentials
+  ↓
+3. Server returns JSON with `access` and `refresh` JWTs and user profile
+  {
+    "access": "<jwt-access-token>",
+    "refresh": "<jwt-refresh-token>",
+    "user": { ... }
+  }
+  ↓
+4. Client sends requests with `Authorization: Bearer <access>` header
+  (access tokens are short-lived; refresh tokens are used to obtain new access tokens)
 ```
 
-**All roles use password login** — determined by `user.role` field.
+The same access token authenticates WebSocket handshakes for Channels; refresh is used via `/api/auth/refresh/` to rotate access tokens.
 
 ### Magic Link (Future)
 

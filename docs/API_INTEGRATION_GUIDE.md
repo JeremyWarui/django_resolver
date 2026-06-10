@@ -32,25 +32,27 @@
 # 1. Get test credentials from docs/DEFAULT_CREDENTIALS.md
 # Example: username=user_sarah, password=adminuser123
 
-# 2. Login and get token
+# 2. Login and get JWT tokens
 curl -X POST http://localhost:8000/api/auth/login/ \
   -H "Content-Type: application/json" \
   -d '{"username":"user_sarah","password":"adminuser123"}'
 
-# Response:
+# Response (example):
 {
-  "token": "abc123xyz789...",
+  "access": "<jwt-access-token>",
+  "refresh": "<jwt-refresh-token>",
   "user": {
     "id": 2,
     "username": "user_sarah",
     "email": "jane@example.com",
-    "role": "user"
+    "role": "user",
+    "primary_campus": {"id":1, "code":"NRB"}
   }
 }
 
-# 3. Use token in all API requests
+# 3. Use the access token in API requests (Bearer)
 curl http://localhost:8000/api/tickets/ \
-  -H "Authorization: Token abc123xyz789..."
+  -H "Authorization: Bearer <jwt-access-token>"
 ```
 
 ### API Base URL
@@ -61,16 +63,19 @@ curl http://localhost:8000/api/tickets/ \
 
 ## Authentication
 
-### Password-Based Login (Current)
+### Authentication (JWT)
 
-All users authenticate using username and password credentials.
+Users authenticate with username/password and receive JWT `access` and `refresh` tokens.
 
-#### Endpoint
+#### Endpoints
+
 ```
-POST /api/auth/login/
+POST /api/auth/login/      # returns { access, refresh, user }
+POST /api/auth/refresh/    # accepts { refresh } -> returns new access
+POST /api/auth/logout/     # optional: blacklist refresh token
 ```
 
-#### Request
+#### Request (login)
 ```json
 {
   "username": "user_sarah",
@@ -81,42 +86,24 @@ POST /api/auth/login/
 #### Response (200 OK)
 ```json
 {
-  "token": "abc123xyz789...",
-  "user": {
-    "id": 2,
-    "username": "user_sarah",
-    "email": "jane@example.com",
-    "first_name": "Jane",
-    "last_name": "Doe",
-    "role": "user",
-    "primary_campus": {
-      "id": 1,
-      "name": "Nairobi Campus",
-      "code": "NRB"
-    }
-  }
+  "access": "<jwt-access-token>",
+  "refresh": "<jwt-refresh-token>",
+  "user": { ... }
 }
 ```
 
-#### Error (401 Unauthorized)
-```json
-{
-  "error": "Invalid credentials"
-}
-```
+#### Using the access token in requests
 
-### Using Token in Requests
-
-All API endpoints require authentication via **Bearer Token**:
+All API endpoints require the access token in the `Authorization` header as a Bearer token:
 
 ```
-Authorization: Token {token}
+Authorization: Bearer {access}
 ```
 
 **Example with curl**:
 ```bash
 curl http://localhost:8000/api/tickets/ \
-  -H "Authorization: Token abc123xyz789..."
+  -H "Authorization: Bearer <jwt-access-token>"
 ```
 
 **Example with JavaScript fetch**:

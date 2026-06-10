@@ -368,7 +368,7 @@ These analytics endpoints are designed to provide data for dashboard visualizati
 ```javascript
 // Get manager dashboard for their department across all campuses
 fetch('/api/analytics/manager/?days=30', {
-  headers: {'Authorization': `Token ${token}`}
+  headers: {'Authorization': `Bearer ${token}`}
 })
 .then(r => r.json())
 .then(data => {

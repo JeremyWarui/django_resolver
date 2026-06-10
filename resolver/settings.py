@@ -12,11 +12,11 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 import os
 import dj_database_url
+from datetime import timedelta
 from dotenv import load_dotenv
 
 from pathlib import Path
 
-from tickets.apps import TicketsConfig
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -38,25 +38,50 @@ ALLOWED_HOSTS = ["127.0.0.1", "localhost", "django-resolver.onrender.com"]
 INSTALLED_APPS = [
     # Modern admin interface (must be before django.contrib.admin)
     "unfold",
-    "unfold.contrib.filters",  # Optional but recommended
-    "unfold.contrib.forms",  # Optional but recommended
+    "unfold.contrib.filters",
+    "unfold.contrib.forms",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    # add tickets app
-    "tickets.apps.TicketsConfig",
-    # add django rest framework
+    # 8-app domain layer
+    "apps.common",
+    "apps.accounts",
+    "apps.org",
+    "apps.catalog",
+    "apps.sla",
+    "apps.facilities",
+    "apps.tickets",
+    "apps.analytics",
+    "apps.realtime",
+    # third-party
     "rest_framework",
-    "rest_framework.authtoken",  # Re-enabled for token authentication
+    "rest_framework.authtoken",
+    "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
     "django_filters",
-    # add CORS headers
     "corsheaders",
-    # add whitenoise for static files
     "whitenoise.runserver_nostatic",
 ]
+
+# ── Django Channels — only activate when the package is installed ──────────────
+# Install with: pip install channels channels-redis daphne
+try:
+    import channels  # noqa: F401
+    INSTALLED_APPS += ["channels"]
+    ASGI_APPLICATION = "resolver.asgi.application"
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [os.getenv("REDIS_URL", "redis://localhost:6379")],
+            },
+        }
+    }
+except ImportError:
+    pass
 
 # Django Unfold Admin Configuration
 UNFOLD = {
@@ -66,8 +91,8 @@ UNFOLD = {
     "SITE_SYMBOL": "🎫",  # Ticket emoji for branding
     "SHOW_HISTORY": True,
     "SHOW_VIEW_ON_SITE": True,
-    "ENVIRONMENT": "tickets.admin.environment_callback",
-    "DASHBOARD_CALLBACK": "tickets.admin.dashboard_callback",
+    "ENVIRONMENT": "apps.common.admin.environment_callback",
+    "DASHBOARD_CALLBACK": "apps.common.admin.dashboard_callback",
     "SIDEBAR": {
         "show_search": True,
         "show_all_applications": True,
@@ -91,7 +116,7 @@ UNFOLD = {
                         "title": "Tickets",
                         "icon": "assignment",
                         "link": "/admin/tickets/ticket/",
-                        "badge": "tickets.admin.ticket_count_badge",
+                        "badge": "apps.common.admin.ticket_count_badge",
                     },
                     {
                         "title": "Comments",
@@ -113,7 +138,7 @@ UNFOLD = {
                         "title": "Users",
                         "icon": "people",
                         "link": "/admin/tickets/customuser/",
-                        "badge": "tickets.admin.user_count_badge",
+                        "badge": "apps.common.admin.user_count_badge",
                     },
                     {
                         "title": "Sections",
@@ -124,7 +149,7 @@ UNFOLD = {
                         "title": "Facilities",
                         "icon": "business",
                         "link": "/admin/tickets/facility/",
-                        "badge": "tickets.admin.facility_count_badge",
+                        "badge": "apps.common.admin.facility_count_badge",
                     },
                 ],
             },
@@ -155,8 +180,7 @@ CACHES = {
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework.authentication.TokenAuthentication",
-        "rest_framework.authentication.SessionAuthentication",  # For DRF web interface
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
@@ -167,7 +191,7 @@ REST_FRAMEWORK = {
 }
 
 
-AUTH_USER_MODEL = "tickets.CustomUser"
+AUTH_USER_MODEL = "accounts.CustomUser"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -210,7 +234,7 @@ if os.getenv("DATABASE_URL"):
     DATABASES = {
         "default": dj_database_url.config(
             default=os.getenv("DATABASE_URL"),
-            conn_max_age=600,
+            conn_max_age=0,
             conn_health_checks=True,
         )
     }
@@ -223,6 +247,16 @@ else:
             "PASSWORD": os.getenv("DB_PASSWORD"),
             "HOST": os.getenv("DB_HOST"),
             "PORT": os.getenv("DB_PORT"),
+            # CONN_MAX_AGE=0: let Neon's pooler manage connection reuse.
+            # Keeping connections alive in Django (300s) matched Neon's 5-min suspend
+            # window exactly, causing DNS-resolution failures on reconnect after idle.
+            "CONN_MAX_AGE": 0,
+            "CONN_HEALTH_CHECKS": True,
+            # Use fast in-memory SQLite for the test runner to avoid Neon remote latency
+            "TEST": {
+                "ENGINE": "django.db.backends.sqlite3",
+                "NAME": ":memory:",
+            },
         }
     }
 
@@ -361,3 +395,19 @@ TOKEN_EXPIRY_HOURS = {
 
 # Magic Link Configuration
 MAGIC_LINK_EXPIRY_MINUTES = 15
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "UPDATE_LAST_LOGIN": False,
+    "ALGORITHM": "HS256",
+    "SIGNING_KEY": SECRET_KEY,
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "sub",
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
+    "TOKEN_TYPE_CLAIM": "token_type",
+    "JTI_CLAIM": "jti",
+}

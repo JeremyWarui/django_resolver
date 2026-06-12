@@ -66,11 +66,12 @@ INSTALLED_APPS = [
     "whitenoise.runserver_nostatic",
 ]
 
-# ── Django Channels — only activate when the package is installed ──────────────
-# Install with: pip install channels channels-redis daphne
+# ── Django Channels + Daphne (ASGI) ───────────────────────────────────────────
+# daphne in INSTALLED_APPS makes `runserver` serve ASGI automatically —
+# no separate `daphne` command needed in development.
 try:
     import channels  # noqa: F401
-    INSTALLED_APPS += ["channels"]
+    INSTALLED_APPS = ["daphne"] + INSTALLED_APPS + ["channels"]
     ASGI_APPLICATION = "resolver.asgi.application"
     CHANNEL_LAYERS = {
         "default": {

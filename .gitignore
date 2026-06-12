@@ -58,6 +58,8 @@ docs/api/test-requests.http
 
 # Claude Code local settings (project settings.json is tracked)
 .claude/settings.local.json
+.claude/scheduled_tasks.lock
+.claude/worktrees/
 
 # IDEs / Editors
 .vscode/

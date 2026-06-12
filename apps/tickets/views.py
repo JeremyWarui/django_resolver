@@ -19,6 +19,11 @@ from apps.tickets.services.lifecycle import transition_status, TransitionError
 from apps.tickets.services.scope import scoped_ticket_qs
 from apps.common.pagination import AppendOnlyFeedPagination, TicketFeedPagination
 from apps.common.permissions import get_request_role
+from apps.realtime.ws_utils import (
+    emit_ticket_created,
+    emit_ticket_assigned,
+    emit_comment_added,
+)
 
 
 class TicketLogSerializer(drf_serializers.ModelSerializer):
@@ -43,6 +48,7 @@ class TicketCreateView(CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         ticket = serializer.save()
+        emit_ticket_created(ticket)
         return Response(
             {"id": ticket.id, "ticket_no": ticket.ticket_no},
             status=status.HTTP_201_CREATED,
@@ -97,6 +103,7 @@ class TicketAssignView(APIView):
             from_value=old_status if old_status == "open" else "",
             to_value=str(assignee.pk),
         )
+        emit_ticket_assigned(ticket)
 
         return Response({"assigned_to": assignee.pk, "status": ticket.status}, status=200)
 
@@ -122,6 +129,7 @@ class TicketCommentListCreateView(generics.ListCreateAPIView):
             event_type="comment_added",
             to_value=str(serializer.instance.pk),
         )
+        emit_comment_added(ticket, serializer.instance)
 
 
 class TicketFeedbackView(APIView):
@@ -194,6 +202,7 @@ class TicketListCreateView(generics.ListCreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         ticket = serializer.save()
+        emit_ticket_created(ticket)
         return Response(
             {"id": ticket.id, "ticket_no": ticket.ticket_no},
             status=status.HTTP_201_CREATED,

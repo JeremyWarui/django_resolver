@@ -1,6 +1,7 @@
 from django.utils import timezone
 
 from apps.tickets.models import TicketLog
+from apps.realtime.ws_utils import emit_ticket_status_changed, emit_ticket_resolved
 
 ALLOWED = {
     "open":        {"assigned"},
@@ -79,5 +80,10 @@ def transition_status(ticket, new_status, actor, reason=""):
         to_value=new_status,
         reason=reason,
     )
+
+    if new_status == "resolved":
+        emit_ticket_resolved(ticket)
+    else:
+        emit_ticket_status_changed(ticket, old_status)
 
     return ticket

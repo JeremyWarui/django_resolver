@@ -90,6 +90,8 @@ def run_escalation_for_ticket(ticket, now, rules):
                 to_value=rule.to_level,
                 level_user=holder,
             )
+            from apps.realtime.ws_utils import emit_ticket_escalated
+            emit_ticket_escalated(ticket)
             return True
 
     return False

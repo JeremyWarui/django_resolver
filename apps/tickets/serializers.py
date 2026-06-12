@@ -68,6 +68,7 @@ class TicketReadSerializer(serializers.ModelSerializer):
     priority = _PriorityMinSerializer(read_only=True)
     assigned_to = _UserMinSerializer(read_only=True, allow_null=True)
     raised_by = _UserMinSerializer(read_only=True)
+    raised_by_id = serializers.IntegerField(read_only=True)
     requester_campus = _CampusMinSerializer(read_only=True)
     is_breaching = serializers.SerializerMethodField()
 
@@ -77,6 +78,7 @@ class TicketReadSerializer(serializers.ModelSerializer):
             "id",
             "ticket_no",
             "raised_by",
+            "raised_by_id",
             "requester_campus",
             "service_item",
             "section",

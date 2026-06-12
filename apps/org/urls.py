@@ -6,6 +6,7 @@ from apps.org.views import (
     CampusViewSet,
     DepartmentViewSet,
     ScopedTechnicianRosterView,
+    SectionAssignableTechniciansView,
     SectionTechnicianViewSet,
     SectionTypeViewSet,
     SectionViewSet,
@@ -23,6 +24,11 @@ urlpatterns = router.urls + [
         "technicians/",
         ScopedTechnicianRosterView.as_view(),
         name="scoped-technician-roster",
+    ),
+    path(
+        "sections/<int:section_pk>/assignable-technicians/",
+        SectionAssignableTechniciansView.as_view(),
+        name="section-assignable-technicians",
     ),
     path(
         "sections/<int:section_pk>/technicians/",

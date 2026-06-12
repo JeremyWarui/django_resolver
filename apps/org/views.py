@@ -176,3 +176,31 @@ class ScopedTechnicianRosterView(APIView):
                 entry["primary_department_name"] = dept.name
 
         return Response(sorted(techs.values(), key=lambda t: t["name"].lower()))
+
+
+class SectionAssignableTechniciansView(APIView):
+    """Lightweight read-only list of users assignable to tickets in a section.
+
+    Returns User objects keyed by user.id — not SectionTechnician link records.
+    Accessible to any authenticated user so HOS/technician roles can use the
+    assignment modal.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, section_pk):
+        links = (
+            SectionTechnician.objects.filter(section_id=section_pk)
+            .select_related("user")
+            .order_by("user__first_name", "user__last_name", "user__username")
+        )
+        data = [
+            {
+                "id": link.user.id,
+                "username": link.user.username,
+                "first_name": link.user.first_name,
+                "last_name": link.user.last_name,
+            }
+            for link in links
+        ]
+        return Response(data)

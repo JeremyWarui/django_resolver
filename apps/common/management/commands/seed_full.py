@@ -169,11 +169,11 @@ USERS = [
     # KSM technicians
     ("ksm_ict_syssupp_tech1", "Erick",     "Okoth",       "ksm.ict.syssupp.tech1@ksg.local", "KSM"),
     # Requesters
-    ("requester1",            "Alice",     "Kamau",       "requester1@ksg.local",            "NRB"),
-    ("requester2",            "Bob",       "Mwenda",      "requester2@ksg.local",            "MSA"),
-    ("requester3",            "Carol",     "Njoki",       "requester3@ksg.local",            "NRB"),
-    ("requester4",            "David",     "Ochieng",     "requester4@ksg.local",            "KSM"),
-    ("requester5",            "Eve",       "Wanjiru",     "requester5@ksg.local",            "NRB"),
+    ("alice.kamau",           "Alice",     "Kamau",       "alice.kamau@ksg.local",           "NRB"),
+    ("bob.mwenda",            "Bob",       "Mwenda",      "bob.mwenda@ksg.local",            "MSA"),
+    ("carol.njoki",           "Carol",     "Njoki",       "carol.njoki@ksg.local",           "NRB"),
+    ("david.ochieng",         "David",     "Ochieng",     "david.ochieng@ksg.local",         "KSM"),
+    ("eve.wanjiru",           "Eve",       "Wanjiru",     "eve.wanjiru@ksg.local",           "NRB"),
 ]
 
 # (campus_code, dept_code, hod_username)
@@ -272,11 +272,11 @@ ROLE_ASSIGNMENTS = [
     ("msa_ict_net_tech1",     "technician", "section", ("MSA", "ICT", "NET")),
     ("ksm_ict_syssupp_tech1", "technician", "section", ("KSM", "ICT", "SYSSUPP")),
     # Requesters
-    ("requester1", "user", "none", None),
-    ("requester2", "user", "none", None),
-    ("requester3", "user", "none", None),
-    ("requester4", "user", "none", None),
-    ("requester5", "user", "none", None),
+    ("alice.kamau",   "user", "none", None),
+    ("bob.mwenda",    "user", "none", None),
+    ("carol.njoki",   "user", "none", None),
+    ("david.ochieng", "user", "none", None),
+    ("eve.wanjiru",   "user", "none", None),
 ]
 
 # ---------------------------------------------------------------------------
@@ -631,7 +631,7 @@ class Command(BaseCommand):
 
         # T01 — open, unassigned (today)
         t01 = make_ticket(
-            raised_by=u["requester1"], requester_campus=nrb,
+            raised_by=u["alice.kamau"], requester_campus=nrb,
             service_item=plumbing, priority=p[2], section=s_adm_maint,
             status="open", current_level="technician", assigned_to=None,
             response_due_at=d(0) + timedelta(minutes=240),
@@ -643,7 +643,7 @@ class Command(BaseCommand):
 
         # T02 — assigned (yesterday)
         t02 = make_ticket(
-            raised_by=u["requester3"], requester_campus=nrb,
+            raised_by=u["carol.njoki"], requester_campus=nrb,
             service_item=electrical, priority=p[3], section=s_adm_maint,
             status="assigned", current_level="technician", assigned_to=u["adm_maint_tech1"],
             response_due_at=d(1) + timedelta(minutes=60),
@@ -656,7 +656,7 @@ class Command(BaseCommand):
 
         # T03 — in_progress (2 days ago)
         t03 = make_ticket(
-            raised_by=u["requester5"], requester_campus=nrb,
+            raised_by=u["eve.wanjiru"], requester_campus=nrb,
             service_item=carpentry, priority=p[2], section=s_adm_maint,
             status="in_progress", current_level="technician", assigned_to=u["adm_maint_tech2"],
             response_due_at=d(2) + timedelta(minutes=240),
@@ -670,7 +670,7 @@ class Command(BaseCommand):
 
         # T04 — pending, SLA paused (7 days ago)
         t04 = make_ticket(
-            raised_by=u["requester1"], requester_campus=nrb,
+            raised_by=u["alice.kamau"], requester_campus=nrb,
             service_item=plumbing, priority=p[2], section=s_adm_maint,
             status="pending", current_level="technician", assigned_to=u["adm_maint_tech1"],
             paused_at=d(5, hour=16),
@@ -687,7 +687,7 @@ class Command(BaseCommand):
 
         # T05 — resolved with feedback (8 days ago)
         t05 = make_ticket(
-            raised_by=u["requester3"], requester_campus=nrb,
+            raised_by=u["carol.njoki"], requester_campus=nrb,
             service_item=electrical, priority=p[3], section=s_adm_maint,
             status="resolved", current_level="technician", assigned_to=u["adm_maint_tech2"],
             response_due_at=d(8) + timedelta(minutes=60),
@@ -703,7 +703,7 @@ class Command(BaseCommand):
 
         # T06 — closed (9 days ago)
         t06 = make_ticket(
-            raised_by=u["requester1"], requester_campus=nrb,
+            raised_by=u["alice.kamau"], requester_campus=nrb,
             service_item=carpentry, priority=p[1], section=s_adm_maint,
             status="closed", current_level="technician", assigned_to=u["adm_maint_tech1"],
             response_due_at=d(9) + timedelta(minutes=480),
@@ -724,7 +724,7 @@ class Command(BaseCommand):
 
         # T07 — open, unassigned (today)
         t07 = make_ticket(
-            raised_by=u["requester5"], requester_campus=nrb,
+            raised_by=u["eve.wanjiru"], requester_campus=nrb,
             service_item=vehicle, priority=p[2], section=s_adm_trans,
             status="open", current_level="technician", assigned_to=None,
             response_due_at=d(0) + timedelta(minutes=240),
@@ -736,7 +736,7 @@ class Command(BaseCommand):
 
         # T08 — assigned (yesterday)
         t08 = make_ticket(
-            raised_by=u["requester1"], requester_campus=nrb,
+            raised_by=u["alice.kamau"], requester_campus=nrb,
             service_item=vehicle, priority=p[2], section=s_adm_trans,
             status="assigned", current_level="technician", assigned_to=u["adm_trans_tech1"],
             response_due_at=d(1) + timedelta(minutes=240),
@@ -749,7 +749,7 @@ class Command(BaseCommand):
 
         # T09 — pending (5 days ago)
         t09 = make_ticket(
-            raised_by=u["requester3"], requester_campus=nrb,
+            raised_by=u["carol.njoki"], requester_campus=nrb,
             service_item=vehicle, priority=p[2], section=s_adm_trans,
             status="pending", current_level="technician", assigned_to=u["adm_trans_tech1"],
             paused_at=d(4, hour=15),
@@ -765,7 +765,7 @@ class Command(BaseCommand):
 
         # T10 — closed (8 days ago)
         t10 = make_ticket(
-            raised_by=u["requester5"], requester_campus=nrb,
+            raised_by=u["eve.wanjiru"], requester_campus=nrb,
             service_item=vehicle, priority=p[1], section=s_adm_trans,
             status="closed", current_level="technician", assigned_to=u["adm_trans_tech1"],
             response_due_at=d(8) + timedelta(minutes=480),
@@ -786,7 +786,7 @@ class Command(BaseCommand):
 
         # T11 — open, unassigned (today)
         t11 = make_ticket(
-            raised_by=u["requester1"], requester_campus=nrb,
+            raised_by=u["alice.kamau"], requester_campus=nrb,
             service_item=rent, priority=p[2], section=s_hr_payroll,
             status="open", current_level="technician", assigned_to=None,
             response_due_at=d(0) + timedelta(minutes=240),
@@ -798,7 +798,7 @@ class Command(BaseCommand):
 
         # T12 — in_progress (2 days ago)
         t12 = make_ticket(
-            raised_by=u["requester3"], requester_campus=nrb,
+            raised_by=u["carol.njoki"], requester_campus=nrb,
             service_item=loan, priority=p[2], section=s_hr_payroll,
             status="in_progress", current_level="technician", assigned_to=u["hr_payroll_tech1"],
             response_due_at=d(2) + timedelta(minutes=240),
@@ -812,7 +812,7 @@ class Command(BaseCommand):
 
         # T13 — pending (5 days ago)
         t13 = make_ticket(
-            raised_by=u["requester5"], requester_campus=nrb,
+            raised_by=u["eve.wanjiru"], requester_campus=nrb,
             service_item=rent, priority=p[2], section=s_hr_payroll,
             status="pending", current_level="technician", assigned_to=u["hr_payroll_tech2"],
             paused_at=d(3, hour=14),
@@ -829,7 +829,7 @@ class Command(BaseCommand):
 
         # T14 — resolved with feedback (7 days ago)
         t14 = make_ticket(
-            raised_by=u["requester1"], requester_campus=nrb,
+            raised_by=u["alice.kamau"], requester_campus=nrb,
             service_item=loan, priority=p[2], section=s_hr_payroll,
             status="resolved", current_level="technician", assigned_to=u["hr_payroll_tech1"],
             response_due_at=d(7) + timedelta(minutes=240),
@@ -849,7 +849,7 @@ class Command(BaseCommand):
 
         # T15 — open, unassigned (yesterday)
         t15 = make_ticket(
-            raised_by=u["requester3"], requester_campus=nrb,
+            raised_by=u["carol.njoki"], requester_campus=nrb,
             service_item=file_svc, priority=p[1], section=s_hr_reg,
             status="open", current_level="technician", assigned_to=None,
             response_due_at=d(1) + timedelta(minutes=480),
@@ -861,7 +861,7 @@ class Command(BaseCommand):
 
         # T16 — assigned (2 days ago)
         t16 = make_ticket(
-            raised_by=u["requester5"], requester_campus=nrb,
+            raised_by=u["eve.wanjiru"], requester_campus=nrb,
             service_item=file_svc, priority=p[2], section=s_hr_reg,
             status="assigned", current_level="technician", assigned_to=u["hr_reg_tech1"],
             response_due_at=d(2) + timedelta(minutes=240),
@@ -874,7 +874,7 @@ class Command(BaseCommand):
 
         # T17 — in_progress (3 days ago)
         t17 = make_ticket(
-            raised_by=u["requester1"], requester_campus=nrb,
+            raised_by=u["alice.kamau"], requester_campus=nrb,
             service_item=file_svc, priority=p[2], section=s_hr_reg,
             status="in_progress", current_level="technician", assigned_to=u["hr_reg_tech1"],
             response_due_at=d(3) + timedelta(minutes=240),
@@ -888,7 +888,7 @@ class Command(BaseCommand):
 
         # T18 — closed (9 days ago)
         t18 = make_ticket(
-            raised_by=u["requester3"], requester_campus=nrb,
+            raised_by=u["carol.njoki"], requester_campus=nrb,
             service_item=file_svc, priority=p[1], section=s_hr_reg,
             status="closed", current_level="technician", assigned_to=u["hr_reg_tech1"],
             response_due_at=d(9) + timedelta(minutes=480),
@@ -909,7 +909,7 @@ class Command(BaseCommand):
 
         # T19 — open, unassigned (today)
         t19 = make_ticket(
-            raised_by=u["requester5"], requester_campus=nrb,
+            raised_by=u["eve.wanjiru"], requester_campus=nrb,
             service_item=internet, priority=p[3], section=s_ict_net,
             status="open", current_level="technician", assigned_to=None,
             response_due_at=d(0) + timedelta(minutes=60),
@@ -921,7 +921,7 @@ class Command(BaseCommand):
 
         # T20 — in_progress (yesterday)
         t20 = make_ticket(
-            raised_by=u["requester1"], requester_campus=nrb,
+            raised_by=u["alice.kamau"], requester_campus=nrb,
             service_item=phone, priority=p[2], section=s_ict_net,
             status="in_progress", current_level="technician", assigned_to=u["ict_net_tech1"],
             response_due_at=d(1) + timedelta(minutes=240),
@@ -935,7 +935,7 @@ class Command(BaseCommand):
 
         # T21 — in_progress escalated to HOS (5 days ago)
         t21 = make_ticket(
-            raised_by=u["requester3"], requester_campus=nrb,
+            raised_by=u["carol.njoki"], requester_campus=nrb,
             service_item=internet, priority=p[3], section=s_ict_net,
             status="in_progress", current_level="hos", assigned_to=u["ict_net_tech2"],
             response_due_at=d(5) + timedelta(minutes=60),
@@ -951,7 +951,7 @@ class Command(BaseCommand):
 
         # T22 — resolved with feedback (6 days ago)
         t22 = make_ticket(
-            raised_by=u["requester5"], requester_campus=nrb,
+            raised_by=u["eve.wanjiru"], requester_campus=nrb,
             service_item=phone, priority=p[2], section=s_ict_net,
             status="resolved", current_level="technician", assigned_to=u["ict_net_tech1"],
             response_due_at=d(6) + timedelta(minutes=240),
@@ -967,7 +967,7 @@ class Command(BaseCommand):
 
         # T23 — closed (8 days ago)
         t23 = make_ticket(
-            raised_by=u["requester1"], requester_campus=nrb,
+            raised_by=u["alice.kamau"], requester_campus=nrb,
             service_item=internet, priority=p[4], section=s_ict_net,
             status="closed", current_level="technician", assigned_to=u["nrb_ict_net_hos"],
             response_due_at=d(8) + timedelta(minutes=30),
@@ -988,7 +988,7 @@ class Command(BaseCommand):
 
         # T24 — open, unassigned (today)
         t24 = make_ticket(
-            raised_by=u["requester3"], requester_campus=nrb,
+            raised_by=u["carol.njoki"], requester_campus=nrb,
             service_item=erp, priority=p[3], section=s_ict_syssupp,
             status="open", current_level="technician", assigned_to=None,
             response_due_at=d(0) + timedelta(minutes=60),
@@ -1000,7 +1000,7 @@ class Command(BaseCommand):
 
         # T25 — assigned (yesterday)
         t25 = make_ticket(
-            raised_by=u["requester5"], requester_campus=nrb,
+            raised_by=u["eve.wanjiru"], requester_campus=nrb,
             service_item=email_svc, priority=p[2], section=s_ict_syssupp,
             status="assigned", current_level="technician", assigned_to=u["ict_syssupp_tech1"],
             response_due_at=d(1) + timedelta(minutes=240),
@@ -1013,7 +1013,7 @@ class Command(BaseCommand):
 
         # T26 — in_progress (3 days ago)
         t26 = make_ticket(
-            raised_by=u["requester1"], requester_campus=nrb,
+            raised_by=u["alice.kamau"], requester_campus=nrb,
             service_item=erp, priority=p[2], section=s_ict_syssupp,
             status="in_progress", current_level="technician", assigned_to=u["ict_syssupp_tech2"],
             response_due_at=d(3) + timedelta(minutes=240),
@@ -1027,7 +1027,7 @@ class Command(BaseCommand):
 
         # T27 — in_progress escalated to HOD (7 days ago)
         t27 = make_ticket(
-            raised_by=u["requester3"], requester_campus=nrb,
+            raised_by=u["carol.njoki"], requester_campus=nrb,
             service_item=erp, priority=p[3], section=s_ict_syssupp,
             status="in_progress", current_level="hod", assigned_to=u["ict_syssupp_tech1"],
             response_due_at=d(7) + timedelta(minutes=60),
@@ -1045,7 +1045,7 @@ class Command(BaseCommand):
 
         # T28 — resolved, no feedback (5 days ago)
         t28 = make_ticket(
-            raised_by=u["requester5"], requester_campus=nrb,
+            raised_by=u["eve.wanjiru"], requester_campus=nrb,
             service_item=email_svc, priority=p[2], section=s_ict_syssupp,
             status="resolved", current_level="technician", assigned_to=u["ict_syssupp_tech2"],
             response_due_at=d(5) + timedelta(minutes=240),
@@ -1064,7 +1064,7 @@ class Command(BaseCommand):
 
         # T29 — resolved with feedback (6 days ago)
         t29 = make_ticket(
-            raised_by=u["requester2"], requester_campus=msa,
+            raised_by=u["bob.mwenda"], requester_campus=msa,
             service_item=loan, priority=p[2], section=s_msa_hr_pay,
             status="resolved", current_level="technician", assigned_to=u["msa_hr_payroll_hos"],
             response_due_at=d(6) + timedelta(minutes=240),
@@ -1084,7 +1084,7 @@ class Command(BaseCommand):
 
         # T30 — open, unassigned (2 days ago)
         t30 = make_ticket(
-            raised_by=u["requester2"], requester_campus=msa,
+            raised_by=u["bob.mwenda"], requester_campus=msa,
             service_item=internet, priority=p[2], section=s_msa_ict_net,
             status="open", current_level="technician", assigned_to=None,
             response_due_at=d(2) + timedelta(minutes=240),

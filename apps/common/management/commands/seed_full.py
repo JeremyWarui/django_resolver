@@ -123,51 +123,51 @@ SECTION_TYPES = [
 # (username, first_name, last_name, email, campus_code)
 USERS = [
     # System admin
-    ("admin_user",            "System",    "Admin",       "admin@ksg.local",                  "NRB"),
+    ("admin",            "System",    "Admin",       "admin@ksg.local",                  "NRB"),
     # Department managers (org-wide)
-    ("adm_manager",           "Paul",      "Kamau",       "adm.manager@ksg.local",            "NRB"),
-    ("hr_manager",            "Grace",     "Achieng",     "hr.manager@ksg.local",             "NRB"),
-    ("ict_manager",           "James",     "Mwangi",      "ict.manager@ksg.local",            "NRB"),
+    ("admin_mgr",           "Paul",      "Kamau",       "adm.manager@ksg.local",            "NRB"),
+    ("hr_mgr",            "Grace",     "Achieng",     "hr.manager@ksg.local",             "NRB"),
+    ("ict_mgr",           "James",     "Mwangi",      "ict.manager@ksg.local",            "NRB"),
     # NRB HODs
-    ("nrb_adm_hod",           "Margaret",  "Wanjiku",     "nrb.adm.hod@ksg.local",           "NRB"),
+    ("nrb_admin_hod",           "Margaret",  "Wanjiku",     "nrb.adm.hod@ksg.local",           "NRB"),
     ("nrb_hr_hod",            "Samuel",    "Otieno",      "nrb.hr.hod@ksg.local",            "NRB"),
     ("nrb_ict_hod",           "Brian",     "Kariuki",     "nrb.ict.hod@ksg.local",           "NRB"),
     # MSA HODs
-    ("msa_adm_hod",           "Fatuma",    "Omar",        "msa.adm.hod@ksg.local",           "MSA"),
+    ("msa_admin_hod",           "Fatuma",    "Omar",        "msa.adm.hod@ksg.local",           "MSA"),
     ("msa_hr_hod",            "Ahmed",     "Hassan",      "msa.hr.hod@ksg.local",            "MSA"),
     ("msa_ict_hod",           "Amina",     "Said",        "msa.ict.hod@ksg.local",           "MSA"),
     # KSM HODs
-    ("ksm_adm_hod",           "Ochieng",   "Odhiambo",    "ksm.adm.hod@ksg.local",           "KSM"),
+    ("ksm_admin_hod",           "Ochieng",   "Odhiambo",    "ksm.adm.hod@ksg.local",           "KSM"),
     ("ksm_hr_hod",            "Atieno",    "Omondi",      "ksm.hr.hod@ksg.local",            "KSM"),
     ("ksm_ict_hod",           "Okello",    "Ouma",        "ksm.ict.hod@ksg.local",           "KSM"),
     # NRB HOS (one per section)
-    ("nrb_adm_maint_hos",     "Lucy",      "Njeri",       "nrb.adm.maint.hos@ksg.local",     "NRB"),
-    ("nrb_adm_trans_hos",     "Peter",     "Maina",       "nrb.adm.trans.hos@ksg.local",     "NRB"),
-    ("nrb_hr_payroll_hos",    "Rose",      "Kimani",      "nrb.hr.payroll.hos@ksg.local",    "NRB"),
-    ("nrb_hr_reg_hos",        "Jane",      "Waweru",      "nrb.hr.reg.hos@ksg.local",        "NRB"),
-    ("nrb_ict_net_hos",       "Achieng",   "Otieno",      "nrb.ict.net.hos@ksg.local",       "NRB"),
-    ("nrb_ict_syssupp_hos",   "David",     "Omondi",      "nrb.ict.syssupp.hos@ksg.local",   "NRB"),
+    ("nrb_maint_hos",     "Lucy",      "Njeri",       "nrb.adm.maint.hos@ksg.local",     "NRB"),
+    ("nrb_transport_hos",     "Peter",     "Maina",       "nrb.adm.trans.hos@ksg.local",     "NRB"),
+    ("nrb_payroll_hos",    "Rose",      "Kimani",      "nrb.hr.payroll.hos@ksg.local",    "NRB"),
+    ("nrb_registry_hos",        "Jane",      "Waweru",      "nrb.hr.reg.hos@ksg.local",        "NRB"),
+    ("nrb_networks_hos",       "Achieng",   "Otieno",      "nrb.ict.net.hos@ksg.local",       "NRB"),
+    ("nrb_syssupport_hos",   "David",     "Omondi",      "nrb.ict.syssupp.hos@ksg.local",   "NRB"),
     # MSA HOS (partial)
-    ("msa_hr_payroll_hos",    "Zainab",    "Musa",        "msa.hr.payroll.hos@ksg.local",    "MSA"),
-    ("msa_ict_net_hos",       "Khalid",    "Ahmed",       "msa.ict.net.hos@ksg.local",       "MSA"),
+    ("msa_payroll_hos",    "Zainab",    "Musa",        "msa.hr.payroll.hos@ksg.local",    "MSA"),
+    ("msa_networks_hos",       "Khalid",    "Ahmed",       "msa.ict.net.hos@ksg.local",       "MSA"),
     # KSM HOS (partial)
-    ("ksm_ict_syssupp_hos",   "Onyango",   "Owino",       "ksm.ict.syssupp.hos@ksg.local",   "KSM"),
+    ("ksm_syssupport_hos",   "Onyango",   "Owino",       "ksm.ict.syssupp.hos@ksg.local",   "KSM"),
     # NRB technicians
-    ("adm_maint_tech1",       "John",      "Doe",         "adm.maint.tech1@ksg.local",       "NRB"),
-    ("adm_maint_tech2",       "Mary",      "Waweru",      "adm.maint.tech2@ksg.local",       "NRB"),
-    ("adm_trans_tech1",       "Kevin",     "Mboya",       "adm.trans.tech1@ksg.local",       "NRB"),
-    ("hr_payroll_tech1",      "Faith",     "Njoroge",     "hr.payroll.tech1@ksg.local",      "NRB"),
-    ("hr_payroll_tech2",      "Michael",   "Odhiambo",    "hr.payroll.tech2@ksg.local",      "NRB"),
-    ("hr_reg_tech1",          "Alice",     "Mwangi",      "hr.reg.tech1@ksg.local",          "NRB"),
-    ("ict_net_tech1",         "Robert",    "Kipchumba",   "ict.net.tech1@ksg.local",         "NRB"),
-    ("ict_net_tech2",         "Sophie",    "Chelimo",     "ict.net.tech2@ksg.local",         "NRB"),
-    ("ict_syssupp_tech1",     "George",    "Mutua",       "ict.syssupp.tech1@ksg.local",     "NRB"),
-    ("ict_syssupp_tech2",     "Helen",     "Njuguna",     "ict.syssupp.tech2@ksg.local",     "NRB"),
+    ("nrb_maint_tech1",       "John",      "Doe",         "adm.maint.tech1@ksg.local",       "NRB"),
+    ("nrb_maint_tech2",       "Mary",      "Waweru",      "adm.maint.tech2@ksg.local",       "NRB"),
+    ("nrb_transport_tech1",       "Kevin",     "Mboya",       "adm.trans.tech1@ksg.local",       "NRB"),
+    ("nrb_payroll_tech1",      "Faith",     "Njoroge",     "hr.payroll.tech1@ksg.local",      "NRB"),
+    ("nrb_payroll_tech2",      "Michael",   "Odhiambo",    "hr.payroll.tech2@ksg.local",      "NRB"),
+    ("nrb_registry_tech1",          "Alice",     "Mwangi",      "hr.reg.tech1@ksg.local",          "NRB"),
+    ("nrb_networks_tech1",         "Robert",    "Kipchumba",   "ict.net.tech1@ksg.local",         "NRB"),
+    ("nrb_networks_tech2",         "Sophie",    "Chelimo",     "ict.net.tech2@ksg.local",         "NRB"),
+    ("nrb_syssupport_tech1",     "George",    "Mutua",       "ict.syssupp.tech1@ksg.local",     "NRB"),
+    ("nrb_syssupport_tech2",     "Helen",     "Njuguna",     "ict.syssupp.tech2@ksg.local",     "NRB"),
     # MSA technicians
-    ("msa_hr_payroll_tech1",  "Salim",     "Bakari",      "msa.hr.payroll.tech1@ksg.local",  "MSA"),
-    ("msa_ict_net_tech1",     "Rashida",   "Kombo",       "msa.ict.net.tech1@ksg.local",     "MSA"),
+    ("msa_payroll_tech1",  "Salim",     "Bakari",      "msa.hr.payroll.tech1@ksg.local",  "MSA"),
+    ("msa_networks_tech1",     "Rashida",   "Kombo",       "msa.ict.net.tech1@ksg.local",     "MSA"),
     # KSM technicians
-    ("ksm_ict_syssupp_tech1", "Erick",     "Okoth",       "ksm.ict.syssupp.tech1@ksg.local", "KSM"),
+    ("ksm_syssupport_tech1", "Erick",     "Okoth",       "ksm.ict.syssupp.tech1@ksg.local", "KSM"),
     # Requesters
     ("alice.kamau",           "Alice",     "Kamau",       "alice.kamau@ksg.local",           "NRB"),
     ("bob.mwenda",            "Bob",       "Mwenda",      "bob.mwenda@ksg.local",            "MSA"),
@@ -178,13 +178,13 @@ USERS = [
 
 # (campus_code, dept_code, hod_username)
 CAMPUS_DEPARTMENTS = [
-    ("NRB", "ADM", "nrb_adm_hod"),
+    ("NRB", "ADM", "nrb_admin_hod"),
     ("NRB", "HR",  "nrb_hr_hod"),
     ("NRB", "ICT", "nrb_ict_hod"),
-    ("MSA", "ADM", "msa_adm_hod"),
+    ("MSA", "ADM", "msa_admin_hod"),
     ("MSA", "HR",  "msa_hr_hod"),
     ("MSA", "ICT", "msa_ict_hod"),
-    ("KSM", "ADM", "ksm_adm_hod"),
+    ("KSM", "ADM", "ksm_admin_hod"),
     ("KSM", "HR",  "ksm_hr_hod"),
     ("KSM", "ICT", "ksm_ict_hod"),
 ]
@@ -192,18 +192,18 @@ CAMPUS_DEPARTMENTS = [
 # (campus_code, dept_code, section_type_code, hos_username_or_None, is_active)
 SECTIONS = [
     # NRB — full coverage
-    ("NRB", "ADM", "MAINT",   "nrb_adm_maint_hos",   True),
-    ("NRB", "ADM", "TRANS",   "nrb_adm_trans_hos",   True),
-    ("NRB", "HR",  "PAYROLL", "nrb_hr_payroll_hos",  True),
-    ("NRB", "HR",  "REG",     "nrb_hr_reg_hos",      True),
-    ("NRB", "ICT", "NET",     "nrb_ict_net_hos",     True),
-    ("NRB", "ICT", "SYSSUPP", "nrb_ict_syssupp_hos", True),
+    ("NRB", "ADM", "MAINT",   "nrb_maint_hos",   True),
+    ("NRB", "ADM", "TRANS",   "nrb_transport_hos",   True),
+    ("NRB", "HR",  "PAYROLL", "nrb_payroll_hos",  True),
+    ("NRB", "HR",  "REG",     "nrb_registry_hos",      True),
+    ("NRB", "ICT", "NET",     "nrb_networks_hos",     True),
+    ("NRB", "ICT", "SYSSUPP", "nrb_syssupport_hos", True),
     # MSA — partial HOS
     ("MSA", "ADM", "MAINT",   None,                  True),
     ("MSA", "ADM", "TRANS",   None,                  True),
-    ("MSA", "HR",  "PAYROLL", "msa_hr_payroll_hos",  True),
+    ("MSA", "HR",  "PAYROLL", "msa_payroll_hos",  True),
     ("MSA", "HR",  "REG",     None,                  True),
-    ("MSA", "ICT", "NET",     "msa_ict_net_hos",     True),
+    ("MSA", "ICT", "NET",     "msa_networks_hos",     True),
     ("MSA", "ICT", "SYSSUPP", None,                  True),
     # KSM — partial HOS
     ("KSM", "ADM", "MAINT",   None,                  True),
@@ -211,66 +211,66 @@ SECTIONS = [
     ("KSM", "HR",  "PAYROLL", None,                  True),
     ("KSM", "HR",  "REG",     None,                  True),
     ("KSM", "ICT", "NET",     None,                  True),
-    ("KSM", "ICT", "SYSSUPP", "ksm_ict_syssupp_hos", True),
+    ("KSM", "ICT", "SYSSUPP", "ksm_syssupport_hos", True),
 ]
 
 # (username, campus_code, dept_code, section_type_code)
 SECTION_TECHNICIANS = [
-    ("adm_maint_tech1",       "NRB", "ADM", "MAINT"),
-    ("adm_maint_tech2",       "NRB", "ADM", "MAINT"),
-    ("adm_trans_tech1",       "NRB", "ADM", "TRANS"),
-    ("hr_payroll_tech1",      "NRB", "HR",  "PAYROLL"),
-    ("hr_payroll_tech2",      "NRB", "HR",  "PAYROLL"),
-    ("hr_reg_tech1",          "NRB", "HR",  "REG"),
-    ("ict_net_tech1",         "NRB", "ICT", "NET"),
-    ("ict_net_tech2",         "NRB", "ICT", "NET"),
-    ("ict_syssupp_tech1",     "NRB", "ICT", "SYSSUPP"),
-    ("ict_syssupp_tech2",     "NRB", "ICT", "SYSSUPP"),
-    ("msa_hr_payroll_tech1",  "MSA", "HR",  "PAYROLL"),
-    ("msa_ict_net_tech1",     "MSA", "ICT", "NET"),
-    ("ksm_ict_syssupp_tech1", "KSM", "ICT", "SYSSUPP"),
+    ("nrb_maint_tech1",       "NRB", "ADM", "MAINT"),
+    ("nrb_maint_tech2",       "NRB", "ADM", "MAINT"),
+    ("nrb_transport_tech1",       "NRB", "ADM", "TRANS"),
+    ("nrb_payroll_tech1",      "NRB", "HR",  "PAYROLL"),
+    ("nrb_payroll_tech2",      "NRB", "HR",  "PAYROLL"),
+    ("nrb_registry_tech1",          "NRB", "HR",  "REG"),
+    ("nrb_networks_tech1",         "NRB", "ICT", "NET"),
+    ("nrb_networks_tech2",         "NRB", "ICT", "NET"),
+    ("nrb_syssupport_tech1",     "NRB", "ICT", "SYSSUPP"),
+    ("nrb_syssupport_tech2",     "NRB", "ICT", "SYSSUPP"),
+    ("msa_payroll_tech1",  "MSA", "HR",  "PAYROLL"),
+    ("msa_networks_tech1",     "MSA", "ICT", "NET"),
+    ("ksm_syssupport_tech1", "KSM", "ICT", "SYSSUPP"),
 ]
 
 # (username, role, scope_type, scope_key)
 ROLE_ASSIGNMENTS = [
-    ("admin_user",            "admin",      "none",             None),
-    ("adm_manager",           "manager",    "department",       "ADM"),
-    ("hr_manager",            "manager",    "department",       "HR"),
-    ("ict_manager",           "manager",    "department",       "ICT"),
+    ("admin",            "admin",      "none",             None),
+    ("admin_mgr",           "manager",    "department",       "ADM"),
+    ("hr_mgr",            "manager",    "department",       "HR"),
+    ("ict_mgr",           "manager",    "department",       "ICT"),
     # HODs
-    ("nrb_adm_hod",           "hod",  "campus_department", ("NRB", "ADM")),
+    ("nrb_admin_hod",           "hod",  "campus_department", ("NRB", "ADM")),
     ("nrb_hr_hod",            "hod",  "campus_department", ("NRB", "HR")),
     ("nrb_ict_hod",           "hod",  "campus_department", ("NRB", "ICT")),
-    ("msa_adm_hod",           "hod",  "campus_department", ("MSA", "ADM")),
+    ("msa_admin_hod",           "hod",  "campus_department", ("MSA", "ADM")),
     ("msa_hr_hod",            "hod",  "campus_department", ("MSA", "HR")),
     ("msa_ict_hod",           "hod",  "campus_department", ("MSA", "ICT")),
-    ("ksm_adm_hod",           "hod",  "campus_department", ("KSM", "ADM")),
+    ("ksm_admin_hod",           "hod",  "campus_department", ("KSM", "ADM")),
     ("ksm_hr_hod",            "hod",  "campus_department", ("KSM", "HR")),
     ("ksm_ict_hod",           "hod",  "campus_department", ("KSM", "ICT")),
     # HOS
-    ("nrb_adm_maint_hos",     "hos",  "section", ("NRB", "ADM", "MAINT")),
-    ("nrb_adm_trans_hos",     "hos",  "section", ("NRB", "ADM", "TRANS")),
-    ("nrb_hr_payroll_hos",    "hos",  "section", ("NRB", "HR",  "PAYROLL")),
-    ("nrb_hr_reg_hos",        "hos",  "section", ("NRB", "HR",  "REG")),
-    ("nrb_ict_net_hos",       "hos",  "section", ("NRB", "ICT", "NET")),
-    ("nrb_ict_syssupp_hos",   "hos",  "section", ("NRB", "ICT", "SYSSUPP")),
-    ("msa_hr_payroll_hos",    "hos",  "section", ("MSA", "HR",  "PAYROLL")),
-    ("msa_ict_net_hos",       "hos",  "section", ("MSA", "ICT", "NET")),
-    ("ksm_ict_syssupp_hos",   "hos",  "section", ("KSM", "ICT", "SYSSUPP")),
+    ("nrb_maint_hos",     "hos",  "section", ("NRB", "ADM", "MAINT")),
+    ("nrb_transport_hos",     "hos",  "section", ("NRB", "ADM", "TRANS")),
+    ("nrb_payroll_hos",    "hos",  "section", ("NRB", "HR",  "PAYROLL")),
+    ("nrb_registry_hos",        "hos",  "section", ("NRB", "HR",  "REG")),
+    ("nrb_networks_hos",       "hos",  "section", ("NRB", "ICT", "NET")),
+    ("nrb_syssupport_hos",   "hos",  "section", ("NRB", "ICT", "SYSSUPP")),
+    ("msa_payroll_hos",    "hos",  "section", ("MSA", "HR",  "PAYROLL")),
+    ("msa_networks_hos",       "hos",  "section", ("MSA", "ICT", "NET")),
+    ("ksm_syssupport_hos",   "hos",  "section", ("KSM", "ICT", "SYSSUPP")),
     # Technicians
-    ("adm_maint_tech1",       "technician", "section", ("NRB", "ADM", "MAINT")),
-    ("adm_maint_tech2",       "technician", "section", ("NRB", "ADM", "MAINT")),
-    ("adm_trans_tech1",       "technician", "section", ("NRB", "ADM", "TRANS")),
-    ("hr_payroll_tech1",      "technician", "section", ("NRB", "HR",  "PAYROLL")),
-    ("hr_payroll_tech2",      "technician", "section", ("NRB", "HR",  "PAYROLL")),
-    ("hr_reg_tech1",          "technician", "section", ("NRB", "HR",  "REG")),
-    ("ict_net_tech1",         "technician", "section", ("NRB", "ICT", "NET")),
-    ("ict_net_tech2",         "technician", "section", ("NRB", "ICT", "NET")),
-    ("ict_syssupp_tech1",     "technician", "section", ("NRB", "ICT", "SYSSUPP")),
-    ("ict_syssupp_tech2",     "technician", "section", ("NRB", "ICT", "SYSSUPP")),
-    ("msa_hr_payroll_tech1",  "technician", "section", ("MSA", "HR",  "PAYROLL")),
-    ("msa_ict_net_tech1",     "technician", "section", ("MSA", "ICT", "NET")),
-    ("ksm_ict_syssupp_tech1", "technician", "section", ("KSM", "ICT", "SYSSUPP")),
+    ("nrb_maint_tech1",       "technician", "section", ("NRB", "ADM", "MAINT")),
+    ("nrb_maint_tech2",       "technician", "section", ("NRB", "ADM", "MAINT")),
+    ("nrb_transport_tech1",       "technician", "section", ("NRB", "ADM", "TRANS")),
+    ("nrb_payroll_tech1",      "technician", "section", ("NRB", "HR",  "PAYROLL")),
+    ("nrb_payroll_tech2",      "technician", "section", ("NRB", "HR",  "PAYROLL")),
+    ("nrb_registry_tech1",          "technician", "section", ("NRB", "HR",  "REG")),
+    ("nrb_networks_tech1",         "technician", "section", ("NRB", "ICT", "NET")),
+    ("nrb_networks_tech2",         "technician", "section", ("NRB", "ICT", "NET")),
+    ("nrb_syssupport_tech1",     "technician", "section", ("NRB", "ICT", "SYSSUPP")),
+    ("nrb_syssupport_tech2",     "technician", "section", ("NRB", "ICT", "SYSSUPP")),
+    ("msa_payroll_tech1",  "technician", "section", ("MSA", "HR",  "PAYROLL")),
+    ("msa_networks_tech1",     "technician", "section", ("MSA", "ICT", "NET")),
+    ("ksm_syssupport_tech1", "technician", "section", ("KSM", "ICT", "SYSSUPP")),
     # Requesters
     ("alice.kamau",   "user", "none", None),
     ("bob.mwenda",    "user", "none", None),
@@ -440,7 +440,7 @@ class Command(BaseCommand):
         return users
 
     def _set_department_managers(self, departments, users):
-        manager_map = {"ADM": "adm_manager", "HR": "hr_manager", "ICT": "ict_manager"}
+        manager_map = {"ADM": "admin_mgr", "HR": "hr_mgr", "ICT": "ict_mgr"}
         for dept_code, mgr_username in manager_map.items():
             dept = departments[dept_code]
             mgr = users[mgr_username]
@@ -645,34 +645,34 @@ class Command(BaseCommand):
         t02 = make_ticket(
             raised_by=u["carol.njoki"], requester_campus=nrb,
             service_item=electrical, priority=p[3], section=s_adm_maint,
-            status="assigned", current_level="technician", assigned_to=u["adm_maint_tech1"],
+            status="assigned", current_level="technician", assigned_to=u["nrb_maint_tech1"],
             response_due_at=d(1) + timedelta(minutes=60),
             resolution_due_at=d(1) + timedelta(minutes=480),
             description="Power socket in Block A Room 204 is sparking — urgent safety hazard.",
             created_at=d(1, hour=9), updated_at=d(1, hour=10),
         )
         make_log(t02, "created",  "", "open",     actor=None,              created_at=d(1, hour=9))
-        make_log(t02, "assigned", "open", "assigned", actor=u["adm_maint_tech1"], created_at=d(1, hour=10))
+        make_log(t02, "assigned", "open", "assigned", actor=u["nrb_maint_tech1"], created_at=d(1, hour=10))
 
         # T03 — in_progress (2 days ago)
         t03 = make_ticket(
             raised_by=u["eve.wanjiru"], requester_campus=nrb,
             service_item=carpentry, priority=p[2], section=s_adm_maint,
-            status="in_progress", current_level="technician", assigned_to=u["adm_maint_tech2"],
+            status="in_progress", current_level="technician", assigned_to=u["nrb_maint_tech2"],
             response_due_at=d(2) + timedelta(minutes=240),
             resolution_due_at=d(2) + timedelta(minutes=1440),
             description="Broken window frame in Conference Room B — needs replacement.",
             created_at=d(2, hour=10), updated_at=d(2, hour=14),
         )
         make_log(t03, "created",      "", "open",        created_at=d(2, hour=10))
-        make_log(t03, "assigned",     "open", "assigned",     actor=u["adm_maint_tech2"], created_at=d(2, hour=11))
-        make_log(t03, "status_changed","assigned", "in_progress", actor=u["adm_maint_tech2"], created_at=d(2, hour=14))
+        make_log(t03, "assigned",     "open", "assigned",     actor=u["nrb_maint_tech2"], created_at=d(2, hour=11))
+        make_log(t03, "status_changed","assigned", "in_progress", actor=u["nrb_maint_tech2"], created_at=d(2, hour=14))
 
         # T04 — pending, SLA paused (7 days ago)
         t04 = make_ticket(
             raised_by=u["alice.kamau"], requester_campus=nrb,
             service_item=plumbing, priority=p[2], section=s_adm_maint,
-            status="pending", current_level="technician", assigned_to=u["adm_maint_tech1"],
+            status="pending", current_level="technician", assigned_to=u["nrb_maint_tech1"],
             paused_at=d(5, hour=16),
             response_due_at=d(7) + timedelta(minutes=240),
             resolution_due_at=d(7) + timedelta(minutes=1440),
@@ -680,16 +680,16 @@ class Command(BaseCommand):
             created_at=d(7, hour=8), updated_at=d(5, hour=16),
         )
         make_log(t04, "created",       "", "open",          created_at=d(7, hour=8))
-        make_log(t04, "assigned",      "open", "assigned",      actor=u["adm_maint_tech1"], created_at=d(7, hour=9))
-        make_log(t04, "status_changed","assigned", "in_progress", actor=u["adm_maint_tech1"], created_at=d(7, hour=11))
-        make_log(t04, "status_changed","in_progress", "pending",  actor=u["adm_maint_tech1"],
+        make_log(t04, "assigned",      "open", "assigned",      actor=u["nrb_maint_tech1"], created_at=d(7, hour=9))
+        make_log(t04, "status_changed","assigned", "in_progress", actor=u["nrb_maint_tech1"], created_at=d(7, hour=11))
+        make_log(t04, "status_changed","in_progress", "pending",  actor=u["nrb_maint_tech1"],
                  reason="Awaiting spare pipe fittings delivery", created_at=d(5, hour=16))
 
         # T05 — resolved with feedback (8 days ago)
         t05 = make_ticket(
             raised_by=u["carol.njoki"], requester_campus=nrb,
             service_item=electrical, priority=p[3], section=s_adm_maint,
-            status="resolved", current_level="technician", assigned_to=u["adm_maint_tech2"],
+            status="resolved", current_level="technician", assigned_to=u["nrb_maint_tech2"],
             response_due_at=d(8) + timedelta(minutes=60),
             resolution_due_at=d(8) + timedelta(minutes=480),
             resolved_at=d(8, hour=16),
@@ -697,15 +697,15 @@ class Command(BaseCommand):
             created_at=d(8, hour=9), updated_at=d(8, hour=16),
         )
         make_log(t05, "created",  "", "open",     created_at=d(8, hour=9))
-        make_log(t05, "assigned", "open", "assigned", actor=u["adm_maint_tech2"], created_at=d(8, hour=10))
-        make_log(t05, "resolved", "in_progress", "resolved", actor=u["adm_maint_tech2"], created_at=d(8, hour=16))
+        make_log(t05, "assigned", "open", "assigned", actor=u["nrb_maint_tech2"], created_at=d(8, hour=10))
+        make_log(t05, "resolved", "in_progress", "resolved", actor=u["nrb_maint_tech2"], created_at=d(8, hour=16))
         TicketFeedback.objects.create(ticket=t05, rating=5, comment="Fixed within hours, very professional.")
 
         # T06 — closed (9 days ago)
         t06 = make_ticket(
             raised_by=u["alice.kamau"], requester_campus=nrb,
             service_item=carpentry, priority=p[1], section=s_adm_maint,
-            status="closed", current_level="technician", assigned_to=u["adm_maint_tech1"],
+            status="closed", current_level="technician", assigned_to=u["nrb_maint_tech1"],
             response_due_at=d(9) + timedelta(minutes=480),
             resolution_due_at=d(9) + timedelta(minutes=4320),
             resolved_at=d(8, hour=15),
@@ -714,9 +714,9 @@ class Command(BaseCommand):
             created_at=d(9, hour=8), updated_at=d(7, hour=9),
         )
         make_log(t06, "created",  "", "open",       created_at=d(9, hour=8))
-        make_log(t06, "assigned", "open", "assigned",  actor=u["adm_maint_tech1"], created_at=d(9, hour=11))
-        make_log(t06, "resolved", "in_progress", "resolved", actor=u["adm_maint_tech1"], created_at=d(8, hour=15))
-        make_log(t06, "closed",   "resolved", "closed",      actor=u["nrb_adm_maint_hos"], created_at=d(7, hour=9))
+        make_log(t06, "assigned", "open", "assigned",  actor=u["nrb_maint_tech1"], created_at=d(9, hour=11))
+        make_log(t06, "resolved", "in_progress", "resolved", actor=u["nrb_maint_tech1"], created_at=d(8, hour=15))
+        make_log(t06, "closed",   "resolved", "closed",      actor=u["nrb_maint_hos"], created_at=d(7, hour=9))
 
         # ----------------------------------------------------------------
         # NRB-ADM-TRANS (4 tickets)
@@ -738,20 +738,20 @@ class Command(BaseCommand):
         t08 = make_ticket(
             raised_by=u["alice.kamau"], requester_campus=nrb,
             service_item=vehicle, priority=p[2], section=s_adm_trans,
-            status="assigned", current_level="technician", assigned_to=u["adm_trans_tech1"],
+            status="assigned", current_level="technician", assigned_to=u["nrb_transport_tech1"],
             response_due_at=d(1) + timedelta(minutes=240),
             resolution_due_at=d(1) + timedelta(minutes=1440),
             description="Vehicle required for official duty to Kiambu County Government on Monday.",
             created_at=d(1, hour=8), updated_at=d(1, hour=11),
         )
         make_log(t08, "created",  "", "open",       created_at=d(1, hour=8))
-        make_log(t08, "assigned", "open", "assigned", actor=u["adm_trans_tech1"], created_at=d(1, hour=11))
+        make_log(t08, "assigned", "open", "assigned", actor=u["nrb_transport_tech1"], created_at=d(1, hour=11))
 
         # T09 — pending (5 days ago)
         t09 = make_ticket(
             raised_by=u["carol.njoki"], requester_campus=nrb,
             service_item=vehicle, priority=p[2], section=s_adm_trans,
-            status="pending", current_level="technician", assigned_to=u["adm_trans_tech1"],
+            status="pending", current_level="technician", assigned_to=u["nrb_transport_tech1"],
             paused_at=d(4, hour=15),
             response_due_at=d(5) + timedelta(minutes=240),
             resolution_due_at=d(5) + timedelta(minutes=1440),
@@ -759,15 +759,15 @@ class Command(BaseCommand):
             created_at=d(5, hour=9), updated_at=d(4, hour=15),
         )
         make_log(t09, "created",       "", "open",           created_at=d(5, hour=9))
-        make_log(t09, "assigned",      "open", "assigned",      actor=u["adm_trans_tech1"], created_at=d(5, hour=12))
-        make_log(t09, "status_changed","assigned", "pending",    actor=u["adm_trans_tech1"],
+        make_log(t09, "assigned",      "open", "assigned",      actor=u["nrb_transport_tech1"], created_at=d(5, hour=12))
+        make_log(t09, "status_changed","assigned", "pending",    actor=u["nrb_transport_tech1"],
                  reason="Pending Finance department approval for hire charges", created_at=d(4, hour=15))
 
         # T10 — closed (8 days ago)
         t10 = make_ticket(
             raised_by=u["eve.wanjiru"], requester_campus=nrb,
             service_item=vehicle, priority=p[1], section=s_adm_trans,
-            status="closed", current_level="technician", assigned_to=u["adm_trans_tech1"],
+            status="closed", current_level="technician", assigned_to=u["nrb_transport_tech1"],
             response_due_at=d(8) + timedelta(minutes=480),
             resolution_due_at=d(8) + timedelta(minutes=4320),
             resolved_at=d(7, hour=17),
@@ -776,9 +776,9 @@ class Command(BaseCommand):
             created_at=d(8, hour=7), updated_at=d(6, hour=9),
         )
         make_log(t10, "created",  "", "open",        created_at=d(8, hour=7))
-        make_log(t10, "assigned", "open", "assigned",  actor=u["adm_trans_tech1"], created_at=d(8, hour=9))
-        make_log(t10, "resolved", "in_progress", "resolved", actor=u["adm_trans_tech1"], created_at=d(7, hour=17))
-        make_log(t10, "closed",   "resolved", "closed",      actor=u["nrb_adm_trans_hos"], created_at=d(6, hour=9))
+        make_log(t10, "assigned", "open", "assigned",  actor=u["nrb_transport_tech1"], created_at=d(8, hour=9))
+        make_log(t10, "resolved", "in_progress", "resolved", actor=u["nrb_transport_tech1"], created_at=d(7, hour=17))
+        make_log(t10, "closed",   "resolved", "closed",      actor=u["nrb_transport_hos"], created_at=d(6, hour=9))
 
         # ----------------------------------------------------------------
         # NRB-HR-PAYROLL (4 tickets)
@@ -800,21 +800,21 @@ class Command(BaseCommand):
         t12 = make_ticket(
             raised_by=u["carol.njoki"], requester_campus=nrb,
             service_item=loan, priority=p[2], section=s_hr_payroll,
-            status="in_progress", current_level="technician", assigned_to=u["hr_payroll_tech1"],
+            status="in_progress", current_level="technician", assigned_to=u["nrb_payroll_tech1"],
             response_due_at=d(2) + timedelta(minutes=240),
             resolution_due_at=d(2) + timedelta(minutes=1440),
             description="Staff loan repayment schedule not updated after balance clearance in April.",
             created_at=d(2, hour=11), updated_at=d(2, hour=15),
         )
         make_log(t12, "created",       "", "open",          created_at=d(2, hour=11))
-        make_log(t12, "assigned",      "open", "assigned",    actor=u["hr_payroll_tech1"], created_at=d(2, hour=12))
-        make_log(t12, "status_changed","assigned", "in_progress", actor=u["hr_payroll_tech1"], created_at=d(2, hour=15))
+        make_log(t12, "assigned",      "open", "assigned",    actor=u["nrb_payroll_tech1"], created_at=d(2, hour=12))
+        make_log(t12, "status_changed","assigned", "in_progress", actor=u["nrb_payroll_tech1"], created_at=d(2, hour=15))
 
         # T13 — pending (5 days ago)
         t13 = make_ticket(
             raised_by=u["eve.wanjiru"], requester_campus=nrb,
             service_item=rent, priority=p[2], section=s_hr_payroll,
-            status="pending", current_level="technician", assigned_to=u["hr_payroll_tech2"],
+            status="pending", current_level="technician", assigned_to=u["nrb_payroll_tech2"],
             paused_at=d(3, hour=14),
             response_due_at=d(5) + timedelta(minutes=240),
             resolution_due_at=d(5) + timedelta(minutes=1440),
@@ -822,16 +822,16 @@ class Command(BaseCommand):
             created_at=d(5, hour=8), updated_at=d(3, hour=14),
         )
         make_log(t13, "created",       "", "open",         created_at=d(5, hour=8))
-        make_log(t13, "assigned",      "open", "assigned",   actor=u["hr_payroll_tech2"], created_at=d(5, hour=10))
-        make_log(t13, "status_changed","assigned", "in_progress", actor=u["hr_payroll_tech2"], created_at=d(5, hour=11))
-        make_log(t13, "status_changed","in_progress", "pending",  actor=u["hr_payroll_tech2"],
+        make_log(t13, "assigned",      "open", "assigned",   actor=u["nrb_payroll_tech2"], created_at=d(5, hour=10))
+        make_log(t13, "status_changed","assigned", "in_progress", actor=u["nrb_payroll_tech2"], created_at=d(5, hour=11))
+        make_log(t13, "status_changed","in_progress", "pending",  actor=u["nrb_payroll_tech2"],
                  reason="Pending confirmation from Payroll Officer on deduction category", created_at=d(3, hour=14))
 
         # T14 — resolved with feedback (7 days ago)
         t14 = make_ticket(
             raised_by=u["alice.kamau"], requester_campus=nrb,
             service_item=loan, priority=p[2], section=s_hr_payroll,
-            status="resolved", current_level="technician", assigned_to=u["hr_payroll_tech1"],
+            status="resolved", current_level="technician", assigned_to=u["nrb_payroll_tech1"],
             response_due_at=d(7) + timedelta(minutes=240),
             resolution_due_at=d(7) + timedelta(minutes=1440),
             resolved_at=d(6, hour=16),
@@ -839,8 +839,8 @@ class Command(BaseCommand):
             created_at=d(7, hour=9), updated_at=d(6, hour=16),
         )
         make_log(t14, "created",  "", "open",      created_at=d(7, hour=9))
-        make_log(t14, "assigned", "open", "assigned", actor=u["hr_payroll_tech1"], created_at=d(7, hour=11))
-        make_log(t14, "resolved", "in_progress", "resolved", actor=u["hr_payroll_tech1"], created_at=d(6, hour=16))
+        make_log(t14, "assigned", "open", "assigned", actor=u["nrb_payroll_tech1"], created_at=d(7, hour=11))
+        make_log(t14, "resolved", "in_progress", "resolved", actor=u["nrb_payroll_tech1"], created_at=d(6, hour=16))
         TicketFeedback.objects.create(ticket=t14, rating=4, comment="Processed efficiently, good follow-up.")
 
         # ----------------------------------------------------------------
@@ -863,34 +863,34 @@ class Command(BaseCommand):
         t16 = make_ticket(
             raised_by=u["eve.wanjiru"], requester_campus=nrb,
             service_item=file_svc, priority=p[2], section=s_hr_reg,
-            status="assigned", current_level="technician", assigned_to=u["hr_reg_tech1"],
+            status="assigned", current_level="technician", assigned_to=u["nrb_registry_tech1"],
             response_due_at=d(2) + timedelta(minutes=240),
             resolution_due_at=d(2) + timedelta(minutes=1440),
             description="Request for certified copy of appointment letter from HR registry.",
             created_at=d(2, hour=9), updated_at=d(2, hour=13),
         )
         make_log(t16, "created",  "", "open",      created_at=d(2, hour=9))
-        make_log(t16, "assigned", "open", "assigned", actor=u["hr_reg_tech1"], created_at=d(2, hour=13))
+        make_log(t16, "assigned", "open", "assigned", actor=u["nrb_registry_tech1"], created_at=d(2, hour=13))
 
         # T17 — in_progress (3 days ago)
         t17 = make_ticket(
             raised_by=u["alice.kamau"], requester_campus=nrb,
             service_item=file_svc, priority=p[2], section=s_hr_reg,
-            status="in_progress", current_level="technician", assigned_to=u["hr_reg_tech1"],
+            status="in_progress", current_level="technician", assigned_to=u["nrb_registry_tech1"],
             response_due_at=d(3) + timedelta(minutes=240),
             resolution_due_at=d(3) + timedelta(minutes=1440),
             description="Training completion certificates from 2024 needed for promotion application.",
             created_at=d(3, hour=10), updated_at=d(3, hour=15),
         )
         make_log(t17, "created",       "", "open",         created_at=d(3, hour=10))
-        make_log(t17, "assigned",      "open", "assigned",   actor=u["hr_reg_tech1"], created_at=d(3, hour=11))
-        make_log(t17, "status_changed","assigned", "in_progress", actor=u["hr_reg_tech1"], created_at=d(3, hour=15))
+        make_log(t17, "assigned",      "open", "assigned",   actor=u["nrb_registry_tech1"], created_at=d(3, hour=11))
+        make_log(t17, "status_changed","assigned", "in_progress", actor=u["nrb_registry_tech1"], created_at=d(3, hour=15))
 
         # T18 — closed (9 days ago)
         t18 = make_ticket(
             raised_by=u["carol.njoki"], requester_campus=nrb,
             service_item=file_svc, priority=p[1], section=s_hr_reg,
-            status="closed", current_level="technician", assigned_to=u["hr_reg_tech1"],
+            status="closed", current_level="technician", assigned_to=u["nrb_registry_tech1"],
             response_due_at=d(9) + timedelta(minutes=480),
             resolution_due_at=d(9) + timedelta(minutes=4320),
             resolved_at=d(7, hour=14),
@@ -899,9 +899,9 @@ class Command(BaseCommand):
             created_at=d(9, hour=9), updated_at=d(6, hour=10),
         )
         make_log(t18, "created",  "", "open",        created_at=d(9, hour=9))
-        make_log(t18, "assigned", "open", "assigned",  actor=u["hr_reg_tech1"], created_at=d(9, hour=12))
-        make_log(t18, "resolved", "in_progress", "resolved", actor=u["hr_reg_tech1"], created_at=d(7, hour=14))
-        make_log(t18, "closed",   "resolved", "closed",      actor=u["nrb_hr_reg_hos"], created_at=d(6, hour=10))
+        make_log(t18, "assigned", "open", "assigned",  actor=u["nrb_registry_tech1"], created_at=d(9, hour=12))
+        make_log(t18, "resolved", "in_progress", "resolved", actor=u["nrb_registry_tech1"], created_at=d(7, hour=14))
+        make_log(t18, "closed",   "resolved", "closed",      actor=u["nrb_registry_hos"], created_at=d(6, hour=10))
 
         # ----------------------------------------------------------------
         # NRB-ICT-NET (5 tickets)
@@ -923,37 +923,37 @@ class Command(BaseCommand):
         t20 = make_ticket(
             raised_by=u["alice.kamau"], requester_campus=nrb,
             service_item=phone, priority=p[2], section=s_ict_net,
-            status="in_progress", current_level="technician", assigned_to=u["ict_net_tech1"],
+            status="in_progress", current_level="technician", assigned_to=u["nrb_networks_tech1"],
             response_due_at=d(1) + timedelta(minutes=240),
             resolution_due_at=d(1) + timedelta(minutes=1440),
             description="Extension 2045 not receiving incoming calls — dead tone on handset.",
             created_at=d(1, hour=10), updated_at=d(1, hour=14),
         )
         make_log(t20, "created",       "", "open",          created_at=d(1, hour=10))
-        make_log(t20, "assigned",      "open", "assigned",    actor=u["ict_net_tech1"], created_at=d(1, hour=11))
-        make_log(t20, "status_changed","assigned", "in_progress", actor=u["ict_net_tech1"], created_at=d(1, hour=14))
+        make_log(t20, "assigned",      "open", "assigned",    actor=u["nrb_networks_tech1"], created_at=d(1, hour=11))
+        make_log(t20, "status_changed","assigned", "in_progress", actor=u["nrb_networks_tech1"], created_at=d(1, hour=14))
 
         # T21 — in_progress escalated to HOS (5 days ago)
         t21 = make_ticket(
             raised_by=u["carol.njoki"], requester_campus=nrb,
             service_item=internet, priority=p[3], section=s_ict_net,
-            status="in_progress", current_level="hos", assigned_to=u["ict_net_tech2"],
+            status="in_progress", current_level="hos", assigned_to=u["nrb_networks_tech2"],
             response_due_at=d(5) + timedelta(minutes=60),
             resolution_due_at=d(5) + timedelta(minutes=480),
             description="Entire campus network unstable — intermittent dropouts across all buildings.",
             created_at=d(5, hour=8), updated_at=d(4, hour=9),
         )
         make_log(t21, "created",       "", "open",          created_at=d(5, hour=8))
-        make_log(t21, "assigned",      "open", "assigned",    actor=u["ict_net_tech2"], created_at=d(5, hour=9))
-        make_log(t21, "status_changed","assigned", "in_progress", actor=u["ict_net_tech2"], created_at=d(5, hour=11))
-        make_log(t21, "escalated",     "technician", "hos",    level_user=u["nrb_ict_net_hos"],
+        make_log(t21, "assigned",      "open", "assigned",    actor=u["nrb_networks_tech2"], created_at=d(5, hour=9))
+        make_log(t21, "status_changed","assigned", "in_progress", actor=u["nrb_networks_tech2"], created_at=d(5, hour=11))
+        make_log(t21, "escalated",     "technician", "hos",    level_user=u["nrb_networks_hos"],
                  reason="Unresolved after 4 hours — escalating to HOS", created_at=d(4, hour=9))
 
         # T22 — resolved with feedback (6 days ago)
         t22 = make_ticket(
             raised_by=u["eve.wanjiru"], requester_campus=nrb,
             service_item=phone, priority=p[2], section=s_ict_net,
-            status="resolved", current_level="technician", assigned_to=u["ict_net_tech1"],
+            status="resolved", current_level="technician", assigned_to=u["nrb_networks_tech1"],
             response_due_at=d(6) + timedelta(minutes=240),
             resolution_due_at=d(6) + timedelta(minutes=1440),
             resolved_at=d(5, hour=17),
@@ -961,15 +961,15 @@ class Command(BaseCommand):
             created_at=d(6, hour=9), updated_at=d(5, hour=17),
         )
         make_log(t22, "created",  "", "open",      created_at=d(6, hour=9))
-        make_log(t22, "assigned", "open", "assigned", actor=u["ict_net_tech1"], created_at=d(6, hour=10))
-        make_log(t22, "resolved", "in_progress", "resolved", actor=u["ict_net_tech1"], created_at=d(5, hour=17))
+        make_log(t22, "assigned", "open", "assigned", actor=u["nrb_networks_tech1"], created_at=d(6, hour=10))
+        make_log(t22, "resolved", "in_progress", "resolved", actor=u["nrb_networks_tech1"], created_at=d(5, hour=17))
         TicketFeedback.objects.create(ticket=t22, rating=5, comment="Configured same day, no downtime.")
 
         # T23 — closed (8 days ago)
         t23 = make_ticket(
             raised_by=u["alice.kamau"], requester_campus=nrb,
             service_item=internet, priority=p[4], section=s_ict_net,
-            status="closed", current_level="technician", assigned_to=u["nrb_ict_net_hos"],
+            status="closed", current_level="technician", assigned_to=u["nrb_networks_hos"],
             response_due_at=d(8) + timedelta(minutes=30),
             resolution_due_at=d(8) + timedelta(minutes=120),
             resolved_at=d(8, hour=14),
@@ -978,8 +978,8 @@ class Command(BaseCommand):
             created_at=d(8, hour=11), updated_at=d(7, hour=10),
         )
         make_log(t23, "created",  "", "open",         created_at=d(8, hour=11))
-        make_log(t23, "assigned", "open", "assigned",   actor=u["nrb_ict_net_hos"], created_at=d(8, hour=11))
-        make_log(t23, "resolved", "in_progress", "resolved", actor=u["nrb_ict_net_hos"], created_at=d(8, hour=14))
+        make_log(t23, "assigned", "open", "assigned",   actor=u["nrb_networks_hos"], created_at=d(8, hour=11))
+        make_log(t23, "resolved", "in_progress", "resolved", actor=u["nrb_networks_hos"], created_at=d(8, hour=14))
         make_log(t23, "closed",   "resolved", "closed",      actor=u["nrb_ict_hod"], created_at=d(7, hour=10))
 
         # ----------------------------------------------------------------
@@ -1002,43 +1002,43 @@ class Command(BaseCommand):
         t25 = make_ticket(
             raised_by=u["eve.wanjiru"], requester_campus=nrb,
             service_item=email_svc, priority=p[2], section=s_ict_syssupp,
-            status="assigned", current_level="technician", assigned_to=u["ict_syssupp_tech1"],
+            status="assigned", current_level="technician", assigned_to=u["nrb_syssupport_tech1"],
             response_due_at=d(1) + timedelta(minutes=240),
             resolution_due_at=d(1) + timedelta(minutes=1440),
             description="Email account not syncing on new laptop after migration to Microsoft 365.",
             created_at=d(1, hour=9), updated_at=d(1, hour=12),
         )
         make_log(t25, "created",  "", "open",      created_at=d(1, hour=9))
-        make_log(t25, "assigned", "open", "assigned", actor=u["ict_syssupp_tech1"], created_at=d(1, hour=12))
+        make_log(t25, "assigned", "open", "assigned", actor=u["nrb_syssupport_tech1"], created_at=d(1, hour=12))
 
         # T26 — in_progress (3 days ago)
         t26 = make_ticket(
             raised_by=u["alice.kamau"], requester_campus=nrb,
             service_item=erp, priority=p[2], section=s_ict_syssupp,
-            status="in_progress", current_level="technician", assigned_to=u["ict_syssupp_tech2"],
+            status="in_progress", current_level="technician", assigned_to=u["nrb_syssupport_tech2"],
             response_due_at=d(3) + timedelta(minutes=240),
             resolution_due_at=d(3) + timedelta(minutes=1440),
             description="Staff cannot log in to ERP leave module — account locked after failed attempts.",
             created_at=d(3, hour=8), updated_at=d(3, hour=13),
         )
         make_log(t26, "created",       "", "open",          created_at=d(3, hour=8))
-        make_log(t26, "assigned",      "open", "assigned",    actor=u["ict_syssupp_tech2"], created_at=d(3, hour=9))
-        make_log(t26, "status_changed","assigned", "in_progress", actor=u["ict_syssupp_tech2"], created_at=d(3, hour=13))
+        make_log(t26, "assigned",      "open", "assigned",    actor=u["nrb_syssupport_tech2"], created_at=d(3, hour=9))
+        make_log(t26, "status_changed","assigned", "in_progress", actor=u["nrb_syssupport_tech2"], created_at=d(3, hour=13))
 
         # T27 — in_progress escalated to HOD (7 days ago)
         t27 = make_ticket(
             raised_by=u["carol.njoki"], requester_campus=nrb,
             service_item=erp, priority=p[3], section=s_ict_syssupp,
-            status="in_progress", current_level="hod", assigned_to=u["ict_syssupp_tech1"],
+            status="in_progress", current_level="hod", assigned_to=u["nrb_syssupport_tech1"],
             response_due_at=d(7) + timedelta(minutes=60),
             resolution_due_at=d(7) + timedelta(minutes=480),
             description="ERP payroll integration broken — salaries not posting to finance module.",
             created_at=d(7, hour=7), updated_at=d(6, hour=8),
         )
         make_log(t27, "created",       "", "open",          created_at=d(7, hour=7))
-        make_log(t27, "assigned",      "open", "assigned",    actor=u["ict_syssupp_tech1"], created_at=d(7, hour=8))
-        make_log(t27, "status_changed","assigned", "in_progress", actor=u["ict_syssupp_tech1"], created_at=d(7, hour=9))
-        make_log(t27, "escalated",     "technician", "hos",    level_user=u["nrb_ict_syssupp_hos"],
+        make_log(t27, "assigned",      "open", "assigned",    actor=u["nrb_syssupport_tech1"], created_at=d(7, hour=8))
+        make_log(t27, "status_changed","assigned", "in_progress", actor=u["nrb_syssupport_tech1"], created_at=d(7, hour=9))
+        make_log(t27, "escalated",     "technician", "hos",    level_user=u["nrb_syssupport_hos"],
                  reason="Not resolved in 4 hours — escalating", created_at=d(7, hour=13))
         make_log(t27, "escalated",     "hos", "hod",            level_user=u["nrb_ict_hod"],
                  reason="Requires executive sign-off on ERP vendor engagement", created_at=d(6, hour=8))
@@ -1047,7 +1047,7 @@ class Command(BaseCommand):
         t28 = make_ticket(
             raised_by=u["eve.wanjiru"], requester_campus=nrb,
             service_item=email_svc, priority=p[2], section=s_ict_syssupp,
-            status="resolved", current_level="technician", assigned_to=u["ict_syssupp_tech2"],
+            status="resolved", current_level="technician", assigned_to=u["nrb_syssupport_tech2"],
             response_due_at=d(5) + timedelta(minutes=240),
             resolution_due_at=d(5) + timedelta(minutes=1440),
             resolved_at=d(4, hour=15),
@@ -1055,8 +1055,8 @@ class Command(BaseCommand):
             created_at=d(5, hour=10), updated_at=d(4, hour=15),
         )
         make_log(t28, "created",  "", "open",      created_at=d(5, hour=10))
-        make_log(t28, "assigned", "open", "assigned", actor=u["ict_syssupp_tech2"], created_at=d(5, hour=11))
-        make_log(t28, "resolved", "in_progress", "resolved", actor=u["ict_syssupp_tech2"], created_at=d(4, hour=15))
+        make_log(t28, "assigned", "open", "assigned", actor=u["nrb_syssupport_tech2"], created_at=d(5, hour=11))
+        make_log(t28, "resolved", "in_progress", "resolved", actor=u["nrb_syssupport_tech2"], created_at=d(4, hour=15))
 
         # ----------------------------------------------------------------
         # MSA-HR-PAYROLL (1 ticket)
@@ -1066,7 +1066,7 @@ class Command(BaseCommand):
         t29 = make_ticket(
             raised_by=u["bob.mwenda"], requester_campus=msa,
             service_item=loan, priority=p[2], section=s_msa_hr_pay,
-            status="resolved", current_level="technician", assigned_to=u["msa_hr_payroll_hos"],
+            status="resolved", current_level="technician", assigned_to=u["msa_payroll_hos"],
             response_due_at=d(6) + timedelta(minutes=240),
             resolution_due_at=d(6) + timedelta(minutes=1440),
             resolved_at=d(5, hour=16),
@@ -1074,8 +1074,8 @@ class Command(BaseCommand):
             created_at=d(6, hour=10), updated_at=d(5, hour=16),
         )
         make_log(t29, "created",  "", "open",      created_at=d(6, hour=10))
-        make_log(t29, "assigned", "open", "assigned", actor=u["msa_hr_payroll_hos"], created_at=d(6, hour=11))
-        make_log(t29, "resolved", "in_progress", "resolved", actor=u["msa_hr_payroll_hos"], created_at=d(5, hour=16))
+        make_log(t29, "assigned", "open", "assigned", actor=u["msa_payroll_hos"], created_at=d(6, hour=11))
+        make_log(t29, "resolved", "in_progress", "resolved", actor=u["msa_payroll_hos"], created_at=d(5, hour=16))
         TicketFeedback.objects.create(ticket=t29, rating=4, comment="Resolved promptly despite cross-campus request.")
 
         # ----------------------------------------------------------------

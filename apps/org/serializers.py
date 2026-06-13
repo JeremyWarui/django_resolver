@@ -50,6 +50,15 @@ class SectionTypeWithCategoriesSerializer(serializers.ModelSerializer):
                 "is_active": cat.is_active,
                 "location_details": cat.location_details,
                 "icon": None,
+                "service_items": [
+                    {
+                        "id": item.id,
+                        "name": item.name,
+                        "description": item.description,
+                        "is_active": item.is_active,
+                    }
+                    for item in cat.service_items.filter(is_active=True).order_by("name")
+                ],
             }
             for cat in obj.service_categories.filter(is_active=True).order_by("name")
         ]

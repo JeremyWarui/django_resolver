@@ -67,6 +67,11 @@ def emit_ticket_assigned(ticket) -> None:
     }
     for group in [f"ticket_{ticket.id}", f"section_{ticket.section_id}", f"user_{ticket.raised_by_id}"]:
         emit_ws_event(group, "ticket_assigned", payload)
+    try:
+        from apps.realtime.push_service import notify_ticket_assigned
+        notify_ticket_assigned(ticket)
+    except Exception as exc:
+        logger.warning("Push notify_ticket_assigned failed: %s", exc)
 
 
 def emit_ticket_status_changed(ticket, from_status: str) -> None:
@@ -114,3 +119,8 @@ def emit_ticket_escalated(ticket) -> None:
     cd_id = _campus_department_id(ticket)
     if cd_id:
         emit_ws_event(f"campus_department_{cd_id}", "ticket_escalated", payload)
+    try:
+        from apps.realtime.push_service import notify_ticket_escalated
+        notify_ticket_escalated(ticket)
+    except Exception as exc:
+        logger.warning("Push notify_ticket_escalated failed: %s", exc)

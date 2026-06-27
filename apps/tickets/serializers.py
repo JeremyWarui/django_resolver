@@ -50,14 +50,34 @@ class _ServiceItemMinSerializer(serializers.Serializer):
 class _SectionMinSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     section_type_id = serializers.IntegerField()
-    # section_type is already in select_related on the ticket queryset (no N+1)
+    # section_type / campus_department are in select_related on ticket queryset (no N+1)
     section_type_name = serializers.CharField(source="section_type.name", read_only=True)
+    name = serializers.CharField(source="section_type.name", read_only=True)
+    campus_code = serializers.CharField(source="campus_department.campus.code", read_only=True)
+    department_code = serializers.CharField(source="campus_department.department.code", read_only=True)
 
 
 class _CampusMinSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     code = serializers.CharField()
     name = serializers.CharField()
+
+
+class _FacilityTypeMinSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    code = serializers.CharField()
+
+
+class _FacilityMinSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+
+
+class _TicketLocationSerializer(serializers.Serializer):
+    facility_type = _FacilityTypeMinSerializer(read_only=True)
+    facility = _FacilityMinSerializer(read_only=True, allow_null=True)
+    values = serializers.JSONField()
 
 
 class TicketReadSerializer(serializers.ModelSerializer):
@@ -70,6 +90,7 @@ class TicketReadSerializer(serializers.ModelSerializer):
     raised_by = _UserMinSerializer(read_only=True)
     raised_by_id = serializers.IntegerField(read_only=True)
     requester_campus = _CampusMinSerializer(read_only=True)
+    location = _TicketLocationSerializer(read_only=True, allow_null=True)
     is_breaching = serializers.SerializerMethodField()
 
     class Meta:
@@ -96,6 +117,7 @@ class TicketReadSerializer(serializers.ModelSerializer):
             "updated_at",
             "resolved_at",
             "closed_at",
+            "location",
         ]
         read_only_fields = fields
 

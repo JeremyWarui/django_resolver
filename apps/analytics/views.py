@@ -84,6 +84,8 @@ def _sectional_slice(data: dict) -> dict:
         "resolved": data["resolved"],
         "net_flow": data["net_flow"],
         "status_distribution": data["status_distribution"],
+        "live_status_distribution": data.get("live_status_distribution", []),
+        "unassigned": data.get("unassigned", 0),
     }
 
 

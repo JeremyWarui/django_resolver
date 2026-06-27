@@ -24,6 +24,8 @@ def scoped_ticket_qs(user, role):
         "assigned_to",
         "raised_by",
         "requester_campus",
+        "location__facility_type",
+        "location__facility",
     ).order_by("-updated_at")
 
     if role == "admin":

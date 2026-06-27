@@ -32,7 +32,7 @@ if not SECRET_KEY:
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
 # Allow all hosts in production for now (more secure to specify exact domains)
-ALLOWED_HOSTS = ["127.0.0.1", "localhost", "django-resolver.onrender.com"]
+ALLOWED_HOSTS = ["127.0.0.1", "localhost", "192.168.100.31", "django-resolver.onrender.com"]
 # Application definition
 
 INSTALLED_APPS = [
@@ -355,10 +355,15 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 #     "https://resolver-zeta.vercel.app",
 # ]
 
-CORS_ALLOWED_ORIGINS = os.getenv(
-    "ALLOWED_ORIGINS",
-    "http://localhost:5173, http://127.0.0.1:5173",
-).split(",")
+CORS_ALLOWED_ORIGINS = [
+    o.strip()
+    for o in os.getenv(
+        "ALLOWED_ORIGINS",
+        # 5173 = vite dev, 4173 = vite preview (PWA/phone testing)
+        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173,http://192.168.100.31:4173",
+    ).split(",")
+    if o.strip()
+]
 
 # Allow credentials (cookies, authorization headers, etc.)
 CORS_ALLOW_CREDENTIALS = True

@@ -14,6 +14,7 @@ from apps.tickets.serializers import (
     TicketAssignSerializer,
     TicketCommentSerializer,
     TicketFeedbackSerializer,
+    _UserMinSerializer,
 )
 from apps.tickets.services.lifecycle import transition_status, TransitionError
 from apps.tickets.services.scope import scoped_ticket_qs
@@ -27,6 +28,9 @@ from apps.realtime.ws_utils import (
 
 
 class TicketLogSerializer(drf_serializers.ModelSerializer):
+    actor = _UserMinSerializer(read_only=True, allow_null=True)
+    level_user = _UserMinSerializer(read_only=True, allow_null=True)
+
     class Meta:
         model = TicketLog
         fields = [
@@ -82,12 +86,12 @@ class TicketAssignView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
-        ticket = get_object_or_404(Ticket, pk=pk)
+        ticket = get_object_or_404(Ticket.objects.select_related("service_item", "assigned_to"), pk=pk)
         serializer = TicketAssignSerializer(data=request.data, context={"ticket": ticket})
         serializer.is_valid(raise_exception=True)
         assignee = serializer.validated_data["assigned_to"]
 
-        was_assigned = ticket.assigned_to_id is not None
+        previous_assignee = ticket.assigned_to  # loaded via select_related before overwrite
         old_status = ticket.status
 
         ticket.assigned_to = assignee
@@ -95,15 +99,19 @@ class TicketAssignView(APIView):
             ticket.status = "assigned"
         ticket.save(update_fields=["assigned_to", "status", "updated_at"])
 
-        event_type = "reassigned" if was_assigned else "assigned"
+        event_type = "reassigned" if previous_assignee is not None else "assigned"
         TicketLog.objects.create(
             ticket=ticket,
             actor=request.user,
             event_type=event_type,
-            from_value=old_status if old_status == "open" else "",
-            to_value=str(assignee.pk),
+            from_value=(
+                (previous_assignee.get_full_name() or previous_assignee.username)
+                if previous_assignee is not None
+                else ""
+            ),
+            to_value=assignee.get_full_name() or assignee.username,
         )
-        emit_ticket_assigned(ticket)
+        emit_ticket_assigned(ticket, previous_assignee=previous_assignee)
 
         return Response({"assigned_to": assignee.pk, "status": ticket.status}, status=200)
 
@@ -173,7 +181,12 @@ class TicketLogListView(generics.ListAPIView):
     pagination_class = AppendOnlyFeedPagination
 
     def get_queryset(self):
-        return TicketLog.objects.filter(ticket_id=self.kwargs["pk"]).order_by("-created_at")
+        return (
+            TicketLog.objects
+            .filter(ticket_id=self.kwargs["pk"])
+            .select_related("actor", "level_user")
+            .order_by("-created_at")
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -225,6 +238,8 @@ class TicketListCreateView(generics.ListCreateAPIView):
                     "assigned_to",
                     "raised_by",
                     "requester_campus",
+                    "location__facility_type",
+                    "location__facility",
                 )
                 .order_by("-updated_at")
             )
@@ -359,7 +374,21 @@ class TicketDetailView(generics.RetrieveAPIView):
     serializer_class = TicketReadSerializer
 
     def get_object(self):
-        ticket = get_object_or_404(Ticket, pk=self.kwargs["pk"])
+        ticket = get_object_or_404(
+            Ticket.objects.select_related(
+                "section__campus_department__department",
+                "section__campus_department__campus",
+                "section__section_type",
+                "priority",
+                "service_item__category",
+                "assigned_to",
+                "raised_by",
+                "requester_campus",
+                "location__facility_type",
+                "location__facility",
+            ),
+            pk=self.kwargs["pk"],
+        )
         user = self.request.user
 
         # Universal requester — own ticket always visible (R15).

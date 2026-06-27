@@ -75,6 +75,7 @@ def build_tokens_for_assignment(user, role_assignment):
         "role": role,
         "campus_id": _campus_id_for_user(user),
         "department_id": department_id,
+        "campus_department_id": role_assignment.campus_department_id if role_assignment else None,
         "section_id": section_id,
         "role_assignment_id": ra_id,
     }

@@ -69,18 +69,107 @@ def notify_ticket_assigned(ticket) -> None:
     send_push_to_user(
         user_id=assignee.id,
         title="Ticket Assigned",
-        body=f"{ticket.ticket_no}: {ticket.title}",
+        body=f"{ticket.ticket_no}: {ticket.service_item.name}",
         data={"ticketId": ticket.id, "ticket_no": ticket.ticket_no, "type": "assigned"},
     )
 
 
-def notify_ticket_escalated(ticket) -> None:
-    assignee = ticket.assigned_to
-    if not assignee:
-        return
+def notify_ticket_created(ticket) -> None:
+    """Push to all HOS users for the ticket's section so they know to assign it."""
+    try:
+        from apps.accounts.models import RoleAssignment
+        hos_ids = list(
+            RoleAssignment.objects.filter(
+                role="hos", section_id=ticket.section_id, is_primary=True
+            ).values_list("user_id", flat=True)
+        )
+    except Exception:
+        hos_ids = []
+    for uid in hos_ids:
+        send_push_to_user(
+            user_id=uid,
+            title="New Ticket",
+            body=f"{ticket.ticket_no}: {ticket.service_item.name}",
+            data={"ticketId": ticket.id, "ticket_no": ticket.ticket_no, "type": "created"},
+        )
+
+
+def notify_ticket_status_changed(ticket, from_status: str) -> None:
+    """Push to the requester when their ticket status changes."""
     send_push_to_user(
-        user_id=assignee.id,
-        title="Ticket Escalated",
-        body=f"{ticket.ticket_no} has been escalated to level {ticket.current_level}",
-        data={"ticketId": ticket.id, "ticket_no": ticket.ticket_no, "type": "escalated"},
+        user_id=ticket.raised_by_id,
+        title="Ticket Updated",
+        body=f"Ticket #{ticket.ticket_no}: {from_status.replace('_', ' ')} → {ticket.status.replace('_', ' ')}",
+        data={"ticketId": ticket.id, "ticket_no": ticket.ticket_no, "type": "status_changed"},
     )
+
+
+def notify_ticket_resolved(ticket) -> None:
+    """Push to the requester when their ticket is resolved."""
+    send_push_to_user(
+        user_id=ticket.raised_by_id,
+        title="Ticket Resolved",
+        body=f"Ticket #{ticket.ticket_no} has been resolved. Please rate your experience.",
+        data={"ticketId": ticket.id, "ticket_no": ticket.ticket_no, "type": "resolved"},
+    )
+
+
+def notify_comment_added(ticket, comment) -> None:
+    """Push to the requester when a staff member comments on their ticket."""
+    author = comment.author
+    if author and author.id == ticket.raised_by_id:
+        return  # requester's own comment — skip
+    author_name = (author.get_full_name() or author.username) if author else "Staff"
+    send_push_to_user(
+        user_id=ticket.raised_by_id,
+        title=f"New comment on #{ticket.ticket_no}",
+        body=f"{author_name}: {(comment.body or '')[:80]}",
+        data={"ticketId": ticket.id, "ticket_no": ticket.ticket_no, "type": "comment"},
+    )
+
+
+def notify_ticket_escalated(ticket) -> None:
+    """Push to the assignee and all HOS/HOD holders for the ticket's section."""
+    assignee = ticket.assigned_to
+    escalation_data = {
+        "ticketId": ticket.id,
+        "ticket_no": ticket.ticket_no,
+        "type": "escalated",
+    }
+
+    if assignee:
+        send_push_to_user(
+            user_id=assignee.id,
+            title="Ticket Escalated",
+            body=f"Ticket #{ticket.ticket_no} has been escalated to {ticket.current_level.upper()}",
+            data=escalation_data,
+        )
+
+    # Also push to HOS/HOD so they can act on the escalation
+    try:
+        from apps.accounts.models import RoleAssignment
+        from apps.org.models import Section
+        cd_id = Section.objects.values_list("campus_department_id", flat=True).get(
+            pk=ticket.section_id
+        )
+        supervisor_ids = set(
+            RoleAssignment.objects.filter(
+                role="hos", section_id=ticket.section_id, is_primary=True
+            ).values_list("user_id", flat=True)
+        ) | set(
+            RoleAssignment.objects.filter(
+                role="hod", campus_department_id=cd_id, is_primary=True
+            ).values_list("user_id", flat=True)
+        )
+        # Don't double-notify the assignee if they happen to also hold a supervisor role
+        supervisor_ids.discard(assignee.id if assignee else None)
+    except Exception:
+        supervisor_ids = set()
+
+    for uid in supervisor_ids:
+        send_push_to_user(
+            user_id=uid,
+            title="Ticket Escalated",
+            body=f"Ticket #{ticket.ticket_no} has been escalated to {ticket.current_level.upper()}",
+            data=escalation_data,
+        )

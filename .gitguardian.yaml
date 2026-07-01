@@ -7,3 +7,7 @@ paths-ignore:
   - "apps/common/management/commands/seed_demo.py"
   - "apps/common/management/commands/seed_org.py"
   - "apps/common/management/commands/seed_reference.py"
+  # Test files use throwaway credentials (testpass, jwtpass, etc.) — not real secrets
+  - "tests/**"
+  - "**/tests/**"
+  - "conftest.py"

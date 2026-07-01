@@ -34,7 +34,10 @@ class CampusViewSet(viewsets.ModelViewSet):
 
 
 class DepartmentViewSet(viewsets.ModelViewSet):
-    queryset = Department.objects.select_related("manager_user").order_by("name")
+    queryset = Department.objects.select_related("manager_user").prefetch_related(
+        "campus_departments__campus",
+        "campus_departments__head_of_department",
+    ).order_by("name")
     serializer_class = DepartmentSerializer
     permission_classes = [IsAdminOrReadOnly]
     pagination_class = ConfigListPagination

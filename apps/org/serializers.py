@@ -16,9 +16,39 @@ class CampusSerializer(serializers.ModelSerializer):
 
 
 class DepartmentSerializer(serializers.ModelSerializer):
+    campuses = serializers.SerializerMethodField()
+    heads_of_department = serializers.SerializerMethodField()
+
     class Meta:
         model = Department
-        fields = ["id", "name", "code", "manager_user"]
+        fields = ["id", "name", "code", "manager_user", "campuses", "heads_of_department"]
+
+    def get_campuses(self, obj):
+        return [
+            {
+                "campus_department_id": cd.id,
+                "id": cd.campus.id,
+                "name": cd.campus.name,
+                "code": cd.campus.code,
+            }
+            for cd in obj.campus_departments.select_related("campus").all()
+        ]
+
+    def get_heads_of_department(self, obj):
+        result = []
+        for cd in obj.campus_departments.select_related("campus", "head_of_department").all():
+            if cd.head_of_department:
+                hod = cd.head_of_department
+                result.append({
+                    "campus_department_id": cd.id,
+                    "campus": cd.campus.code,
+                    "hod": {
+                        "id": hod.id,
+                        "name": f"{hod.first_name} {hod.last_name}".strip() or hod.username,
+                        "username": hod.username,
+                    },
+                })
+        return result
 
 
 class SectionTypeSerializer(serializers.ModelSerializer):

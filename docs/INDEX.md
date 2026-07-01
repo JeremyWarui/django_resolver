@@ -1,105 +1,86 @@
-# Django Resolver Documentation Index
+# Django Resolver — Documentation Index
 
-Welcome to the comprehensive documentation for Django Resolver - a Django REST API for maintenance ticket management.
+> **Kenya School of Government — Multi-Campus Service Desk System**
+> Django 6.0.3 · DRF 3.16.1 · PostgreSQL · Token Auth
 
-**[📖 START HERE: Documentation Guide](DOCUMENTATION_GUIDE.md)** - Choose your role and follow the recommended reading path
+---
 
-## 📚 Quick Navigation
+## Quick Links
 
-### 🚀 Getting Started
+| What do you need? | Go to |
+|-------------------|-------|
+| Get the project running | [First Time Setup](FIRST_TIME_SETUP.md) |
+| Test user credentials | [Default Credentials](DEFAULT_CREDENTIALS.md) |
+| REST API reference | [API Integration Guide](API_INTEGRATION_GUIDE.md) |
+| System architecture | [Architecture Guide](ARCHITECTURE_GUIDE.md) |
+| Analytics endpoints | [Analytics API](api/ANALYTICS.md) |
+| Ticket workflow rules | [Workflow Specification](specifications/WORKFLOW_SPEC.md) |
+| Running tests | [Testing Guide](testing/TESTING.md) |
+| ORM query examples | [Sample Queries](testing/SAMPLE_QUERIES.md) |
 
-- **[Main README](../README.md)** - Project overview, quick start guide, and installation
-- **[Developer Quick Reference](DEVELOPER_QUICK_REFERENCE.md)** - Checklists, patterns, and common tasks
-- **[Project Structure](PROJECT_STRUCTURE.md)** - Complete directory structure and organization
+---
 
-### 🔌 API Documentation
+## All Documents
 
-- **[API Guide](api/GUIDE.md)** - Complete API reference for frontend developers
-- **[Analytics API](api/ANALYTICS.md)** - Analytics endpoints and usage
+### Setup & Operations
+- [README](../README.md) — Project overview and quick start
+- [First Time Setup](FIRST_TIME_SETUP.md) — Step-by-step local setup guide
+- [Default Credentials](DEFAULT_CREDENTIALS.md) — Fixture user accounts and passwords
 
-### 🏗️ Architecture & Design
+### API Reference
+- [API Integration Guide](API_INTEGRATION_GUIDE.md) — All endpoints, request/response shapes, auth
+- [Analytics API](api/ANALYTICS.md) — Analytics endpoints per role
 
-- **[Codebase Architecture](CODEBASE_ARCHITECTURE.md)** - Complete codebase structure, file roles, and data flows
-- **[Architecture Diagrams](ARCHITECTURE_DIAGRAMS.md)** - Visual flow diagrams and module interactions
-- **[API Layers](architecture/LAYERS.md)** - Layered architecture and design patterns
+### Architecture
+- [Architecture Guide](ARCHITECTURE_GUIDE.md) — System design, org hierarchy, service layer, request flow
 
-### 🚢 Deployment
+### Code Layout
+- `apps/` — main Django apps and domain split. Key apps in this repo:
+      - `accounts` — users, profiles, JWT auth, `RoleAssignment`
+      - `org` — Campus, Department, CampusDepartment, Section, SectionTechnician
+      - `catalog` — ServiceCategory, ServiceItem, catalogue visibility
+      - `sla` — Priority, EscalationRule, escalation engine
+      - `facilities` — FacilityType, Facility registry, location validators
+      - `tickets` — Ticket, TicketLocation, TicketLog, TicketComment, TicketFeedback, services
+      - `analytics` — read-only aggregation endpoints
+      - `realtime` — Django Channels consumers and WS utilities
+      - `common` — shared helpers, permissions, pagination
+### Specifications
+- [Workflow Specification](specifications/WORKFLOW_SPEC.md) — Ticket state machine, transition rules, role permissions
 
-- **[Build Configuration](../build.sh)** - Build script for deployment
-- **[Render Config](../render.yaml)** - Render deployment configuration
+### Testing
+- [Testing Guide](testing/TESTING.md) — Test suite overview, fixtures, running tests
+- [Sample Queries](testing/SAMPLE_QUERIES.md) — Django shell ORM examples for fixture data
 
-### 🧪 Testing
+---
 
-- **[Testing Guide](testing/TESTING.md)** - Complete testing documentation including test organization, running tests, and using BaseTicketTestCase
-- **[Sample Queries](testing/SAMPLE_QUERIES.md)** - 20+ pre-built Django ORM query examples for exploring fixture data
-
-### 📋 Reference
-
-- **[Requirements](../requirements.txt)** - Python dependencies
-- **[Pytest Config](../pytest.ini)** - Test configuration
-- **[License](../LICENSE)** - MIT License
-
-## 📂 Documentation Structure
+## Org Hierarchy
 
 ```
-docs/
-├── INDEX.md                          # This file - documentation navigation
-├── PROJECT_STRUCTURE.md              # Complete project structure overview
-├── api/                              # API documentation
-│   ├── GUIDE.md                     # Complete API reference
-│   └── ANALYTICS.md                 # Analytics endpoints
-├── architecture/                     # Architecture and design docs
-│   └── LAYERS.md                    # API layered architecture
-└── testing/                          # Testing documentation
-    ├── TESTING.md                    # Complete testing guide
-    └── SAMPLE_QUERIES.md             # Query examples
+Campus
+  └── CampusDepartment  (Campus + Department + HOD)
+        └── Section  (CampusDepartment + SectionType + HOS)
+              ├── TechnicianSection  (Technician → Section M2M)
+              └── Ticket
+                    ├── ServiceItem  (from service catalogue)
+                    └── Facility
 ```
 
-## 🔍 Finding Documentation
+## Role Summary
 
-### By Task
+| Role | Scope |
+|------|-------|
+| `user` | Own tickets only |
+| `technician` | Tickets in assigned sections |
+| `head_of_section` | Own section — assigns tickets, manages technicians |
+| `hod` | Own campus + department |
+| `manager` | Own department across all campuses |
+| `admin` | Full system access |
 
-**Setting Up Development Environment:**
-1. [Main README](../README.md) - Installation steps
+## Ticket Status Machine
 
-**Building Frontend Integration:**
-1. [API Guide](api/GUIDE.md) - All endpoints
-2. [Analytics API](api/ANALYTICS.md) - Analytics queries
-
-**Understanding Architecture:**
-1. [API Layers](architecture/LAYERS.md) - Code organization
-2. [Project Structure](PROJECT_STRUCTURE.md) - Complete directory overview
-
-**Deploying to Production:**
-1. [Render Config](../render.yaml) - Cloud deployment configuration
-
-**Writing Tests:**
-1. [Testing Guide](testing/TESTING.md) - Complete test documentation including BaseTicketTestCase usage
-2. [Sample Queries](testing/SAMPLE_QUERIES.md) - Query examples for exploring data
-
-### By Component
-
-**Tickets Module:**
-- [API Guide](api/GUIDE.md) - Complete ticket management API
-- [Testing Guide](testing/TESTING.md) - Test organization and execution
-
-**Analytics:**
-- [Analytics API](api/ANALYTICS.md) - Analytics endpoints and usage
-
-## 🆘 Common Issues
-TESTING.md)  
-**Database Queries:** See [Sample Queries](testing/SAMPLE_QUERIES.md)  
-**API Integration:** See [API Guide](api/GUID
-**Test Failures:** See [Testing Guide](testing/README.md)
-
-## 📝 Contributing
-
-When adding new documentation:
-1. Place in appropriate subdirectory
-2. Update this INDEX.md
-3. Use clear, descriptive filenames
-4. Follow existing formatting patterns
-
-## 📧 Support
-
-For issues or questions, refer to the relevant documentation section above or check the [Main README](../README.md) for contact information.
+```
+open → assigned → in_progress ⇄ pending → resolved → closed
+pending_approval → (approve) → open
+pending_approval → (reject)  → rejected
+```

@@ -1,0 +1,9 @@
+version: 2
+
+# Exclude dev seed data — DEFAULT_PASSWORD is a demo credential for local
+# seeding only, not a real secret. No production credentials live here.
+paths-ignore:
+  - "apps/common/management/commands/seed_full.py"
+  - "apps/common/management/commands/seed_demo.py"
+  - "apps/common/management/commands/seed_org.py"
+  - "apps/common/management/commands/seed_reference.py"

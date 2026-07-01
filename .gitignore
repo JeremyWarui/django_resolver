@@ -42,13 +42,24 @@ docs/DEFAULT_CREDENTIALS.md
 # 🔑 IGNORE FIXTURE JSON FILES WITH SENSITIVE DATA (PASSWORDS)
 # Excludes JSON fixtures within the 'tickets' app's fixtures directory.
 tickets/fixtures/tickets_initial_data.json
-
+tickets/fixtures/tickets_additional_data.json
+tickets/fixtures/tickets_initial_data_org.json
+tickets/fixtures/*
 
 # Environment
 venv/
 .env
 *.env
+
+# 🔑 API Test Files with Secrets
+# Local copies of test request files may contain tokens
+docs/api/test-requests.http
 .venv
+
+# Claude Code local settings (project settings.json is tracked)
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+.claude/worktrees/
 
 # IDEs / Editors
 .vscode/

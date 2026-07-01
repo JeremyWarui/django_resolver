@@ -8,7 +8,14 @@ from apps.catalog.models import ServiceItem
 from apps.facilities.models import Facility, FacilityType
 from apps.facilities.validators import validate_location
 from apps.org.models import SectionTechnician
-from apps.tickets.models import Ticket, TicketAttachment, TicketComment, TicketFeedback, TicketLocation, TicketLog
+from apps.tickets.models import (
+    Ticket,
+    TicketAttachment,
+    TicketComment,
+    TicketFeedback,
+    TicketLocation,
+    TicketLog,
+)
 from apps.tickets.services.routing import ServiceNotAvailableError, resolve_routing
 
 User = get_user_model()
@@ -17,6 +24,7 @@ User = get_user_model()
 # ---------------------------------------------------------------------------
 # Read serializers (Phase 6 — role-scoped list + detail)
 # ---------------------------------------------------------------------------
+
 
 class _UserMinSerializer(serializers.Serializer):
     id = serializers.IntegerField()
@@ -51,10 +59,16 @@ class _SectionMinSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     section_type_id = serializers.IntegerField()
     # section_type / campus_department are in select_related on ticket queryset (no N+1)
-    section_type_name = serializers.CharField(source="section_type.name", read_only=True)
+    section_type_name = serializers.CharField(
+        source="section_type.name", read_only=True
+    )
     name = serializers.CharField(source="section_type.name", read_only=True)
-    campus_code = serializers.CharField(source="campus_department.campus.code", read_only=True)
-    department_code = serializers.CharField(source="campus_department.department.code", read_only=True)
+    campus_code = serializers.CharField(
+        source="campus_department.campus.code", read_only=True
+    )
+    department_code = serializers.CharField(
+        source="campus_department.department.code", read_only=True
+    )
 
 
 class _CampusMinSerializer(serializers.Serializer):
@@ -130,7 +144,9 @@ class TicketReadSerializer(serializers.ModelSerializer):
 
 
 class LocationInputSerializer(serializers.Serializer):
-    facility_type = serializers.PrimaryKeyRelatedField(queryset=FacilityType.objects.all())
+    facility_type = serializers.PrimaryKeyRelatedField(
+        queryset=FacilityType.objects.all()
+    )
     facility = serializers.PrimaryKeyRelatedField(
         queryset=Facility.objects.select_related("facility_type", "campus"),
         required=False,
@@ -172,12 +188,12 @@ class TicketCreateSerializer(serializers.Serializer):
         try:
             section = resolve_routing(campus.id, service_item.id)
         except ServiceNotAvailableError as exc:
-            raise serializers.ValidationError(
-                {"service_item": str(exc)}
-            ) from exc
+            raise serializers.ValidationError({"service_item": str(exc)}) from exc
 
         # 3. Resolve priority: item-level override first, then category default.
-        priority = service_item.default_priority or service_item.category.default_priority
+        priority = (
+            service_item.default_priority or service_item.category.default_priority
+        )
 
         # 4. Handle location.
         location_input = attrs.get("location")
@@ -295,9 +311,15 @@ class TicketAttachmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = TicketAttachment
         fields = [
-            "id", "original_name", "mime_type",
-            "original_size", "stored_size", "size_saved_pct",
-            "url", "uploaded_by", "created_at",
+            "id",
+            "original_name",
+            "mime_type",
+            "original_size",
+            "stored_size",
+            "size_saved_pct",
+            "url",
+            "uploaded_by",
+            "created_at",
         ]
         read_only_fields = fields
 

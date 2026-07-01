@@ -25,6 +25,14 @@ urlpatterns = [
     path("users/", UserListCreateView.as_view(), name="user-list"),
     path("users/<int:pk>/", UserDetailView.as_view(), name="user-detail"),
     # Role assignment management
-    path("users/<int:user_pk>/role-assignments/", UserRoleAssignmentListCreateView.as_view(), name="user-role-assignments"),
-    path("users/<int:user_pk>/role-assignments/<int:ra_pk>/", UserRoleAssignmentDetailView.as_view(), name="user-role-assignment-detail"),
+    path(
+        "users/<int:user_pk>/role-assignments/",
+        UserRoleAssignmentListCreateView.as_view(),
+        name="user-role-assignments",
+    ),
+    path(
+        "users/<int:user_pk>/role-assignments/<int:ra_pk>/",
+        UserRoleAssignmentDetailView.as_view(),
+        name="user-role-assignment-detail",
+    ),
 ]

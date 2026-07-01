@@ -79,7 +79,9 @@ def validate_location(facility_type, facility, values, requester_campus_id):
         # Facility must belong to the requester's campus.
         if facility.campus_id != requester_campus_id:
             raise serializers.ValidationError(
-                {"facility": "The selected facility does not belong to the requester's campus."}
+                {
+                    "facility": "The selected facility does not belong to the requester's campus."
+                }
             )
         # Facility must match the declared facility type.
         if facility.facility_type.code != type_code:

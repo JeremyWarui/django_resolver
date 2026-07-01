@@ -15,8 +15,8 @@ import pytest
 from django.contrib.auth.models import Group
 from rest_framework.test import APIClient
 
-
 # ── fixtures ──────────────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def api_client():
@@ -26,36 +26,42 @@ def api_client():
 @pytest.fixture
 def campus(db):
     from apps.org.models import Campus
+
     return Campus.objects.create(name="Nairobi", code="NRB", location="CBD")
 
 
 @pytest.fixture
 def campus_b(db):
     from apps.org.models import Campus
+
     return Campus.objects.create(name="Mombasa", code="MSA", location="Coast")
 
 
 @pytest.fixture
 def dept(db):
     from apps.org.models import Department
+
     return Department.objects.create(name="ICT", code="ICT")
 
 
 @pytest.fixture
 def section_type(dept):
     from apps.org.models import SectionType
+
     return SectionType.objects.create(department=dept, name="Support", code="SUP")
 
 
 @pytest.fixture
 def campus_dept(campus, dept):
     from apps.org.models import CampusDepartment
+
     return CampusDepartment.objects.create(campus=campus, department=dept)
 
 
 @pytest.fixture
 def active_section(campus_dept, section_type):
     from apps.org.models import Section
+
     return Section.objects.create(
         campus_department=campus_dept, section_type=section_type, is_active=True
     )
@@ -64,6 +70,7 @@ def active_section(campus_dept, section_type):
 @pytest.fixture
 def inactive_section(campus_dept, section_type):
     from apps.org.models import Section
+
     return Section.objects.create(
         campus_department=campus_dept, section_type=section_type, is_active=False
     )
@@ -72,6 +79,7 @@ def inactive_section(campus_dept, section_type):
 @pytest.fixture
 def priority(db):
     from apps.sla.models import Priority
+
     return Priority.objects.create(
         name="Low", rank=1, response_minutes=480, resolution_minutes=4320
     )
@@ -80,6 +88,7 @@ def priority(db):
 @pytest.fixture
 def service_category(section_type, priority):
     from apps.catalog.models import ServiceCategory
+
     return ServiceCategory.objects.create(
         section_type=section_type,
         name="Network Issues",
@@ -91,6 +100,7 @@ def service_category(section_type, priority):
 @pytest.fixture
 def service_item(service_category, priority):
     from apps.catalog.models import ServiceItem
+
     return ServiceItem.objects.create(
         category=service_category,
         name="No Internet",
@@ -107,6 +117,7 @@ def admin_group(db):
 @pytest.fixture
 def admin_user(db):
     from apps.accounts.models import CustomUser, RoleAssignment
+
     user = CustomUser.objects.create_user(username="adminuser", password="pass")
     RoleAssignment.objects.create(user=user, role="admin", is_primary=True)
     return user
@@ -115,15 +126,18 @@ def admin_user(db):
 @pytest.fixture
 def regular_user(db):
     from apps.accounts.models import CustomUser
+
     return CustomUser.objects.create_user(username="regular", password="pass")
 
 
 # ── R4: No department FK on ServiceCategory ───────────────────────────────────
 
+
 @pytest.mark.django_db
 def test_service_category_has_no_department_field():
     """R4: ServiceCategory must NOT have a 'department' database field."""
     from apps.catalog.models import ServiceCategory
+
     field_names = [f.name for f in ServiceCategory._meta.get_fields()]
     assert "department" not in field_names, (
         "ServiceCategory must not have a 'department' DB field (R4); "
@@ -135,6 +149,7 @@ def test_service_category_has_no_department_field():
 def test_service_category_serializer_department_is_derived(service_category):
     """R4: ServiceCategorySerializer must expose 'department' as a derived read-only field."""
     from apps.catalog.serializers import ServiceCategorySerializer
+
     data = ServiceCategorySerializer(service_category).data
     assert "department" in data, "Serializer must expose 'department' key"
     dept = data["department"]
@@ -143,9 +158,12 @@ def test_service_category_serializer_department_is_derived(service_category):
 
 
 @pytest.mark.django_db
-def test_service_category_serializer_department_not_writable(service_category, priority, section_type):
+def test_service_category_serializer_department_not_writable(
+    service_category, priority, section_type
+):
     """R4: 'department' must not be accepted as a write field."""
     from apps.catalog.serializers import ServiceCategorySerializer
+
     payload = {
         "section_type": section_type.id,
         "name": "New Category",
@@ -159,6 +177,7 @@ def test_service_category_serializer_department_not_writable(service_category, p
 
 
 # ── R5: Catalogue visibility ───────────────────────────────────────────────────
+
 
 @pytest.mark.django_db
 def test_catalog_shows_active_section(
@@ -186,8 +205,10 @@ def test_catalog_hides_inactive_section(
 
 @pytest.mark.django_db
 def test_catalog_campus_isolation(
-    api_client, regular_user,
-    campus, campus_b,
+    api_client,
+    regular_user,
+    campus,
+    campus_b,
     active_section,  # section at campus, not campus_b
     service_category,
 ):
@@ -235,6 +256,7 @@ def test_catalog_response_includes_items(
 
 # ── §3.7 Pagination shape — config lists ─────────────────────────────────────
 
+
 @pytest.mark.django_db
 def test_config_list_pagination_shape(api_client, admin_user, campus):
     """Config list endpoints must return PageNumber envelope: {count, next, previous, results}."""
@@ -260,6 +282,7 @@ def test_priorities_list_pagination_shape(api_client, admin_user, priority):
 def test_append_only_feed_pagination_envelope():
     """AppendOnlyFeedPagination must produce {results, meta:{nextCursor,prevCursor,total}}."""
     from apps.common.pagination import AppendOnlyFeedPagination
+
     p = AppendOnlyFeedPagination()
     # Stub cursor link methods — they require paginate_queryset to have run first.
     p.get_next_link = lambda: "http://example.com/next"
@@ -274,6 +297,7 @@ def test_append_only_feed_pagination_envelope():
 
 
 # ── §5.2 Admin CRUD — access control ─────────────────────────────────────────
+
 
 @pytest.mark.django_db
 def test_campus_crud_requires_auth(api_client):
@@ -343,7 +367,12 @@ def test_create_priority(api_client, admin_user):
     api_client.force_authenticate(user=admin_user)
     resp = api_client.post(
         "/api/v1/priorities/",
-        {"name": "Critical", "rank": 9, "response_minutes": 60, "resolution_minutes": 240},
+        {
+            "name": "Critical",
+            "rank": 9,
+            "response_minutes": 60,
+            "resolution_minutes": 240,
+        },
         format="json",
     )
     assert resp.status_code == 201
@@ -356,7 +385,12 @@ def test_create_escalation_rule(api_client, admin_user, priority):
     api_client.force_authenticate(user=admin_user)
     resp = api_client.post(
         f"/api/v1/priorities/{priority.id}/escalation-rules/",
-        {"priority": priority.id, "to_level": "hos", "threshold_minutes": 120, "order": 1},
+        {
+            "priority": priority.id,
+            "to_level": "hos",
+            "threshold_minutes": 120,
+            "order": 1,
+        },
         format="json",
     )
     assert resp.status_code == 201
@@ -367,6 +401,7 @@ def test_create_escalation_rule(api_client, admin_user, priority):
 def test_priority_detail_includes_escalation_rules(api_client, admin_user, priority):
     """Priority detail response nests its escalation rules."""
     from apps.sla.models import EscalationRule
+
     EscalationRule.objects.create(
         priority=priority, to_level="hos", threshold_minutes=120, order=1
     )
@@ -378,6 +413,7 @@ def test_priority_detail_includes_escalation_rules(api_client, admin_user, prior
 
 
 # ── §5.2 Facilities ───────────────────────────────────────────────────────────
+
 
 @pytest.mark.django_db
 def test_facility_type_list_any_auth(api_client, regular_user):
@@ -403,11 +439,17 @@ def test_facility_type_is_read_only(api_client, admin_user):
 def test_create_facility(api_client, admin_user, campus):
     """Admin can create a facility (building) for a campus."""
     from apps.facilities.models import FacilityType
+
     ft = FacilityType.objects.create(name="Office Block", code="office_block")
     api_client.force_authenticate(user=admin_user)
     resp = api_client.post(
         "/api/v1/facilities/",
-        {"campus": campus.id, "facility_type": ft.id, "name": "Block A", "code": "BLK-A"},
+        {
+            "campus": campus.id,
+            "facility_type": ft.id,
+            "name": "Block A",
+            "code": "BLK-A",
+        },
         format="json",
     )
     assert resp.status_code == 201
@@ -418,6 +460,7 @@ def test_create_facility(api_client, admin_user, campus):
 def test_facilities_filtered_by_campus(api_client, regular_user, campus, campus_b):
     """GET /facilities/?campus=X returns only facilities at campus X."""
     from apps.facilities.models import FacilityType, Facility
+
     ft = FacilityType.objects.create(name="Building", code="building")
     f_a = Facility.objects.create(campus=campus, facility_type=ft, name="Block A")
     f_b = Facility.objects.create(campus=campus_b, facility_type=ft, name="Block B")
@@ -431,6 +474,7 @@ def test_facilities_filtered_by_campus(api_client, regular_user, campus, campus_
 
 
 # ── §5.2 Catalogue admin CRUD ─────────────────────────────────────────────────
+
 
 @pytest.mark.django_db
 def test_create_service_category(api_client, admin_user, section_type, priority):
@@ -463,6 +507,7 @@ def test_create_service_item(api_client, admin_user, service_category):
 
 
 # ── Nested section technicians ────────────────────────────────────────────────
+
 
 @pytest.mark.django_db
 def test_list_section_technicians(api_client, admin_user, active_section):

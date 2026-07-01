@@ -9,17 +9,31 @@ from django.contrib.auth.admin import UserAdmin
 from unfold.admin import ModelAdmin
 
 from apps.accounts.models import CustomUser, UserProfile, RoleAssignment
-from apps.org.models import Campus, Department, CampusDepartment, SectionType, Section, SectionTechnician
+from apps.org.models import (
+    Campus,
+    Department,
+    CampusDepartment,
+    SectionType,
+    Section,
+    SectionTechnician,
+)
 from apps.facilities.models import FacilityType, Facility
 from apps.sla.models import Priority, EscalationRule
 from apps.catalog.models import ServiceCategory, ServiceItem
-from apps.tickets.models import Ticket, TicketLocation, TicketLog, TicketComment, TicketFeedback
-
+from apps.tickets.models import (
+    Ticket,
+    TicketLocation,
+    TicketLog,
+    TicketComment,
+    TicketFeedback,
+)
 
 # ── Unfold sidebar / environment callbacks ─────────────────────────────────────
 
+
 def environment_callback(request):
     import os
+
     env = os.getenv("ENVIRONMENT", "development")
     return env, "info" if env == "production" else "warning"
 
@@ -47,6 +61,7 @@ def facility_count_badge(request):
 
 
 # ── Admin registrations ────────────────────────────────────────────────────────
+
 
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin, ModelAdmin):

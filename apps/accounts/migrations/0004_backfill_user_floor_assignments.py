@@ -14,9 +14,7 @@ def backfill_floor_assignments(apps, schema_editor):
     RoleAssignment = apps.get_model("accounts", "RoleAssignment")
 
     # Users who have no primary assignment at all.
-    users_without_primary = User.objects.exclude(
-        role_assignments__is_primary=True
-    )
+    users_without_primary = User.objects.exclude(role_assignments__is_primary=True)
 
     assignments = [
         RoleAssignment(user=user, role="user", is_primary=True)

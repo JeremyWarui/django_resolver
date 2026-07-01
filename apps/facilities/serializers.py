@@ -22,11 +22,17 @@ class FacilitySerializer(serializers.ModelSerializer):
     class Meta:
         model = Facility
         fields = [
-            "id", "name", "code",
-            "campus", "campus_name",
-            "facility_type", "type",
+            "id",
+            "name",
+            "code",
+            "campus",
+            "campus_name",
+            "facility_type",
+            "type",
             "status",
-            "openTickets", "resolvedTickets", "closedTickets",
+            "openTickets",
+            "resolvedTickets",
+            "closedTickets",
         ]
 
     def get_type(self, obj):

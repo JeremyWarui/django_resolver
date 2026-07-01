@@ -46,7 +46,9 @@ def _style_headers(ws, num_cols: int) -> None:
 def _auto_width(ws) -> None:
     for col_cells in ws.columns:
         max_len = max((len(str(c.value or "")) for c in col_cells), default=10)
-        ws.column_dimensions[get_column_letter(col_cells[0].column)].width = min(max_len + 2, 50)
+        ws.column_dimensions[get_column_letter(col_cells[0].column)].width = min(
+            max_len + 2, 50
+        )
 
 
 def _fmt(dt) -> str:
@@ -54,6 +56,7 @@ def _fmt(dt) -> str:
 
 
 # ── Date-range and queryset helpers ───────────────────────────────────────────
+
 
 def _build_date_range_params(request) -> dict:
     """Build params dict compatible with resolve_date_range()."""
@@ -88,6 +91,7 @@ def _base_qs(request, role):
 
     if start and end:
         from datetime import datetime
+
         try:
             qs = qs.filter(created_at__gte=datetime.strptime(start, "%Y-%m-%d"))
             qs = qs.filter(created_at__lte=datetime.strptime(end, "%Y-%m-%d"))
@@ -122,13 +126,16 @@ def _report_date_range(request, scoped_qs):
         scoped_qs.order_by("created_at").values_list("created_at", flat=True).first()
     )
     date_from = earliest or (timezone.now() - timedelta(days=30))
-    return resolve_date_range({
-        "date_from": date_from.isoformat(),
-        "date_to": timezone.now().isoformat(),
-    })
+    return resolve_date_range(
+        {
+            "date_from": date_from.isoformat(),
+            "date_to": timezone.now().isoformat(),
+        }
+    )
 
 
 # ── Summary sheet (mirrors analytics overview cards) ──────────────────────────
+
 
 def _sheet_summary(ws, scoped_qs, request) -> None:
     """Summary tab — same numbers as the analytics/reports overview cards.
@@ -161,24 +168,67 @@ def _sheet_summary(ws, scoped_qs, request) -> None:
 
     dr = date_range
     ws.cell(row=2, column=1, value="Date Range")
-    ws.cell(row=2, column=2, value=f"{dr['date_from'].strftime('%Y-%m-%d')} → {dr['date_to'].strftime('%Y-%m-%d')}")
+    ws.cell(
+        row=2,
+        column=2,
+        value=f"{dr['date_from'].strftime('%Y-%m-%d')} → {dr['date_to'].strftime('%Y-%m-%d')}",
+    )
 
     row = 4
-    _kv("Open Backlog (live)", data.get("open_backlog", 0), row); row += 1
-    _kv("Created in window", data.get("created", 0), row); row += 1
-    _kv("Resolved in window", data.get("resolved", 0), row); row += 1
-    _kv("Net Flow (created − resolved)", data.get("net_flow", 0), row); row += 1
+    _kv("Open Backlog (live)", data.get("open_backlog", 0), row)
+    row += 1
+    _kv("Created in window", data.get("created", 0), row)
+    row += 1
+    _kv("Resolved in window", data.get("resolved", 0), row)
+    row += 1
+    _kv("Net Flow (created − resolved)", data.get("net_flow", 0), row)
+    row += 1
 
     row += 1
-    _kv("Resolution SLA %", f"{data['resolution_sla_pct']:.1f}%" if data.get("resolution_sla_pct") is not None else "—", row); row += 1
-    _kv("Response SLA %", f"{data['response_sla_pct']:.1f}%" if data.get("response_sla_pct") is not None else "—", row); row += 1
-    _kv("At-Risk tickets", data.get("at_risk", 0), row); row += 1
-    _kv("Breached tickets", data.get("breached", 0), row); row += 1
+    _kv(
+        "Resolution SLA %",
+        (
+            f"{data['resolution_sla_pct']:.1f}%"
+            if data.get("resolution_sla_pct") is not None
+            else "—"
+        ),
+        row,
+    )
+    row += 1
+    _kv(
+        "Response SLA %",
+        (
+            f"{data['response_sla_pct']:.1f}%"
+            if data.get("response_sla_pct") is not None
+            else "—"
+        ),
+        row,
+    )
+    row += 1
+    _kv("At-Risk tickets", data.get("at_risk", 0), row)
+    row += 1
+    _kv("Breached tickets", data.get("breached", 0), row)
+    row += 1
 
     row += 1
-    _kv("CSAT", f"{data['csat']:.1f}%" if data.get("csat") is not None else "—", row); row += 1
-    _kv("Reopen Rate", f"{data['reopen_rate']:.1f}%" if data.get("reopen_rate") is not None else "—", row); row += 1
-    _kv("Escalation Rate", f"{data['escalation_rate']:.1f}%" if data.get("escalation_rate") is not None else "—", row); row += 1
+    _kv("CSAT", f"{data['csat']:.1f}%" if data.get("csat") is not None else "—", row)
+    row += 1
+    _kv(
+        "Reopen Rate",
+        f"{data['reopen_rate']:.1f}%" if data.get("reopen_rate") is not None else "—",
+        row,
+    )
+    row += 1
+    _kv(
+        "Escalation Rate",
+        (
+            f"{data['escalation_rate']:.1f}%"
+            if data.get("escalation_rate") is not None
+            else "—"
+        ),
+        row,
+    )
+    row += 1
 
     # p50/p90 resolution times — straight from aggregate() so the Summary matches
     # the analytics endpoints exactly (no re-implemented percentile here).
@@ -193,20 +243,36 @@ def _sheet_summary(ws, scoped_qs, request) -> None:
         return f"{h}h {m}m" if h else f"{m}m"
 
     row += 1
-    _kv("Resolution p50 (median)", _fmt_secs(p50), row); row += 1
-    _kv("Resolution p90", _fmt_secs(p90), row); row += 1
+    _kv("Resolution p50 (median)", _fmt_secs(p50), row)
+    row += 1
+    _kv("Resolution p90", _fmt_secs(p90), row)
+    row += 1
 
 
 # ── Sheet builders ─────────────────────────────────────────────────────────────
 
+
 def _sheet_ticket_lifecycle(ws, qs) -> None:
     headers = [
-        "Ticket No", "Status", "Priority", "Level",
-        "Raised By", "Campus", "Service Category", "Service Item", "Section",
-        "Assigned To", "Description (200 chars)",
-        "Response Due", "Resolution Due", "Resolved At", "Closed At",
-        "Created At", "Updated At",
-        "Paused Since", "Total Paused (mins)",
+        "Ticket No",
+        "Status",
+        "Priority",
+        "Level",
+        "Raised By",
+        "Campus",
+        "Service Category",
+        "Service Item",
+        "Section",
+        "Assigned To",
+        "Description (200 chars)",
+        "Response Due",
+        "Resolution Due",
+        "Resolved At",
+        "Closed At",
+        "Created At",
+        "Updated At",
+        "Paused Since",
+        "Total Paused (mins)",
     ]
     ws.append(headers)
     _style_headers(ws, len(headers))
@@ -223,36 +289,62 @@ def _sheet_ticket_lifecycle(ws, qs) -> None:
     )
 
     for t in tickets:
-        pause_mins = int(t.accumulated_pause.total_seconds() / 60) if t.accumulated_pause else 0
-        ws.append([
-            t.ticket_no,
-            t.get_status_display(),
-            t.priority.name if t.priority_id else "",
-            t.get_current_level_display(),
-            (t.raised_by.get_full_name() or t.raised_by.username) if t.raised_by_id else "",
-            t.requester_campus.name if t.requester_campus_id else "",
-            t.service_item.category.name if t.service_item_id and t.service_item.category_id else "",
-            t.service_item.name if t.service_item_id else "",
-            t.section.section_type.name if t.section_id and t.section.section_type_id else "",
-            (t.assigned_to.get_full_name() or t.assigned_to.username) if t.assigned_to_id else "Unassigned",
-            (t.description or "")[:200],
-            _fmt(t.response_due_at),
-            _fmt(t.resolution_due_at),
-            _fmt(t.resolved_at),
-            _fmt(t.closed_at),
-            _fmt(t.created_at),
-            _fmt(t.updated_at),
-            _fmt(t.paused_at),
-            pause_mins,
-        ])
+        pause_mins = (
+            int(t.accumulated_pause.total_seconds() / 60) if t.accumulated_pause else 0
+        )
+        ws.append(
+            [
+                t.ticket_no,
+                t.get_status_display(),
+                t.priority.name if t.priority_id else "",
+                t.get_current_level_display(),
+                (
+                    (t.raised_by.get_full_name() or t.raised_by.username)
+                    if t.raised_by_id
+                    else ""
+                ),
+                t.requester_campus.name if t.requester_campus_id else "",
+                (
+                    t.service_item.category.name
+                    if t.service_item_id and t.service_item.category_id
+                    else ""
+                ),
+                t.service_item.name if t.service_item_id else "",
+                (
+                    t.section.section_type.name
+                    if t.section_id and t.section.section_type_id
+                    else ""
+                ),
+                (
+                    (t.assigned_to.get_full_name() or t.assigned_to.username)
+                    if t.assigned_to_id
+                    else "Unassigned"
+                ),
+                (t.description or "")[:200],
+                _fmt(t.response_due_at),
+                _fmt(t.resolution_due_at),
+                _fmt(t.resolved_at),
+                _fmt(t.closed_at),
+                _fmt(t.created_at),
+                _fmt(t.updated_at),
+                _fmt(t.paused_at),
+                pause_mins,
+            ]
+        )
 
     _auto_width(ws)
 
 
 def _sheet_technician_performance(ws, qs) -> None:
     headers = [
-        "Technician", "Username",
-        "Total Assigned", "Open", "Resolved", "Closed", "Pending", "Escalated",
+        "Technician",
+        "Username",
+        "Total Assigned",
+        "Open",
+        "Resolved",
+        "Closed",
+        "Pending",
+        "Escalated",
         "Avg Resolution (hrs)",
     ]
     ws.append(headers)
@@ -298,24 +390,30 @@ def _sheet_technician_performance(ws, qs) -> None:
         res_times = res_hours_by_tech.get(row["assigned_to"], [])
         avg_hrs = round(sum(res_times) / len(res_times), 2) if res_times else ""
 
-        ws.append([
-            full_name,
-            row["assigned_to__username"],
-            row["total"],
-            row["open_count"],
-            row["resolved_count"],
-            row["closed_count"],
-            row["pending_count"],
-            row["escalated_count"],
-            avg_hrs,
-        ])
+        ws.append(
+            [
+                full_name,
+                row["assigned_to__username"],
+                row["total"],
+                row["open_count"],
+                row["resolved_count"],
+                row["closed_count"],
+                row["pending_count"],
+                row["escalated_count"],
+                avg_hrs,
+            ]
+        )
 
     _auto_width(ws)
 
 
 def _sheet_facility_health(ws, qs) -> None:
     headers = [
-        "Category", "Facility Type", "Ticket Count", "Open", "Resolved / Closed",
+        "Category",
+        "Facility Type",
+        "Ticket Count",
+        "Open",
+        "Resolved / Closed",
     ]
     ws.append(headers)
     _style_headers(ws, len(headers))
@@ -339,22 +437,30 @@ def _sheet_facility_health(ws, qs) -> None:
     )
 
     for row in rows:
-        ws.append([
-            row["service_item__category__name"] or "Unknown",
-            row["location__facility_type__name"] or "—",
-            row["total"],
-            row["open_count"],
-            row["done_count"],
-        ])
+        ws.append(
+            [
+                row["service_item__category__name"] or "Unknown",
+                row["location__facility_type__name"] or "—",
+                row["total"],
+                row["open_count"],
+                row["done_count"],
+            ]
+        )
 
     _auto_width(ws)
 
 
 def _sheet_pending_analysis(ws, qs) -> None:
     headers = [
-        "Ticket No", "Priority", "Current Level",
-        "Section", "Campus", "Assigned To",
-        "Created At", "Paused Since", "Total Paused (mins)",
+        "Ticket No",
+        "Priority",
+        "Current Level",
+        "Section",
+        "Campus",
+        "Assigned To",
+        "Created At",
+        "Paused Since",
+        "Total Paused (mins)",
         "Description (100 chars)",
     ]
     ws.append(headers)
@@ -369,19 +475,31 @@ def _sheet_pending_analysis(ws, qs) -> None:
     )
 
     for t in pending:
-        pause_mins = int(t.accumulated_pause.total_seconds() / 60) if t.accumulated_pause else 0
-        ws.append([
-            t.ticket_no,
-            t.priority.name if t.priority_id else "",
-            t.get_current_level_display(),
-            t.section.section_type.name if t.section_id and t.section.section_type_id else "",
-            t.section.campus_department.campus.name if t.section_id else "",
-            (t.assigned_to.get_full_name() or t.assigned_to.username) if t.assigned_to_id else "Unassigned",
-            _fmt(t.created_at),
-            _fmt(t.paused_at),
-            pause_mins,
-            (t.description or "")[:100],
-        ])
+        pause_mins = (
+            int(t.accumulated_pause.total_seconds() / 60) if t.accumulated_pause else 0
+        )
+        ws.append(
+            [
+                t.ticket_no,
+                t.priority.name if t.priority_id else "",
+                t.get_current_level_display(),
+                (
+                    t.section.section_type.name
+                    if t.section_id and t.section.section_type_id
+                    else ""
+                ),
+                t.section.campus_department.campus.name if t.section_id else "",
+                (
+                    (t.assigned_to.get_full_name() or t.assigned_to.username)
+                    if t.assigned_to_id
+                    else "Unassigned"
+                ),
+                _fmt(t.created_at),
+                _fmt(t.paused_at),
+                pause_mins,
+                (t.description or "")[:100],
+            ]
+        )
 
     _auto_width(ws)
 
@@ -394,14 +512,28 @@ REPORT_TYPES = [
         "name": "Ticket Lifecycle Report",
         "description": "Complete ticket audit trail with all lifecycle data including pending reasons",
         "filters": ["date_range", "section", "status"],
-        "columns": ["ticket_no", "status", "priority", "section", "assigned_to", "created_at", "resolved_at"],
+        "columns": [
+            "ticket_no",
+            "status",
+            "priority",
+            "section",
+            "assigned_to",
+            "created_at",
+            "resolved_at",
+        ],
     },
     {
         "id": "technician-performance",
         "name": "Technician Performance Report",
         "description": "Detailed performance metrics for all technicians",
         "filters": ["date_range", "section", "technician"],
-        "columns": ["technician", "total_assigned", "resolved", "open", "avg_resolution_hours"],
+        "columns": [
+            "technician",
+            "total_assigned",
+            "resolved",
+            "open",
+            "avg_resolution_hours",
+        ],
     },
     {
         "id": "facility-health",
@@ -415,7 +547,13 @@ REPORT_TYPES = [
         "name": "Pending Tickets Analysis",
         "description": "All pending tickets with pause durations and priorities",
         "filters": ["section"],
-        "columns": ["ticket_no", "priority", "section", "paused_since", "total_paused_mins"],
+        "columns": [
+            "ticket_no",
+            "priority",
+            "section",
+            "paused_since",
+            "total_paused_mins",
+        ],
     },
     {
         "id": "comprehensive",
@@ -438,15 +576,18 @@ TIMEFRAME_OPTIONS = [
 
 # ── Views ──────────────────────────────────────────────────────────────────────
 
+
 class ReportTypesView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        return Response({
-            "report_types": REPORT_TYPES,
-            "timeframe_options": TIMEFRAME_OPTIONS,
-        })
+        return Response(
+            {
+                "report_types": REPORT_TYPES,
+                "timeframe_options": TIMEFRAME_OPTIONS,
+            }
+        )
 
 
 class GenerateReportView(APIView):
@@ -463,11 +604,17 @@ class GenerateReportView(APIView):
 
         valid_types = {r["id"] for r in REPORT_TYPES}
         if report_type not in valid_types:
-            return Response({"error": f"Unknown report_type: {report_type}"}, status=400)
+            return Response(
+                {"error": f"Unknown report_type: {report_type}"}, status=400
+            )
 
         role = self._get_role(request)
         # scoped_qs: unfiltered by date (aggregate() handles its own window)
-        scoped_qs = scoped_ticket_qs(request.user, role) if role else Ticket.objects.filter(raised_by=request.user)
+        scoped_qs = (
+            scoped_ticket_qs(request.user, role)
+            if role
+            else Ticket.objects.filter(raised_by=request.user)
+        )
         qs = _base_qs(request, role)  # date + optional section/tech filters
 
         wb = openpyxl.Workbook()
@@ -509,5 +656,7 @@ class GenerateReportView(APIView):
             buf.read(),
             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
-        response["Content-Disposition"] = f'attachment; filename="{safe_name}_report.xlsx"'
+        response["Content-Disposition"] = (
+            f'attachment; filename="{safe_name}_report.xlsx"'
+        )
         return response

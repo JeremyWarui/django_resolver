@@ -23,6 +23,7 @@ TICKETS_URL = "/api/v1/tickets/"
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
+
 @pytest.fixture
 def api_client():
     return APIClient()
@@ -30,9 +31,11 @@ def api_client():
 
 # ── core org / catalogue fixtures ─────────────────────────────────────────────
 
+
 @pytest.fixture
 def campus(db):
     from apps.org.models import Campus
+
     return Campus.objects.create(name="Nairobi", code="NRB", location="CBD")
 
 
@@ -40,30 +43,35 @@ def campus(db):
 def campus_msa(db):
     """A second campus with NO section for the SectionType — used to test routing rejection."""
     from apps.org.models import Campus
+
     return Campus.objects.create(name="Mombasa", code="MSA", location="Coast")
 
 
 @pytest.fixture
 def dept(db):
     from apps.org.models import Department
+
     return Department.objects.create(name="ICT", code="ICT")
 
 
 @pytest.fixture
 def section_type(dept):
     from apps.org.models import SectionType
+
     return SectionType.objects.create(department=dept, name="Support", code="SUP")
 
 
 @pytest.fixture
 def campus_dept(campus, dept):
     from apps.org.models import CampusDepartment
+
     return CampusDepartment.objects.create(campus=campus, department=dept)
 
 
 @pytest.fixture
 def active_section(campus_dept, section_type):
     from apps.org.models import Section
+
     return Section.objects.create(
         campus_department=campus_dept, section_type=section_type, is_active=True
     )
@@ -72,6 +80,7 @@ def active_section(campus_dept, section_type):
 @pytest.fixture
 def priority(db):
     from apps.sla.models import Priority
+
     return Priority.objects.create(
         name="Low", rank=1, response_minutes=480, resolution_minutes=4320
     )
@@ -80,6 +89,7 @@ def priority(db):
 @pytest.fixture
 def service_category(section_type, priority):
     from apps.catalog.models import ServiceCategory
+
     return ServiceCategory.objects.create(
         section_type=section_type,
         name="Network Issues",
@@ -92,17 +102,19 @@ def service_category(section_type, priority):
 @pytest.fixture
 def service_item(service_category):
     from apps.catalog.models import ServiceItem
+
     return ServiceItem.objects.create(
         category=service_category,
         name="No Internet",
         is_active=True,
-        default_priority=None,   # no item-level override — falls back to category
+        default_priority=None,  # no item-level override — falls back to category
     )
 
 
 @pytest.fixture
 def user(db, campus):
     from apps.accounts.models import CustomUser, UserProfile
+
     u = CustomUser.objects.create_user(username="requester", password="pass")
     UserProfile.objects.create(user=u, campus=campus)
     return u
@@ -110,21 +122,25 @@ def user(db, campus):
 
 # ── location-related fixtures ─────────────────────────────────────────────────
 
+
 @pytest.fixture
 def office_block_ft(db):
     from apps.facilities.models import FacilityType
+
     return FacilityType.objects.create(name="Office Block", code="office_block")
 
 
 @pytest.fixture
 def equipment_ft(db):
     from apps.facilities.models import FacilityType
+
     return FacilityType.objects.create(name="Equipment", code="equipment")
 
 
 @pytest.fixture
 def block_a(campus, office_block_ft):
     from apps.facilities.models import Facility
+
     return Facility.objects.create(
         campus=campus, facility_type=office_block_ft, name="Block A", code="BLK-A"
     )
@@ -133,6 +149,7 @@ def block_a(campus, office_block_ft):
 @pytest.fixture
 def service_category_with_location(section_type, priority):
     from apps.catalog.models import ServiceCategory
+
     return ServiceCategory.objects.create(
         section_type=section_type,
         name="Hardware Issues",
@@ -145,6 +162,7 @@ def service_category_with_location(section_type, priority):
 @pytest.fixture
 def service_item_with_location(service_category_with_location):
     from apps.catalog.models import ServiceItem
+
     return ServiceItem.objects.create(
         category=service_category_with_location,
         name="Broken Printer",
@@ -154,6 +172,7 @@ def service_item_with_location(service_category_with_location):
 
 
 # ── Test 1: happy-path ticket creation ───────────────────────────────────────
+
 
 @pytest.mark.django_db
 def test_create_ticket_success(api_client, user, service_item, active_section):
@@ -173,11 +192,11 @@ def test_create_ticket_success(api_client, user, service_item, active_section):
     assert Ticket.objects.count() == 1
 
     ticket = Ticket.objects.get(id=resp.data["id"])
-    assert TicketLog.objects.filter(
-        ticket=ticket, event_type="created").count() == 1
+    assert TicketLog.objects.filter(ticket=ticket, event_type="created").count() == 1
 
 
 # ── Test 2: server resolves section and priority; client values ignored ────────
+
 
 @pytest.mark.django_db
 def test_ticket_has_correct_section_and_priority_resolved_server_side(
@@ -195,12 +214,14 @@ def test_ticket_has_correct_section_and_priority_resolved_server_side(
     assert resp.status_code == 201, resp.data
 
     from apps.tickets.models import Ticket
+
     ticket = Ticket.objects.get(id=resp.data["id"])
     assert ticket.section == active_section
     assert ticket.priority == priority
 
 
 # ── Test 3: unauthenticated request rejected ──────────────────────────────────
+
 
 @pytest.mark.django_db
 def test_create_ticket_unauthenticated(api_client, service_item):
@@ -215,6 +236,7 @@ def test_create_ticket_unauthenticated(api_client, service_item):
 
 # ── Test 4: service not available at requester's campus ───────────────────────
 
+
 @pytest.mark.django_db
 def test_unserved_service_item_rejected(
     api_client, campus_msa, service_item, active_section
@@ -222,8 +244,7 @@ def test_unserved_service_item_rejected(
     """User at MSA campus where no section handles the service → 400 on service_item."""
     from apps.accounts.models import CustomUser, UserProfile
 
-    msa_user = CustomUser.objects.create_user(
-        username="msa_user", password="pass")
+    msa_user = CustomUser.objects.create_user(username="msa_user", password="pass")
     UserProfile.objects.create(user=msa_user, campus=campus_msa)
 
     api_client.force_authenticate(user=msa_user)
@@ -240,6 +261,7 @@ def test_unserved_service_item_rejected(
 
 
 # ── Test 5: location required when category.location_details=True ─────────────
+
 
 @pytest.mark.django_db
 def test_location_required_when_category_location_details(
@@ -260,10 +282,15 @@ def test_location_required_when_category_location_details(
 
 # ── Test 6: successful ticket with office_block location ──────────────────────
 
+
 @pytest.mark.django_db
 def test_create_ticket_with_office_block_location(
-    api_client, user, service_item_with_location, active_section,
-    office_block_ft, block_a,
+    api_client,
+    user,
+    service_item_with_location,
+    active_section,
+    office_block_ft,
+    block_a,
 ):
     """POST with valid office_block location → 201, TicketLocation created."""
     from apps.tickets.models import TicketLocation
@@ -286,6 +313,7 @@ def test_create_ticket_with_office_block_location(
     assert resp.status_code == 201, resp.data
 
     from apps.tickets.models import Ticket
+
     ticket = Ticket.objects.get(id=resp.data["id"])
     loc = TicketLocation.objects.get(ticket=ticket)
 
@@ -297,10 +325,15 @@ def test_create_ticket_with_office_block_location(
 
 # ── Test 7: facility from wrong campus rejected ───────────────────────────────
 
+
 @pytest.mark.django_db
 def test_office_block_location_rejects_wrong_campus_facility(
-    api_client, user, service_item_with_location, active_section,
-    office_block_ft, campus_msa,
+    api_client,
+    user,
+    service_item_with_location,
+    active_section,
+    office_block_ft,
+    campus_msa,
 ):
     """User at NRB, facility from MSA → 400 with error on facility."""
     from apps.facilities.models import Facility
@@ -334,9 +367,13 @@ def test_office_block_location_rejects_wrong_campus_facility(
 
 # ── Test 8: office_block without facility rejected ────────────────────────────
 
+
 @pytest.mark.django_db
 def test_office_block_location_requires_facility(
-    api_client, user, service_item_with_location, active_section,
+    api_client,
+    user,
+    service_item_with_location,
+    active_section,
     office_block_ft,
 ):
     """office_block type without a facility → 400."""
@@ -361,10 +398,15 @@ def test_office_block_location_requires_facility(
 
 # ── Test 9: unknown field in location values rejected ─────────────────────────
 
+
 @pytest.mark.django_db
 def test_location_unknown_field_rejected(
-    api_client, user, service_item_with_location, active_section,
-    office_block_ft, block_a,
+    api_client,
+    user,
+    service_item_with_location,
+    active_section,
+    office_block_ft,
+    block_a,
 ):
     """Unknown field in location values dict → 400 with error on values."""
     api_client.force_authenticate(user=user)
@@ -388,10 +430,15 @@ def test_location_unknown_field_rejected(
 
 # ── Test 10: missing required field in location values rejected ───────────────
 
+
 @pytest.mark.django_db
 def test_location_missing_required_field_rejected(
-    api_client, user, service_item_with_location, active_section,
-    office_block_ft, block_a,
+    api_client,
+    user,
+    service_item_with_location,
+    active_section,
+    office_block_ft,
+    block_a,
 ):
     """Missing required 'room' field in office_block values → 400 with error on values."""
     api_client.force_authenticate(user=user)
@@ -402,7 +449,7 @@ def test_location_missing_required_field_rejected(
             "location": {
                 "facility_type": office_block_ft.id,
                 "facility": block_a.id,
-                "values": {"floor": "2"},   # room is missing
+                "values": {"floor": "2"},  # room is missing
             },
         },
         format="json",
@@ -415,9 +462,13 @@ def test_location_missing_required_field_rejected(
 
 # ── Test 11: equipment location — no facility required ───────────────────────
 
+
 @pytest.mark.django_db
 def test_equipment_location_no_facility_required(
-    api_client, user, service_item_with_location, active_section,
+    api_client,
+    user,
+    service_item_with_location,
+    active_section,
     equipment_ft,
 ):
     """equipment type needs no facility; TicketLocation.facility is None."""
@@ -446,6 +497,7 @@ def test_equipment_location_no_facility_required(
 
 
 # ── Test 12: ticket_no is generated and unique ────────────────────────────────
+
 
 @pytest.mark.django_db
 def test_ticket_no_is_generated(api_client, user, service_item, active_section):
@@ -479,7 +531,7 @@ def test_ticket_no_is_generated(api_client, user, service_item, active_section):
     assert no2
     assert no1.startswith(expected_prefix)
     assert no2.startswith(expected_prefix)
-    assert no1 != no2   # unique
+    assert no1 != no2  # unique
 
     # Both exist in the database
     assert Ticket.objects.filter(ticket_no=no1).exists()
@@ -488,8 +540,11 @@ def test_ticket_no_is_generated(api_client, user, service_item, active_section):
 
 # ── Test 13: SLA deadlines set correctly on creation ─────────────────────────
 
+
 @pytest.mark.django_db
-def test_sla_times_set_on_create(api_client, user, service_item, active_section, priority):
+def test_sla_times_set_on_create(
+    api_client, user, service_item, active_section, priority
+):
     """response_due_at ≈ now+480min and resolution_due_at ≈ now+4320min (±60s)."""
     from apps.tickets.models import Ticket
 
@@ -510,22 +565,25 @@ def test_sla_times_set_on_create(api_client, user, service_item, active_section,
 
     tolerance = timedelta(seconds=60)
 
-    expected_response_min = before + \
-        timedelta(minutes=priority.response_minutes)
-    expected_response_max = after + \
-        timedelta(minutes=priority.response_minutes)
-    assert expected_response_min - \
-        tolerance <= ticket.response_due_at <= expected_response_max + tolerance
+    expected_response_min = before + timedelta(minutes=priority.response_minutes)
+    expected_response_max = after + timedelta(minutes=priority.response_minutes)
+    assert (
+        expected_response_min - tolerance
+        <= ticket.response_due_at
+        <= expected_response_max + tolerance
+    )
 
-    expected_resolution_min = before + \
-        timedelta(minutes=priority.resolution_minutes)
-    expected_resolution_max = after + \
-        timedelta(minutes=priority.resolution_minutes)
-    assert expected_resolution_min - \
-        tolerance <= ticket.resolution_due_at <= expected_resolution_max + tolerance
+    expected_resolution_min = before + timedelta(minutes=priority.resolution_minutes)
+    expected_resolution_max = after + timedelta(minutes=priority.resolution_minutes)
+    assert (
+        expected_resolution_min - tolerance
+        <= ticket.resolution_due_at
+        <= expected_resolution_max + tolerance
+    )
 
 
 # ── Test 14: user without campus rejected ────────────────────────────────────
+
 
 @pytest.mark.django_db
 def test_user_without_campus_rejected(api_client, service_item, active_section):

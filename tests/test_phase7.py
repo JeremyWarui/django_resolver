@@ -15,15 +15,22 @@ from datetime import timedelta
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def make_user(username, campus=None, role=None, section=None,
-              campus_department=None, department=None):
+
+def make_user(
+    username,
+    campus=None,
+    role=None,
+    section=None,
+    campus_department=None,
+    department=None,
+):
     """Create a CustomUser with optional UserProfile and primary RoleAssignment."""
     from apps.accounts.models import CustomUser, UserProfile, RoleAssignment
+
     user = CustomUser.objects.create_user(username=username, password="pass")
     if campus:
         UserProfile.objects.create(user=user, campus=campus)
@@ -42,10 +49,23 @@ def make_user(username, campus=None, role=None, section=None,
 def make_ticket(raised_by, campus, service_item, section, priority, **kwargs):
     """Create a Ticket; extra kwargs are set via .update() to bypass auto fields."""
     from apps.tickets.models import Ticket
-    update_fields = {k: v for k, v in kwargs.items()
-                     if k in ("created_at", "resolved_at", "accumulated_pause",
-                               "paused_at", "resolution_due_at", "response_due_at",
-                               "status", "current_level", "assigned_to")}
+
+    update_fields = {
+        k: v
+        for k, v in kwargs.items()
+        if k
+        in (
+            "created_at",
+            "resolved_at",
+            "accumulated_pause",
+            "paused_at",
+            "resolution_due_at",
+            "response_due_at",
+            "status",
+            "current_level",
+            "assigned_to",
+        )
+    }
     create_kwargs = {k: v for k, v in kwargs.items() if k not in update_fields}
     t = Ticket.objects.create(
         raised_by=raised_by,
@@ -61,11 +81,13 @@ def make_ticket(raised_by, campus, service_item, section, priority, **kwargs):
     return t
 
 
-def make_token(user, role, section=None, campus_department=None, department=None,
-               is_primary=True):
+def make_token(
+    user, role, section=None, campus_department=None, department=None, is_primary=True
+):
     """Create a RoleAssignment (if not already primary) and mint a JWT access token."""
     from apps.accounts.models import RoleAssignment
     from apps.accounts.jwt_utils import build_tokens_for_assignment
+
     ra = RoleAssignment.objects.create(
         user=user,
         role=role,
@@ -82,6 +104,7 @@ def make_token(user, role, section=None, campus_department=None, department=None
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def api_client():
     return APIClient()
@@ -90,54 +113,63 @@ def api_client():
 @pytest.fixture
 def campus(db):
     from apps.org.models import Campus
+
     return Campus.objects.create(name="Nairobi", code="NRB")
 
 
 @pytest.fixture
 def campus2(db):
     from apps.org.models import Campus
+
     return Campus.objects.create(name="Mombasa", code="MSA")
 
 
 @pytest.fixture
 def dept(db):
     from apps.org.models import Department
+
     return Department.objects.create(name="ICT", code="ICT")
 
 
 @pytest.fixture
 def dept2(db):
     from apps.org.models import Department
+
     return Department.objects.create(name="Facilities", code="FAC")
 
 
 @pytest.fixture
 def section_type(dept):
     from apps.org.models import SectionType
+
     return SectionType.objects.create(department=dept, name="Software", code="SW")
 
 
 @pytest.fixture
 def section_type2(dept):
     from apps.org.models import SectionType
+
     return SectionType.objects.create(department=dept, name="Networks", code="NET")
 
 
 @pytest.fixture
 def campus_dept(campus, dept):
     from apps.org.models import CampusDepartment
+
     return CampusDepartment.objects.create(campus=campus, department=dept)
 
 
 @pytest.fixture
 def campus_dept2(campus, dept2):
     from apps.org.models import CampusDepartment
+
     return CampusDepartment.objects.create(campus=campus, department=dept2)
 
 
 @pytest.fixture
 def priority(db):
     from apps.sla.models import Priority
+
     return Priority.objects.create(
         name="Low", rank=1, response_minutes=120, resolution_minutes=480
     )
@@ -146,6 +178,7 @@ def priority(db):
 @pytest.fixture
 def section(campus_dept, section_type):
     from apps.org.models import Section
+
     return Section.objects.create(
         campus_department=campus_dept, section_type=section_type, is_active=True
     )
@@ -154,6 +187,7 @@ def section(campus_dept, section_type):
 @pytest.fixture
 def section2(campus_dept, section_type2):
     from apps.org.models import Section
+
     return Section.objects.create(
         campus_department=campus_dept, section_type=section_type2, is_active=True
     )
@@ -162,6 +196,7 @@ def section2(campus_dept, section_type2):
 @pytest.fixture
 def service_cat(section_type, priority):
     from apps.catalog.models import ServiceCategory
+
     return ServiceCategory.objects.create(
         section_type=section_type,
         name="Hardware",
@@ -173,12 +208,14 @@ def service_cat(section_type, priority):
 @pytest.fixture
 def service_item(service_cat):
     from apps.catalog.models import ServiceItem
+
     return ServiceItem.objects.create(category=service_cat, name="Laptop")
 
 
 # ---------------------------------------------------------------------------
 # 1. Reconciliation tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.django_db
 class TestPhase7Reconciliation:
@@ -187,12 +224,16 @@ class TestPhase7Reconciliation:
         self, api_client, campus, service_item, section, priority
     ):
         from apps.org.models import SectionTechnician
+
         now = timezone.now()
         raiser = make_user("rec_raiser1", campus=campus)
         tech = make_user("rec_tech1", campus=campus)
         ra = None
         from apps.accounts.models import RoleAssignment
-        ra = RoleAssignment.objects.create(user=tech, role="technician", is_primary=True, section=section)
+
+        ra = RoleAssignment.objects.create(
+            user=tech, role="technician", is_primary=True, section=section
+        )
         SectionTechnician.objects.create(user=tech, section=section)
 
         # 3 tickets inside the default 30-day window
@@ -202,9 +243,11 @@ class TestPhase7Reconciliation:
         # 1 ticket outside the window (40 days ago)
         old = make_ticket(raiser, campus, service_item, section, priority)
         from apps.tickets.models import Ticket
+
         Ticket.objects.filter(pk=old.pk).update(created_at=now - timedelta(days=40))
 
         from apps.accounts.jwt_utils import build_tokens_for_assignment
+
         _, access = build_tokens_for_assignment(tech, ra)
         api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {str(access)}")
         resp = api_client.get("/api/v1/analytics/flow/")
@@ -217,17 +260,27 @@ class TestPhase7Reconciliation:
         from apps.org.models import SectionTechnician
         from apps.accounts.models import RoleAssignment
         from apps.accounts.jwt_utils import build_tokens_for_assignment
+
         now = timezone.now()
         raiser = make_user("rec_raiser2", campus=campus)
         tech = make_user("rec_tech2", campus=campus)
-        ra = RoleAssignment.objects.create(user=tech, role="technician", is_primary=True, section=section)
+        ra = RoleAssignment.objects.create(
+            user=tech, role="technician", is_primary=True, section=section
+        )
         SectionTechnician.objects.create(user=tech, section=section)
 
         # 1 open ticket
         make_ticket(raiser, campus, service_item, section, priority)
         # 1 resolved ticket
-        make_ticket(raiser, campus, service_item, section, priority,
-                    status="resolved", resolved_at=now)
+        make_ticket(
+            raiser,
+            campus,
+            service_item,
+            section,
+            priority,
+            status="resolved",
+            resolved_at=now,
+        )
 
         _, access = build_tokens_for_assignment(tech, ra)
         api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {str(access)}")
@@ -241,23 +294,38 @@ class TestPhase7Reconciliation:
         from apps.org.models import SectionTechnician
         from apps.accounts.models import RoleAssignment
         from apps.accounts.jwt_utils import build_tokens_for_assignment
+
         now = timezone.now()
         raiser = make_user("rec_raiser3", campus=campus)
         tech = make_user("rec_tech3", campus=campus)
-        ra = RoleAssignment.objects.create(user=tech, role="technician", is_primary=True, section=section)
+        ra = RoleAssignment.objects.create(
+            user=tech, role="technician", is_primary=True, section=section
+        )
         SectionTechnician.objects.create(user=tech, section=section)
 
         # 2 tickets that met SLA (resolved_at <= resolution_due_at)
         for i in range(2):
-            make_ticket(raiser, campus, service_item, section, priority,
-                        status="resolved",
-                        resolved_at=now,
-                        resolution_due_at=now + timedelta(hours=1))
+            make_ticket(
+                raiser,
+                campus,
+                service_item,
+                section,
+                priority,
+                status="resolved",
+                resolved_at=now,
+                resolution_due_at=now + timedelta(hours=1),
+            )
         # 1 ticket that missed SLA (resolved_at > resolution_due_at)
-        make_ticket(raiser, campus, service_item, section, priority,
-                    status="resolved",
-                    resolved_at=now,
-                    resolution_due_at=now - timedelta(hours=1))
+        make_ticket(
+            raiser,
+            campus,
+            service_item,
+            section,
+            priority,
+            status="resolved",
+            resolved_at=now,
+            resolution_due_at=now - timedelta(hours=1),
+        )
 
         _, access = build_tokens_for_assignment(tech, ra)
         api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {str(access)}")
@@ -273,16 +341,33 @@ class TestPhase7Reconciliation:
         from apps.accounts.models import RoleAssignment
         from apps.tickets.models import TicketFeedback
         from apps.accounts.jwt_utils import build_tokens_for_assignment
+
         now = timezone.now()
         raiser = make_user("rec_raiser4", campus=campus)
         tech = make_user("rec_tech4", campus=campus)
-        ra = RoleAssignment.objects.create(user=tech, role="technician", is_primary=True, section=section)
+        ra = RoleAssignment.objects.create(
+            user=tech, role="technician", is_primary=True, section=section
+        )
         SectionTechnician.objects.create(user=tech, section=section)
 
-        t1 = make_ticket(raiser, campus, service_item, section, priority,
-                         status="resolved", resolved_at=now)
-        t2 = make_ticket(raiser, campus, service_item, section, priority,
-                         status="resolved", resolved_at=now)
+        t1 = make_ticket(
+            raiser,
+            campus,
+            service_item,
+            section,
+            priority,
+            status="resolved",
+            resolved_at=now,
+        )
+        t2 = make_ticket(
+            raiser,
+            campus,
+            service_item,
+            section,
+            priority,
+            status="resolved",
+            resolved_at=now,
+        )
         TicketFeedback.objects.create(ticket=t1, rating=4, comment="Good")
         TicketFeedback.objects.create(ticket=t2, rating=2, comment="Poor")
 
@@ -297,6 +382,7 @@ class TestPhase7Reconciliation:
 # 2. Dashboard preset == analytics (same scope + window)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.django_db
 class TestPhase7DashboardEquality:
 
@@ -304,8 +390,11 @@ class TestPhase7DashboardEquality:
         from apps.org.models import SectionTechnician
         from apps.accounts.models import RoleAssignment
         from apps.accounts.jwt_utils import build_tokens_for_assignment
+
         tech = make_user("eq_tech1", campus=campus)
-        ra = RoleAssignment.objects.create(user=tech, role="technician", is_primary=True, section=section)
+        ra = RoleAssignment.objects.create(
+            user=tech, role="technician", is_primary=True, section=section
+        )
         SectionTechnician.objects.create(user=tech, section=section)
         _, access = build_tokens_for_assignment(tech, ra)
         return str(access)
@@ -319,12 +408,26 @@ class TestPhase7DashboardEquality:
 
         # 2 SLA-met, 1 SLA-missed
         for _ in range(2):
-            make_ticket(raiser, campus, service_item, section, priority,
-                        status="resolved", resolved_at=now,
-                        resolution_due_at=now + timedelta(hours=1))
-        make_ticket(raiser, campus, service_item, section, priority,
-                    status="resolved", resolved_at=now,
-                    resolution_due_at=now - timedelta(hours=1))
+            make_ticket(
+                raiser,
+                campus,
+                service_item,
+                section,
+                priority,
+                status="resolved",
+                resolved_at=now,
+                resolution_due_at=now + timedelta(hours=1),
+            )
+        make_ticket(
+            raiser,
+            campus,
+            service_item,
+            section,
+            priority,
+            status="resolved",
+            resolved_at=now,
+            resolution_due_at=now - timedelta(hours=1),
+        )
 
         api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
 
@@ -348,25 +451,43 @@ class TestPhase7DashboardEquality:
         access = self._setup_tech(campus, section)
 
         make_ticket(raiser, campus, service_item, section, priority)
-        make_ticket(raiser, campus, service_item, section, priority,
-                    status="resolved", resolved_at=now)
+        make_ticket(
+            raiser,
+            campus,
+            service_item,
+            section,
+            priority,
+            status="resolved",
+            resolved_at=now,
+        )
 
         api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
         flow_resp = api_client.get("/api/v1/analytics/flow/")
         assert flow_resp.status_code == 200
         # net_flow = created - resolved; for sectional scope = 2 created - 1 resolved = 1
-        assert flow_resp.data["net_flow"] == flow_resp.data["created"] - flow_resp.data["resolved"]
+        assert (
+            flow_resp.data["net_flow"]
+            == flow_resp.data["created"] - flow_resp.data["resolved"]
+        )
 
     def test_overview_csat_equals_quality_endpoint(
         self, api_client, campus, service_item, section, priority
     ):
         from apps.tickets.models import TicketFeedback
+
         now = timezone.now()
         raiser = make_user("eq_raiser3", campus=campus)
         access = self._setup_tech(campus, section)
 
-        t = make_ticket(raiser, campus, service_item, section, priority,
-                        status="resolved", resolved_at=now)
+        t = make_ticket(
+            raiser,
+            campus,
+            service_item,
+            section,
+            priority,
+            status="resolved",
+            resolved_at=now,
+        )
         TicketFeedback.objects.create(ticket=t, rating=5)
 
         api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
@@ -379,12 +500,21 @@ class TestPhase7DashboardEquality:
 # 3. Scope-boundary NEGATIVE tests
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.django_db
 class TestPhase7ScopeBoundaries:
 
     def test_hod_sees_zero_from_other_campus_dept(
-        self, api_client, campus, campus_dept, campus_dept2,
-        service_item, section, priority, section_type2, dept2
+        self,
+        api_client,
+        campus,
+        campus_dept,
+        campus_dept2,
+        service_item,
+        section,
+        priority,
+        section_type2,
+        dept2,
     ):
         """HOD of ICT@Nairobi sees ZERO tickets from Facilities@Nairobi."""
         from apps.org.models import Section
@@ -416,8 +546,17 @@ class TestPhase7ScopeBoundaries:
         assert resp.data["created"] == 0
 
     def test_manager_sees_zero_from_other_dept(
-        self, api_client, campus, dept, campus_dept, campus_dept2,
-        service_item, section, section_type2, priority, dept2
+        self,
+        api_client,
+        campus,
+        dept,
+        campus_dept,
+        campus_dept2,
+        service_item,
+        section,
+        section_type2,
+        priority,
+        dept2,
     ):
         """Manager of ICT sees ZERO tickets from Facilities department."""
         from apps.org.models import Section
@@ -438,7 +577,9 @@ class TestPhase7ScopeBoundaries:
         )
 
         raiser = make_user("scope_raiser2", campus=campus)
-        make_ticket(raiser, campus, service_item, section_fac, priority)  # Facilities ticket
+        make_ticket(
+            raiser, campus, service_item, section_fac, priority
+        )  # Facilities ticket
 
         _, access = build_tokens_for_assignment(mgr, ra)
         api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {str(access)}")
@@ -447,8 +588,16 @@ class TestPhase7ScopeBoundaries:
         assert resp.data["created"] == 0
 
     def test_manager_sees_dept_across_multiple_campuses(
-        self, api_client, campus, campus2, dept, campus_dept,
-        service_item, section, section_type, priority
+        self,
+        api_client,
+        campus,
+        campus2,
+        dept,
+        campus_dept,
+        service_item,
+        section,
+        section_type,
+        priority,
     ):
         """Manager of ICT sees tickets from ICT@NRB and ICT@MSA."""
         from apps.org.models import CampusDepartment, Section
@@ -494,7 +643,7 @@ class TestPhase7ScopeBoundaries:
         )
 
         raiser = make_user("scope_raiser4", campus=campus)
-        make_ticket(raiser, campus, service_item, section, priority)   # in scope
+        make_ticket(raiser, campus, service_item, section, priority)  # in scope
         make_ticket(raiser, campus, service_item, section2, priority)  # out of scope
 
         _, access = build_tokens_for_assignment(hos, ra)
@@ -519,8 +668,15 @@ class TestPhase7ScopeBoundaries:
         SectionTechnician.objects.create(user=tech, section=section)
 
         # 2 tickets in section: 1 assigned to tech, 1 unassigned
-        t_assigned = make_ticket(raiser, campus, service_item, section, priority,
-                                 assigned_to=tech, status="assigned")
+        t_assigned = make_ticket(
+            raiser,
+            campus,
+            service_item,
+            section,
+            priority,
+            assigned_to=tech,
+            status="assigned",
+        )
         make_ticket(raiser, campus, service_item, section, priority)
 
         _, access = build_tokens_for_assignment(tech, ra)
@@ -533,13 +689,14 @@ class TestPhase7ScopeBoundaries:
         individual_backlog = overview_resp.data["individual"]["open_backlog"]
 
         assert sectional_backlog >= individual_backlog
-        assert individual_backlog == 1   # only the assigned ticket
-        assert sectional_backlog == 2    # all section tickets
+        assert individual_backlog == 1  # only the assigned ticket
+        assert sectional_backlog == 2  # all section tickets
 
 
 # ---------------------------------------------------------------------------
 # 4. Paused-clock tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.django_db
 class TestPhase7PausedClock:
@@ -551,6 +708,7 @@ class TestPhase7PausedClock:
         from apps.org.models import SectionTechnician
         from apps.accounts.models import RoleAssignment
         from apps.accounts.jwt_utils import build_tokens_for_assignment
+
         now = timezone.now()
 
         raiser = make_user("pause_raiser1", campus=campus)
@@ -564,10 +722,16 @@ class TestPhase7PausedClock:
         # Without pause: resolution_due_at = created_at + 8h = now+5h → not breached (correct).
         # Simulate: resolution_due_at is explicitly set to now+1h (shifted due to pause).
         # Even though status is in_progress (active), the ticket is NOT breached.
-        make_ticket(raiser, campus, service_item, section, priority,
-                    status="in_progress",
-                    resolution_due_at=now + timedelta(hours=1),
-                    accumulated_pause=timedelta(hours=2))
+        make_ticket(
+            raiser,
+            campus,
+            service_item,
+            section,
+            priority,
+            status="in_progress",
+            resolution_due_at=now + timedelta(hours=1),
+            accumulated_pause=timedelta(hours=2),
+        )
 
         _, access = build_tokens_for_assignment(tech, ra)
         api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {str(access)}")
@@ -582,6 +746,7 @@ class TestPhase7PausedClock:
         from apps.org.models import SectionTechnician
         from apps.accounts.models import RoleAssignment
         from apps.accounts.jwt_utils import build_tokens_for_assignment
+
         now = timezone.now()
 
         raiser = make_user("pause_raiser2", campus=campus)
@@ -591,9 +756,15 @@ class TestPhase7PausedClock:
         )
         SectionTechnician.objects.create(user=tech, section=section)
 
-        make_ticket(raiser, campus, service_item, section, priority,
-                    status="in_progress",
-                    resolution_due_at=now - timedelta(hours=1))
+        make_ticket(
+            raiser,
+            campus,
+            service_item,
+            section,
+            priority,
+            status="in_progress",
+            resolution_due_at=now - timedelta(hours=1),
+        )
 
         _, access = build_tokens_for_assignment(tech, ra)
         api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {str(access)}")
@@ -606,6 +777,7 @@ class TestPhase7PausedClock:
 # 5. Date range tests
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.django_db
 class TestPhase7DateRange:
 
@@ -613,6 +785,7 @@ class TestPhase7DateRange:
         from apps.org.models import SectionTechnician
         from apps.accounts.models import RoleAssignment
         from apps.accounts.jwt_utils import build_tokens_for_assignment
+
         tech = make_user("dr_tech1", campus=campus)
         ra = RoleAssignment.objects.create(
             user=tech, role="technician", is_primary=True, section=section
@@ -631,11 +804,16 @@ class TestPhase7DateRange:
 
         old_ticket = make_ticket(raiser, campus, service_item, section, priority)
         from apps.tickets.models import Ticket
-        Ticket.objects.filter(pk=old_ticket.pk).update(created_at=now - timedelta(days=40))
+
+        Ticket.objects.filter(pk=old_ticket.pk).update(
+            created_at=now - timedelta(days=40)
+        )
 
         date_from = (now - timedelta(days=35)).date().isoformat()
         date_to = now.date().isoformat()
-        resp = api_client.get(f"/api/v1/analytics/flow/?date_from={date_from}&date_to={date_to}")
+        resp = api_client.get(
+            f"/api/v1/analytics/flow/?date_from={date_from}&date_to={date_to}"
+        )
         assert resp.status_code == 200
         assert resp.data["created"] == 0
 
@@ -646,11 +824,15 @@ class TestPhase7DateRange:
         raiser = make_user("dr_raiser2", campus=campus)
         self._setup_tech_and_auth(api_client, campus, section)
 
-        make_ticket(raiser, campus, service_item, section, priority)  # created now (inside 30d)
+        make_ticket(
+            raiser, campus, service_item, section, priority
+        )  # created now (inside 30d)
 
         date_from = (now - timedelta(days=30)).date().isoformat()
         date_to = (now + timedelta(days=1)).date().isoformat()
-        resp = api_client.get(f"/api/v1/analytics/flow/?date_from={date_from}&date_to={date_to}")
+        resp = api_client.get(
+            f"/api/v1/analytics/flow/?date_from={date_from}&date_to={date_to}"
+        )
         assert resp.status_code == 200
         assert resp.data["created"] >= 1
 
@@ -664,6 +846,7 @@ class TestPhase7DateRange:
         inside = make_ticket(raiser, campus, service_item, section, priority)
         outside = make_ticket(raiser, campus, service_item, section, priority)
         from apps.tickets.models import Ticket
+
         Ticket.objects.filter(pk=outside.pk).update(created_at=now - timedelta(days=40))
 
         resp = api_client.get("/api/v1/analytics/flow/")
@@ -676,6 +859,7 @@ class TestPhase7DateRange:
 # 6. Percentile tests
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.django_db
 class TestPhase7Percentiles:
 
@@ -686,6 +870,7 @@ class TestPhase7Percentiles:
         from apps.org.models import SectionTechnician
         from apps.accounts.models import RoleAssignment
         from apps.accounts.jwt_utils import build_tokens_for_assignment
+
         now = timezone.now()
 
         raiser = make_user("pct_raiser1", campus=campus)
@@ -699,12 +884,21 @@ class TestPhase7Percentiles:
         durations = [timedelta(minutes=m) for m in [10, 20, 30, 60, 120]]
         for dur in durations:
             created_at = now - dur
-            t = make_ticket(raiser, campus, service_item, section, priority,
-                            status="resolved",
-                            resolved_at=now,
-                            accumulated_pause=timedelta(0))
+            t = make_ticket(
+                raiser,
+                campus,
+                service_item,
+                section,
+                priority,
+                status="resolved",
+                resolved_at=now,
+                accumulated_pause=timedelta(0),
+            )
             from apps.tickets.models import Ticket
-            Ticket.objects.filter(pk=t.pk).update(created_at=created_at, resolved_at=now)
+
+            Ticket.objects.filter(pk=t.pk).update(
+                created_at=created_at, resolved_at=now
+            )
 
         _, access = build_tokens_for_assignment(tech, ra)
         api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {str(access)}")
@@ -731,6 +925,7 @@ class TestPhase7Percentiles:
         from apps.accounts.models import RoleAssignment
         from apps.tickets.models import Ticket, TicketLog
         from apps.accounts.jwt_utils import build_tokens_for_assignment
+
         now = timezone.now()
 
         raiser = make_user("pct_raiser2", campus=campus)
@@ -763,12 +958,16 @@ class TestPhase7Percentiles:
         assert resp.status_code == 200
         assert resp.data["first_response_p50_seconds"] is not None
         assert resp.data["first_response_p90_seconds"] is not None
-        assert resp.data["first_response_p90_seconds"] >= resp.data["first_response_p50_seconds"]
+        assert (
+            resp.data["first_response_p90_seconds"]
+            >= resp.data["first_response_p50_seconds"]
+        )
 
 
 # ---------------------------------------------------------------------------
 # 7. Technician dual-scope
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.django_db
 class TestPhase7TechnicianDualScope:
@@ -826,6 +1025,7 @@ class TestPhase7TechnicianDualScope:
 # ---------------------------------------------------------------------------
 # 8. Admin config-health signals
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.django_db
 class TestPhase7AdminConfigHealth:
@@ -888,6 +1088,7 @@ class TestPhase7AdminConfigHealth:
 
         # Ensure the section has no HOS
         from apps.org.models import Section
+
         Section.objects.filter(pk=section.pk).update(hos=None)
 
         resp = api_client.get("/api/v1/analytics/overview/")
@@ -900,6 +1101,7 @@ class TestPhase7AdminConfigHealth:
 # Phase 2 extension — new metrics + generic group_bys (aggregate() direct)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.django_db
 class TestExtendedMetrics:
     """Exercises the new aggregate() outputs directly over an admin-wide qs."""
@@ -907,27 +1109,59 @@ class TestExtendedMetrics:
     def _setup(self, campus, service_item, section, priority):
         from apps.tickets.models import Ticket
         from apps.analytics.services import aggregate, resolve_date_range
+
         now = timezone.now()
         raiser = make_user("ext_raiser", campus=campus)
         tech = make_user("ext_tech", campus=campus)
         # open + unassigned, fresh (<1d)
         make_ticket(raiser, campus, service_item, section, priority, status="open")
         # open + assigned, aged 5 days (3-7d bucket)
-        make_ticket(raiser, campus, service_item, section, priority,
-                    status="assigned", assigned_to=tech,
-                    created_at=now - timedelta(days=5))
+        make_ticket(
+            raiser,
+            campus,
+            service_item,
+            section,
+            priority,
+            status="assigned",
+            assigned_to=tech,
+            created_at=now - timedelta(days=5),
+        )
         # pending (paused) ticket with 2h accumulated pause
-        make_ticket(raiser, campus, service_item, section, priority,
-                    status="pending", assigned_to=tech,
-                    accumulated_pause=timedelta(hours=2))
+        make_ticket(
+            raiser,
+            campus,
+            service_item,
+            section,
+            priority,
+            status="pending",
+            assigned_to=tech,
+            accumulated_pause=timedelta(hours=2),
+        )
         # resolved with feedback (rating 5)
-        r = make_ticket(raiser, campus, service_item, section, priority,
-                        status="resolved", assigned_to=tech, resolved_at=now)
+        r = make_ticket(
+            raiser,
+            campus,
+            service_item,
+            section,
+            priority,
+            status="resolved",
+            assigned_to=tech,
+            resolved_at=now,
+        )
         from apps.tickets.models import TicketFeedback
+
         TicketFeedback.objects.create(ticket=r, rating=5)
         # resolved with feedback (rating 2)
-        r2 = make_ticket(raiser, campus, service_item, section, priority,
-                         status="resolved", assigned_to=tech, resolved_at=now)
+        r2 = make_ticket(
+            raiser,
+            campus,
+            service_item,
+            section,
+            priority,
+            status="resolved",
+            assigned_to=tech,
+            resolved_at=now,
+        )
         TicketFeedback.objects.create(ticket=r2, rating=2)
         return aggregate(Ticket.objects.all(), resolve_date_range({}))
 
@@ -967,22 +1201,35 @@ class TestExtendedMetrics:
     def test_generic_group_by_priority(self, campus, service_item, section, priority):
         from apps.tickets.models import Ticket
         from apps.analytics.services import aggregate, resolve_date_range
+
         self._setup(campus, service_item, section, priority)
-        data = aggregate(Ticket.objects.all(), resolve_date_range({}), group_by="priority")
+        data = aggregate(
+            Ticket.objects.all(), resolve_date_range({}), group_by="priority"
+        )
         assert "breakdown" in data
         rows = data["breakdown"]
         assert len(rows) == 1
         assert rows[0]["label"] == priority.name
         assert rows[0]["total"] == 5
-        assert {"key", "label", "total", "open_count", "resolved_count",
-                "escalated_count", "resolution_sla_met",
-                "total_resolved_with_due"} <= set(rows[0])
+        assert {
+            "key",
+            "label",
+            "total",
+            "open_count",
+            "resolved_count",
+            "escalated_count",
+            "resolution_sla_met",
+            "total_resolved_with_due",
+        } <= set(rows[0])
 
     def test_generic_group_by_status(self, campus, service_item, section, priority):
         from apps.tickets.models import Ticket
         from apps.analytics.services import aggregate, resolve_date_range
+
         self._setup(campus, service_item, section, priority)
-        data = aggregate(Ticket.objects.all(), resolve_date_range({}), group_by="status")
+        data = aggregate(
+            Ticket.objects.all(), resolve_date_range({}), group_by="status"
+        )
         labels = {row["label"]: row["total"] for row in data["breakdown"]}
         assert labels.get("resolved") == 2
         assert labels.get("open") == 1
@@ -992,10 +1239,12 @@ class TestExtendedMetrics:
 # Phase 3 — insights service
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.django_db
 class TestInsights:
     def _facility(self, campus):
         from apps.facilities.models import FacilityType, Facility
+
         ft = FacilityType.objects.create(name="Block", code="BLK")
         return Facility.objects.create(campus=campus, facility_type=ft, name="Block C")
 
@@ -1004,6 +1253,7 @@ class TestInsights:
         from apps.analytics.insights import compute_insights
         from apps.analytics.services import resolve_date_range
         from apps.facilities.models import FacilityType
+
         facility = self._facility(campus)
         ft = facility.facility_type
         raiser = make_user("rf_raiser", campus=campus)
@@ -1018,20 +1268,37 @@ class TestInsights:
         assert rf[0]["facility"] == "Block C"
         assert rf[0]["service_item"] == service_item.name
 
-    def test_sla_leak_dominant_unassigned(self, campus, service_item, section, priority):
+    def test_sla_leak_dominant_unassigned(
+        self, campus, service_item, section, priority
+    ):
         from apps.tickets.models import Ticket
         from apps.analytics.insights import compute_insights
         from apps.analytics.services import resolve_date_range
+
         now = timezone.now()
         raiser = make_user("leak_raiser", campus=campus)
         tech = make_user("leak_tech", campus=campus)
         # 3 unassigned breached, 1 assigned breached
         for _ in range(3):
-            make_ticket(raiser, campus, service_item, section, priority,
-                        status="open", resolution_due_at=now - timedelta(hours=2))
-        make_ticket(raiser, campus, service_item, section, priority,
-                    status="in_progress", assigned_to=tech,
-                    resolution_due_at=now - timedelta(hours=1))
+            make_ticket(
+                raiser,
+                campus,
+                service_item,
+                section,
+                priority,
+                status="open",
+                resolution_due_at=now - timedelta(hours=2),
+            )
+        make_ticket(
+            raiser,
+            campus,
+            service_item,
+            section,
+            priority,
+            status="in_progress",
+            assigned_to=tech,
+            resolution_due_at=now - timedelta(hours=1),
+        )
 
         out = compute_insights(Ticket.objects.all(), resolve_date_range({}))
         leak = [i for i in out if i["type"] == "sla_leak"]
@@ -1044,6 +1311,7 @@ class TestInsights:
         from apps.tickets.models import Ticket
         from apps.analytics.insights import compute_insights
         from apps.analytics.services import resolve_date_range
+
         raiser = make_user("cap_raiser", campus=campus)
         for _ in range(10):  # 10 created, 0 resolved
             make_ticket(raiser, campus, service_item, section, priority)
@@ -1057,6 +1325,7 @@ class TestInsights:
         from apps.tickets.models import Ticket
         from apps.analytics.insights import compute_insights
         from apps.analytics.services import resolve_date_range
+
         raiser = make_user("filt_raiser", campus=campus)
         for _ in range(10):
             make_ticket(raiser, campus, service_item, section, priority)
@@ -1066,14 +1335,24 @@ class TestInsights:
         )
         assert all(i["type"] == "sla_leak" for i in out)
 
-    def test_no_insights_on_clean_small_data(self, campus, service_item, section, priority):
+    def test_no_insights_on_clean_small_data(
+        self, campus, service_item, section, priority
+    ):
         from apps.tickets.models import Ticket
         from apps.analytics.insights import compute_insights
         from apps.analytics.services import resolve_date_range
+
         raiser = make_user("clean_raiser", campus=campus)
         # 2 resolved, nothing breached/recurring/growing
-        make_ticket(raiser, campus, service_item, section, priority,
-                    status="resolved", resolved_at=timezone.now())
+        make_ticket(
+            raiser,
+            campus,
+            service_item,
+            section,
+            priority,
+            status="resolved",
+            resolved_at=timezone.now(),
+        )
         out = compute_insights(Ticket.objects.all(), resolve_date_range({}))
         assert out == []
 
@@ -1082,14 +1361,16 @@ class TestInsights:
 # Phase 4 — unified endpoint + role config + report range fix
 # ---------------------------------------------------------------------------
 
+
 def test_resolve_group_by_fails_closed():
     """Technician can never request peer rankings; unallowed dims fall back."""
     from apps.analytics.role_config import resolve_group_by
-    assert resolve_group_by("technician", "technician") == "time"   # forced to default
-    assert resolve_group_by("hos", "technician") == "technician"    # allowed
-    assert resolve_group_by("hos", "campus") == "technician"        # unallowed → default
-    assert resolve_group_by("hod", None) == "section"               # default
-    assert resolve_group_by("bogus", "anything") == "status"        # unknown → user default
+
+    assert resolve_group_by("technician", "technician") == "time"  # forced to default
+    assert resolve_group_by("hos", "technician") == "technician"  # allowed
+    assert resolve_group_by("hos", "campus") == "technician"  # unallowed → default
+    assert resolve_group_by("hod", None) == "section"  # default
+    assert resolve_group_by("bogus", "anything") == "status"  # unknown → user default
 
 
 @pytest.mark.django_db
@@ -1098,8 +1379,11 @@ class TestUnifiedAnalytics:
         from apps.accounts.models import RoleAssignment
         from apps.accounts.jwt_utils import build_tokens_for_assignment
         from apps.org.models import CampusDepartment
+
         hod = make_user("uni_hod", campus=campus)
-        CampusDepartment.objects.filter(pk=campus_dept.pk).update(head_of_department=hod)
+        CampusDepartment.objects.filter(pk=campus_dept.pk).update(
+            head_of_department=hod
+        )
         ra = RoleAssignment.objects.create(
             user=hod, role="hod", is_primary=True, campus_department=campus_dept
         )
@@ -1114,8 +1398,15 @@ class TestUnifiedAnalytics:
         raiser = make_user("uni_raiser", campus=campus)
         for _ in range(3):
             make_ticket(raiser, campus, service_item, section, priority)
-        make_ticket(raiser, campus, service_item, section, priority,
-                    status="resolved", resolved_at=now)
+        make_ticket(
+            raiser,
+            campus,
+            service_item,
+            section,
+            priority,
+            status="resolved",
+            resolved_at=now,
+        )
 
         api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
         uni = api_client.get("/api/v1/analytics/")
@@ -1134,6 +1425,7 @@ class TestUnifiedAnalytics:
         from apps.accounts.models import RoleAssignment
         from apps.accounts.jwt_utils import build_tokens_for_assignment
         from apps.org.models import Department
+
         now = timezone.now()
         mgr = make_user("uni_mgr", campus=campus)
         Department.objects.filter(pk=dept.pk).update(manager_user=mgr)
@@ -1159,6 +1451,7 @@ class TestReportRange:
     def _admin_token(self):
         from apps.accounts.models import RoleAssignment
         from apps.accounts.jwt_utils import build_tokens_for_assignment
+
         admin = make_user("rep_admin")
         ra = RoleAssignment.objects.create(user=admin, role="admin", is_primary=True)
         _, access = build_tokens_for_assignment(admin, ra)
@@ -1167,6 +1460,7 @@ class TestReportRange:
     def _summary_created(self, content):
         import openpyxl
         from io import BytesIO
+
         wb = openpyxl.load_workbook(BytesIO(content))
         ws = wb["Summary"]
         for r in ws.iter_rows(values_only=True):
@@ -1178,6 +1472,7 @@ class TestReportRange:
         self, api_client, campus, service_item, section, priority
     ):
         from apps.tickets.models import Ticket
+
         now = timezone.now()
         token = self._admin_token()
         raiser = make_user("rr_raiser", campus=campus)
@@ -1230,9 +1525,7 @@ class TestRequesterScope:
 
         requester = make_user("req_overview1", campus=campus)
         other = make_user("req_other2", campus=campus)
-        ra = RoleAssignment.objects.create(
-            user=requester, role="user", is_primary=True
-        )
+        ra = RoleAssignment.objects.create(user=requester, role="user", is_primary=True)
 
         # 3 tickets raised by the requester, 2 by someone else.
         for _ in range(3):
@@ -1259,28 +1552,42 @@ class TestSLABreachCommand:
     ):
         from django.core.management import call_command
         from apps.tickets.models import TicketLog
+
         now = timezone.now()
         raiser = make_user("sla_raiser", campus=campus)
         breached = make_ticket(
-            raiser, campus, service_item, section, priority,
-            status="in_progress", resolution_due_at=now - timedelta(hours=1),
+            raiser,
+            campus,
+            service_item,
+            section,
+            priority,
+            status="in_progress",
+            resolution_due_at=now - timedelta(hours=1),
         )
         paused = make_ticket(
-            raiser, campus, service_item, section, priority,
-            status="pending", paused_at=now - timedelta(hours=2),
+            raiser,
+            campus,
+            service_item,
+            section,
+            priority,
+            status="pending",
+            paused_at=now - timedelta(hours=2),
             resolution_due_at=now - timedelta(hours=1),
         )
 
         call_command("check_sla")
-        assert TicketLog.objects.filter(
-            ticket=breached, event_type="sla_breach"
-        ).count() == 1
-        assert TicketLog.objects.filter(
-            ticket=paused, event_type="sla_breach"
-        ).count() == 0
+        assert (
+            TicketLog.objects.filter(ticket=breached, event_type="sla_breach").count()
+            == 1
+        )
+        assert (
+            TicketLog.objects.filter(ticket=paused, event_type="sla_breach").count()
+            == 0
+        )
 
         # second run is idempotent — no duplicate breach log
         call_command("check_sla")
-        assert TicketLog.objects.filter(
-            ticket=breached, event_type="sla_breach"
-        ).count() == 1
+        assert (
+            TicketLog.objects.filter(ticket=breached, event_type="sla_breach").count()
+            == 1
+        )

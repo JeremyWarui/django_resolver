@@ -61,24 +61,36 @@ class Command(BaseCommand):
         catalogue_data = [
             # (dept_code, section_type_code, category_name, location_details, priority, [item_entries])
             (
-                "ICT", "ICTSUPP",
-                "ICT Support Requests", False, medium,
+                "ICT",
+                "ICTSUPP",
+                "ICT Support Requests",
+                False,
+                medium,
                 ["Password Reset", "Software Installation", "Hardware Issue"],
             ),
             (
-                "ICT", "NET",
-                "Network Issues", False, high,
+                "ICT",
+                "NET",
+                "Network Issues",
+                False,
+                high,
                 # Network Outage → Critical override (category default is High); VPN → inherits High.
                 [("Network Outage Report", critical), "VPN Access Request"],
             ),
             (
-                "FAC", "MAINT",
-                "Facility Maintenance", True, medium,
+                "FAC",
+                "MAINT",
+                "Facility Maintenance",
+                True,
+                medium,
                 ["Plumbing Repair", "Electrical Issue", "Door/Window Repair"],
             ),
             (
-                "FAC", "GRND",
-                "Grounds Management", True, low,
+                "FAC",
+                "GRND",
+                "Grounds Management",
+                True,
+                low,
                 ["Lawn Mowing Request", "Drainage Issue"],
             ),
         ]
@@ -86,7 +98,14 @@ class Command(BaseCommand):
         cat_created = 0
         item_created = 0
 
-        for dept_code, st_code, cat_name, location_details, priority, item_entries in catalogue_data:
+        for (
+            dept_code,
+            st_code,
+            cat_name,
+            location_details,
+            priority,
+            item_entries,
+        ) in catalogue_data:
             section_type = SectionType.objects.get(
                 code=st_code,
                 department__code=dept_code,
@@ -126,9 +145,7 @@ class Command(BaseCommand):
             f"  ServiceCategory: {cat_created} created, "
             f"{len(catalogue_data) - cat_created} already existed"
         )
-        self.stdout.write(
-            f"  ServiceItem: {item_created} created"
-        )
+        self.stdout.write(f"  ServiceItem: {item_created} created")
 
     # ------------------------------------------------------------------
     # Facilities
@@ -136,10 +153,10 @@ class Command(BaseCommand):
 
     def _seed_facilities(self):
         office_block = FacilityType.objects.get(code="office_block")
-        building     = FacilityType.objects.get(code="building")
-        equipment    = FacilityType.objects.get(code="equipment")
-        residential  = FacilityType.objects.get(code="residential")
-        grounds      = FacilityType.objects.get(code="grounds")
+        building = FacilityType.objects.get(code="building")
+        equipment = FacilityType.objects.get(code="equipment")
+        residential = FacilityType.objects.get(code="residential")
+        grounds = FacilityType.objects.get(code="grounds")
 
         nrb = Campus.objects.get(code="NRB")
         msa = Campus.objects.get(code="MSA")
@@ -147,17 +164,17 @@ class Command(BaseCommand):
         facilities_data = [
             # (campus, facility_type, name, code)
             # NRB — office blocks (for office_block location form)
-            (nrb, office_block, "Admin Block A",    "BLKA"),
-            (nrb, office_block, "Admin Block B",    "BLKB"),
-            (nrb, office_block, "ICT Block",        "ICTBLK"),
-            (nrb, office_block, "Finance Block",    "FINBLK"),
+            (nrb, office_block, "Admin Block A", "BLKA"),
+            (nrb, office_block, "Admin Block B", "BLKB"),
+            (nrb, office_block, "ICT Block", "ICTBLK"),
+            (nrb, office_block, "Finance Block", "FINBLK"),
             # NRB — buildings (laundries, kitchens, utility)
-            (nrb, building,     "Main Hall",        "MHALL"),
-            (nrb, building,     "Conference Centre","CONFCTR"),
-            (nrb, building,     "Staff Canteen",    "CANTEEN"),
+            (nrb, building, "Main Hall", "MHALL"),
+            (nrb, building, "Conference Centre", "CONFCTR"),
+            (nrb, building, "Staff Canteen", "CANTEEN"),
             # MSA campus
-            (msa, office_block, "Block 1",          "MBLK1"),
-            (msa, building,     "MSA Main Hall",    "MMHALL"),
+            (msa, office_block, "Block 1", "MBLK1"),
+            (msa, building, "MSA Main Hall", "MMHALL"),
         ]
 
         created = 0
@@ -188,16 +205,18 @@ class Command(BaseCommand):
         now = timezone.now()
 
         # ------ look up users ------
-        requester1         = User.objects.get(username="requester1")
-        tech1              = User.objects.get(username="tech1")
-        tech2              = User.objects.get(username="tech2")
-        tech3              = User.objects.get(username="tech3")
-        nrb_ict_net_hos    = User.objects.get(username="nrb_ict_net_hos")
-        nrb_fac_maint_hos  = User.objects.get(username="nrb_fac_maint_hos")
-        nrb_ict_hod        = User.objects.get(username="nrb_ict_hod")  # noqa: F841 — used as HOD level_user placeholder
+        requester1 = User.objects.get(username="requester1")
+        tech1 = User.objects.get(username="tech1")
+        tech2 = User.objects.get(username="tech2")
+        tech3 = User.objects.get(username="tech3")
+        nrb_ict_net_hos = User.objects.get(username="nrb_ict_net_hos")
+        nrb_fac_maint_hos = User.objects.get(username="nrb_fac_maint_hos")
+        nrb_ict_hod = User.objects.get(
+            username="nrb_ict_hod"
+        )  # noqa: F841 — used as HOD level_user placeholder
 
         # HOD-level user for NRB-FAC (used in ticket 6 log)
-        nrb_fac_hod        = User.objects.get(username="nrb_fac_hod")
+        nrb_fac_hod = User.objects.get(username="nrb_fac_hod")
 
         # ------ look up campuses ------
         nrb_campus = Campus.objects.get(code="NRB")
@@ -218,17 +237,33 @@ class Command(BaseCommand):
 
         # ------ look up priorities ------
         medium = priorities[2]
-        high   = priorities[3]
+        high = priorities[3]
 
         # ------ look up service items ------
-        item_password_reset      = ServiceItem.objects.get(category__name="ICT Support Requests", name="Password Reset")
-        item_software_install    = ServiceItem.objects.get(category__name="ICT Support Requests", name="Software Installation")
-        item_hardware_issue      = ServiceItem.objects.get(category__name="ICT Support Requests", name="Hardware Issue")
-        item_plumbing            = ServiceItem.objects.get(category__name="Facility Maintenance", name="Plumbing Repair")
-        item_electrical          = ServiceItem.objects.get(category__name="Facility Maintenance", name="Electrical Issue")
-        item_door_window         = ServiceItem.objects.get(category__name="Facility Maintenance", name="Door/Window Repair")
-        item_vpn                 = ServiceItem.objects.get(category__name="Network Issues",       name="VPN Access Request")
-        item_network_outage      = ServiceItem.objects.get(category__name="Network Issues",       name="Network Outage Report")
+        item_password_reset = ServiceItem.objects.get(
+            category__name="ICT Support Requests", name="Password Reset"
+        )
+        item_software_install = ServiceItem.objects.get(
+            category__name="ICT Support Requests", name="Software Installation"
+        )
+        item_hardware_issue = ServiceItem.objects.get(
+            category__name="ICT Support Requests", name="Hardware Issue"
+        )
+        item_plumbing = ServiceItem.objects.get(
+            category__name="Facility Maintenance", name="Plumbing Repair"
+        )
+        item_electrical = ServiceItem.objects.get(
+            category__name="Facility Maintenance", name="Electrical Issue"
+        )
+        item_door_window = ServiceItem.objects.get(
+            category__name="Facility Maintenance", name="Door/Window Repair"
+        )
+        item_vpn = ServiceItem.objects.get(
+            category__name="Network Issues", name="VPN Access Request"
+        )
+        item_network_outage = ServiceItem.objects.get(
+            category__name="Network Issues", name="Network Outage Report"
+        )
 
         # ----------------------------------------------------------------
         # Ticket 1 — open, technician-level
@@ -271,12 +306,18 @@ class Command(BaseCommand):
             description="Need MS Office installed on new workstation.",
         )
         TicketLog.objects.create(
-            ticket=t2, actor=None,
-            event_type="created", from_value="", to_value="open",
+            ticket=t2,
+            actor=None,
+            event_type="created",
+            from_value="",
+            to_value="open",
         )
         TicketLog.objects.create(
-            ticket=t2, actor=tech1,
-            event_type="assigned", from_value="open", to_value="assigned",
+            ticket=t2,
+            actor=tech1,
+            event_type="assigned",
+            from_value="open",
+            to_value="assigned",
         )
 
         # ----------------------------------------------------------------
@@ -296,16 +337,25 @@ class Command(BaseCommand):
             description="Monitor not displaying — suspected cable or GPU fault.",
         )
         TicketLog.objects.create(
-            ticket=t3, actor=None,
-            event_type="created", from_value="", to_value="open",
+            ticket=t3,
+            actor=None,
+            event_type="created",
+            from_value="",
+            to_value="open",
         )
         TicketLog.objects.create(
-            ticket=t3, actor=tech2,
-            event_type="assigned", from_value="open", to_value="assigned",
+            ticket=t3,
+            actor=tech2,
+            event_type="assigned",
+            from_value="open",
+            to_value="assigned",
         )
         TicketLog.objects.create(
-            ticket=t3, actor=tech2,
-            event_type="status_changed", from_value="assigned", to_value="in_progress",
+            ticket=t3,
+            actor=tech2,
+            event_type="status_changed",
+            from_value="assigned",
+            to_value="in_progress",
         )
 
         # ----------------------------------------------------------------
@@ -326,19 +376,29 @@ class Command(BaseCommand):
             description="Burst pipe in first-floor washroom — awaiting spare parts.",
         )
         TicketLog.objects.create(
-            ticket=t4, actor=None,
-            event_type="created", from_value="", to_value="open",
+            ticket=t4,
+            actor=None,
+            event_type="created",
+            from_value="",
+            to_value="open",
         )
         TicketLog.objects.create(
-            ticket=t4, actor=tech3,
-            event_type="assigned", from_value="open", to_value="assigned",
+            ticket=t4,
+            actor=tech3,
+            event_type="assigned",
+            from_value="open",
+            to_value="assigned",
         )
         TicketLog.objects.create(
-            ticket=t4, actor=tech3,
-            event_type="status_changed", from_value="assigned", to_value="in_progress",
+            ticket=t4,
+            actor=tech3,
+            event_type="status_changed",
+            from_value="assigned",
+            to_value="in_progress",
         )
         TicketLog.objects.create(
-            ticket=t4, actor=tech3,
+            ticket=t4,
+            actor=tech3,
             event_type="status_changed",
             from_value="in_progress",
             to_value="pending",
@@ -362,19 +422,29 @@ class Command(BaseCommand):
             description="Power socket sparking in server room — urgent.",
         )
         TicketLog.objects.create(
-            ticket=t5, actor=None,
-            event_type="created", from_value="", to_value="open",
+            ticket=t5,
+            actor=None,
+            event_type="created",
+            from_value="",
+            to_value="open",
         )
         TicketLog.objects.create(
-            ticket=t5, actor=tech3,
-            event_type="assigned", from_value="open", to_value="assigned",
+            ticket=t5,
+            actor=tech3,
+            event_type="assigned",
+            from_value="open",
+            to_value="assigned",
         )
         TicketLog.objects.create(
-            ticket=t5, actor=tech3,
-            event_type="status_changed", from_value="assigned", to_value="in_progress",
+            ticket=t5,
+            actor=tech3,
+            event_type="status_changed",
+            from_value="assigned",
+            to_value="in_progress",
         )
         TicketLog.objects.create(
-            ticket=t5, actor=None,
+            ticket=t5,
+            actor=None,
             event_type="escalated",
             from_value="technician",
             to_value="hos",
@@ -398,18 +468,23 @@ class Command(BaseCommand):
             description="Main entrance door lock broken — security risk.",
         )
         TicketLog.objects.create(
-            ticket=t6, actor=None,
-            event_type="created", from_value="", to_value="open",
+            ticket=t6,
+            actor=None,
+            event_type="created",
+            from_value="",
+            to_value="open",
         )
         TicketLog.objects.create(
-            ticket=t6, actor=None,
+            ticket=t6,
+            actor=None,
             event_type="escalated",
             from_value="technician",
             to_value="hos",
             level_user=nrb_fac_maint_hos,
         )
         TicketLog.objects.create(
-            ticket=t6, actor=None,
+            ticket=t6,
+            actor=None,
             event_type="escalated",
             from_value="hos",
             to_value="hod",
@@ -434,16 +509,25 @@ class Command(BaseCommand):
             description="Need remote VPN access for work from home.",
         )
         TicketLog.objects.create(
-            ticket=t7, actor=None,
-            event_type="created", from_value="", to_value="open",
+            ticket=t7,
+            actor=None,
+            event_type="created",
+            from_value="",
+            to_value="open",
         )
         TicketLog.objects.create(
-            ticket=t7, actor=nrb_ict_net_hos,
-            event_type="assigned", from_value="open", to_value="assigned",
+            ticket=t7,
+            actor=nrb_ict_net_hos,
+            event_type="assigned",
+            from_value="open",
+            to_value="assigned",
         )
         TicketLog.objects.create(
-            ticket=t7, actor=nrb_ict_net_hos,
-            event_type="resolved", from_value="assigned", to_value="resolved",
+            ticket=t7,
+            actor=nrb_ict_net_hos,
+            event_type="resolved",
+            from_value="assigned",
+            to_value="resolved",
         )
         TicketFeedback.objects.create(
             ticket=t7,
@@ -470,23 +554,37 @@ class Command(BaseCommand):
             description="Entire NRB campus network down — all users affected.",
         )
         TicketLog.objects.create(
-            ticket=t8, actor=None,
-            event_type="created", from_value="", to_value="open",
+            ticket=t8,
+            actor=None,
+            event_type="created",
+            from_value="",
+            to_value="open",
         )
         TicketLog.objects.create(
-            ticket=t8, actor=nrb_ict_net_hos,
-            event_type="assigned", from_value="open", to_value="assigned",
+            ticket=t8,
+            actor=nrb_ict_net_hos,
+            event_type="assigned",
+            from_value="open",
+            to_value="assigned",
         )
         TicketLog.objects.create(
-            ticket=t8, actor=nrb_ict_net_hos,
-            event_type="status_changed", from_value="assigned", to_value="resolved",
+            ticket=t8,
+            actor=nrb_ict_net_hos,
+            event_type="status_changed",
+            from_value="assigned",
+            to_value="resolved",
         )
         TicketLog.objects.create(
-            ticket=t8, actor=nrb_ict_net_hos,
-            event_type="closed", from_value="resolved", to_value="closed",
+            ticket=t8,
+            actor=nrb_ict_net_hos,
+            event_type="closed",
+            from_value="resolved",
+            to_value="closed",
         )
 
-        self.stdout.write("  Ticket: 8 created (open, assigned, in_progress, pending, hos-level, hod-level, resolved, closed)")
+        self.stdout.write(
+            "  Ticket: 8 created (open, assigned, in_progress, pending, hos-level, hod-level, resolved, closed)"
+        )
 
     # ------------------------------------------------------------------
     # HOS Cover RoleAssignment
@@ -495,8 +593,8 @@ class Command(BaseCommand):
     def _seed_hos_cover(self):
         User = get_user_model()
 
-        senior_tech       = User.objects.get(username="senior_tech")
-        nrb_ict_hod_user  = User.objects.get(username="nrb_ict_hod")
+        senior_tech = User.objects.get(username="senior_tech")
+        nrb_ict_hod_user = User.objects.get(username="nrb_ict_hod")
         nrb_ict_supp_section = Section.objects.get(
             campus_department__campus__code="NRB",
             section_type__code="ICTSUPP",
@@ -514,4 +612,6 @@ class Command(BaseCommand):
             },
         )
         status = "created" if is_new else "already existed"
-        self.stdout.write(f"  HOS cover RoleAssignment (senior_tech @ NRB-ICT-ICTSUPP): {status}")
+        self.stdout.write(
+            f"  HOS cover RoleAssignment (senior_tech @ NRB-ICT-ICTSUPP): {status}"
+        )

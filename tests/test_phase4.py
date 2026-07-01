@@ -20,10 +20,10 @@ from datetime import timedelta
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-
 # ---------------------------------------------------------------------------
 # shared fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def api_client():
@@ -33,30 +33,35 @@ def api_client():
 @pytest.fixture
 def campus(db):
     from apps.org.models import Campus
+
     return Campus.objects.create(name="Nairobi", code="NRB", location="CBD")
 
 
 @pytest.fixture
 def dept(db):
     from apps.org.models import Department
+
     return Department.objects.create(name="ICT", code="ICT")
 
 
 @pytest.fixture
 def campus_dept(campus, dept):
     from apps.org.models import CampusDepartment
+
     return CampusDepartment.objects.create(campus=campus, department=dept)
 
 
 @pytest.fixture
 def section_type(dept):
     from apps.org.models import SectionType
+
     return SectionType.objects.create(department=dept, name="Support", code="SUP")
 
 
 @pytest.fixture
 def section(campus_dept, section_type):
     from apps.org.models import Section
+
     return Section.objects.create(
         campus_department=campus_dept, section_type=section_type, is_active=True
     )
@@ -65,6 +70,7 @@ def section(campus_dept, section_type):
 @pytest.fixture
 def priority(db):
     from apps.sla.models import Priority
+
     return Priority.objects.create(
         name="Low", rank=1, response_minutes=480, resolution_minutes=4320
     )
@@ -73,6 +79,7 @@ def priority(db):
 @pytest.fixture
 def service_cat(section_type, priority):
     from apps.catalog.models import ServiceCategory
+
     return ServiceCategory.objects.create(
         section_type=section_type,
         name="Hardware",
@@ -84,12 +91,14 @@ def service_cat(section_type, priority):
 @pytest.fixture
 def service_item(service_cat):
     from apps.catalog.models import ServiceItem
+
     return ServiceItem.objects.create(category=service_cat, name="Laptop Repair")
 
 
 @pytest.fixture
 def requester(campus):
     from apps.accounts.models import CustomUser, UserProfile
+
     user = CustomUser.objects.create_user(username="requester", password="pass")
     UserProfile.objects.create(user=user, campus=campus)
     return user
@@ -99,6 +108,7 @@ def requester(campus):
 def technician(section):
     from apps.accounts.models import CustomUser
     from apps.org.models import SectionTechnician
+
     user = CustomUser.objects.create_user(username="technician", password="pass")
     SectionTechnician.objects.create(user=user, section=section)
     return user
@@ -107,12 +117,14 @@ def technician(section):
 @pytest.fixture
 def other_user(db):
     from apps.accounts.models import CustomUser
+
     return CustomUser.objects.create_user(username="other_user", password="pass")
 
 
 @pytest.fixture
 def open_ticket(requester, campus, service_item, section, priority):
     from apps.tickets.models import Ticket
+
     return Ticket.objects.create(
         ticket_no="TKT-000001",
         raised_by=requester,
@@ -129,6 +141,7 @@ def open_ticket(requester, campus, service_item, section, priority):
 # ---------------------------------------------------------------------------
 # Lifecycle unit tests (no HTTP)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.django_db
 class TestTransitionValidSequence:
@@ -276,6 +289,7 @@ class TestTicketLogImmutableDelete:
 # Status endpoint tests
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.django_db
 class TestStatusTransitionViaApi:
 
@@ -287,7 +301,9 @@ class TestStatusTransitionViaApi:
         assert response.status_code == 200
         assert response.data["status"] == "assigned"
 
-    def test_status_invalid_transition_returns_400(self, api_client, open_ticket, technician):
+    def test_status_invalid_transition_returns_400(
+        self, api_client, open_ticket, technician
+    ):
         """POST open→resolved (invalid) returns 400."""
         api_client.force_authenticate(user=technician)
         url = f"/api/v1/tickets/{open_ticket.pk}/status/"
@@ -333,6 +349,7 @@ class TestStatusTransitionViaApi:
 # ---------------------------------------------------------------------------
 # Assign endpoint tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.django_db
 class TestAssignEndpoint:
@@ -384,6 +401,7 @@ class TestAssignEndpoint:
 # Comment tests
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.django_db
 class TestCommentEndpoints:
 
@@ -412,10 +430,16 @@ class TestCommentEndpoints:
         from apps.tickets.models import TicketComment
 
         TicketComment.objects.create(
-            ticket=open_ticket, author=technician, body="Public msg", visibility="public"
+            ticket=open_ticket,
+            author=technician,
+            body="Public msg",
+            visibility="public",
         )
         TicketComment.objects.create(
-            ticket=open_ticket, author=technician, body="Secret note", visibility="internal"
+            ticket=open_ticket,
+            author=technician,
+            body="Secret note",
+            visibility="internal",
         )
 
         api_client.force_authenticate(user=requester)
@@ -430,17 +454,21 @@ class TestCommentEndpoints:
         assert "Public msg" in bodies
         assert "Secret note" not in bodies
 
-    def test_staff_can_see_internal_comments(
-        self, api_client, open_ticket, technician
-    ):
+    def test_staff_can_see_internal_comments(self, api_client, open_ticket, technician):
         """A non-requester (staff) user sees both public and internal comments."""
         from apps.tickets.models import TicketComment
 
         TicketComment.objects.create(
-            ticket=open_ticket, author=technician, body="Public msg", visibility="public"
+            ticket=open_ticket,
+            author=technician,
+            body="Public msg",
+            visibility="public",
         )
         TicketComment.objects.create(
-            ticket=open_ticket, author=technician, body="Secret note", visibility="internal"
+            ticket=open_ticket,
+            author=technician,
+            body="Secret note",
+            visibility="internal",
         )
 
         api_client.force_authenticate(user=technician)
@@ -465,6 +493,7 @@ class TestCommentEndpoints:
 # Feedback tests
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.django_db
 class TestFeedbackEndpoints:
 
@@ -485,9 +514,7 @@ class TestFeedbackEndpoints:
 
         api_client.force_authenticate(user=requester)
         url = f"/api/v1/tickets/{open_ticket.pk}/feedback/"
-        response = api_client.post(
-            url, {"rating": 4, "comment": "Good"}, format="json"
-        )
+        response = api_client.post(url, {"rating": 4, "comment": "Good"}, format="json")
         assert response.status_code == 201
 
     def test_feedback_below_resolved_returns_400(
@@ -545,6 +572,7 @@ class TestFeedbackEndpoints:
 # Log endpoint tests
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.django_db
 class TestLogEndpoint:
 
@@ -555,7 +583,9 @@ class TestLogEndpoint:
         from apps.tickets.models import TicketLog
 
         # Ensure there is a created event (may have been written by fixture or must be added)
-        if not TicketLog.objects.filter(ticket=open_ticket, event_type="created").exists():
+        if not TicketLog.objects.filter(
+            ticket=open_ticket, event_type="created"
+        ).exists():
             TicketLog.objects.create(
                 ticket=open_ticket,
                 actor=requester,

@@ -19,10 +19,10 @@ def _ticket_count_subq(status_filter: Q):
     TicketLocation.facility uses related_name="+".
     """
     from apps.tickets.models import TicketLocation
+
     return Coalesce(
         Subquery(
-            TicketLocation.objects
-            .filter(facility=OuterRef("pk"))
+            TicketLocation.objects.filter(facility=OuterRef("pk"))
             .filter(status_filter)
             .values("facility")
             .annotate(c=Count("id"))
@@ -58,18 +58,13 @@ class FacilityViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = (
-            Facility.objects
-            .select_related("campus", "facility_type")
+            Facility.objects.select_related("campus", "facility_type")
             .annotate(
                 open_ticket_count=_ticket_count_subq(
                     Q(ticket__status__in=_OPEN_STATUSES)
                 ),
-                resolved_ticket_count=_ticket_count_subq(
-                    Q(ticket__status="resolved")
-                ),
-                closed_ticket_count=_ticket_count_subq(
-                    Q(ticket__status="closed")
-                ),
+                resolved_ticket_count=_ticket_count_subq(Q(ticket__status="resolved")),
+                closed_ticket_count=_ticket_count_subq(Q(ticket__status="closed")),
             )
             .order_by("campus", "name")
         )

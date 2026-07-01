@@ -19,10 +19,10 @@ from apps.analytics.services import ACTIVE_STATUSES, TERMINAL_STATUSES, _percent
 from apps.tickets.models import TicketFeedback
 
 # Tuning knobs (kept here so they're easy to find / adjust).
-RECURRING_FAULT_MIN = 3          # occurrences of (facility, service_item) to flag
-BOTTLENECK_MULTIPLE = 2.0        # outlier = >= N× the peer median
-CSAT_DRIVER_MIN_SAMPLE = 6       # need at least this many rated tickets
-CSAT_DRIVER_GAP = 1.0            # rating points drop to flag speed as a driver
+RECURRING_FAULT_MIN = 3  # occurrences of (facility, service_item) to flag
+BOTTLENECK_MULTIPLE = 2.0  # outlier = >= N× the peer median
+CSAT_DRIVER_MIN_SAMPLE = 6  # need at least this many rated tickets
+CSAT_DRIVER_GAP = 1.0  # rating points drop to flag speed as a driver
 
 
 def compute_insights(scoped_qs, date_range, enabled_types=None):
@@ -67,19 +67,21 @@ def _recurring_fault(scoped_qs, date_range):
     )
     out = []
     for r in rows[:10]:
-        out.append({
-            "type": "recurring_fault",
-            "severity": "high" if r["occurrences"] >= 5 else "med",
-            "facility_id": r["facility_id"],
-            "facility": r["facility_name"],
-            "service_item": r["item_name"],
-            "occurrences": r["occurrences"],
-            "message": (
-                f"{r['item_name']} at {r['facility_name']} was raised "
-                f"{r['occurrences']}× in the selected period — candidate for a "
-                f"permanent fix rather than repeated patching."
-            ),
-        })
+        out.append(
+            {
+                "type": "recurring_fault",
+                "severity": "high" if r["occurrences"] >= 5 else "med",
+                "facility_id": r["facility_id"],
+                "facility": r["facility_name"],
+                "service_item": r["item_name"],
+                "occurrences": r["occurrences"],
+                "message": (
+                    f"{r['item_name']} at {r['facility_name']} was raised "
+                    f"{r['occurrences']}× in the selected period — candidate for a "
+                    f"permanent fix rather than repeated patching."
+                ),
+            }
+        )
     return out
 
 
@@ -107,21 +109,23 @@ def _bottleneck(scoped_qs, date_range):
     out = []
     for sid, total in sec_pause.items():
         if total >= BOTTLENECK_MULTIPLE * median:
-            out.append({
-                "type": "bottleneck",
-                "severity": "med",
-                "dimension": "section",
-                "key": sid,
-                "label": sec_name.get(sid),
-                "metric": "pause_total_seconds",
-                "value": round(total),
-                "vs_peer_median": round(median),
-                "message": (
-                    f"Section '{sec_name.get(sid)}' tickets sit paused far longer "
-                    f"than peer sections ({round(total / 3600, 1)}h vs median "
-                    f"{round(median / 3600, 1)}h) — a workflow/dependency bottleneck."
-                ),
-            })
+            out.append(
+                {
+                    "type": "bottleneck",
+                    "severity": "med",
+                    "dimension": "section",
+                    "key": sid,
+                    "label": sec_name.get(sid),
+                    "metric": "pause_total_seconds",
+                    "value": round(total),
+                    "vs_peer_median": round(median),
+                    "message": (
+                        f"Section '{sec_name.get(sid)}' tickets sit paused far longer "
+                        f"than peer sections ({round(total / 3600, 1)}h vs median "
+                        f"{round(median / 3600, 1)}h) — a workflow/dependency bottleneck."
+                    ),
+                }
+            )
     return out
 
 
@@ -154,17 +158,19 @@ def _sla_leak(scoped_qs):
         "slow_resolution": "slow active resolution (a capacity/skill gap)",
     }
     dominant = max(causes, key=causes.get)
-    return [{
-        "type": "sla_leak",
-        "severity": "high" if total >= 10 else "med",
-        "breached_total": total,
-        "causes": causes,
-        "dominant_cause": dominant,
-        "message": (
-            f"{total} ticket(s) are past their resolution SLA; the largest driver "
-            f"is {labels[dominant]} ({causes[dominant]})."
-        ),
-    }]
+    return [
+        {
+            "type": "sla_leak",
+            "severity": "high" if total >= 10 else "med",
+            "breached_total": total,
+            "causes": causes,
+            "dominant_cause": dominant,
+            "message": (
+                f"{total} ticket(s) are past their resolution SLA; the largest driver "
+                f"is {labels[dominant]} ({causes[dominant]})."
+            ),
+        }
+    ]
 
 
 def _capacity(scoped_qs, date_range):
@@ -182,17 +188,19 @@ def _capacity(scoped_qs, date_range):
     net = created - resolved
     if created < 5 or net < max(5, 0.2 * created):
         return []
-    return [{
-        "type": "capacity",
-        "severity": "high" if net >= 0.5 * created else "med",
-        "created": created,
-        "resolved": resolved,
-        "net_flow": net,
-        "message": (
-            f"Backlog is growing: {created} created vs {resolved} resolved "
-            f"(net +{net}) — capacity may be insufficient for current demand."
-        ),
-    }]
+    return [
+        {
+            "type": "capacity",
+            "severity": "high" if net >= 0.5 * created else "med",
+            "created": created,
+            "resolved": resolved,
+            "net_flow": net,
+            "message": (
+                f"Backlog is growing: {created} created vs {resolved} resolved "
+                f"(net +{net}) — capacity may be insufficient for current demand."
+            ),
+        }
+    ]
 
 
 def _csat_driver(scoped_qs, date_range):
@@ -203,7 +211,9 @@ def _csat_driver(scoped_qs, date_range):
         status__in=TERMINAL_STATUSES,
     )
     rows = TicketFeedback.objects.filter(ticket__in=resolved_qs).values_list(
-        "rating", "ticket__resolved_at", "ticket__created_at",
+        "rating",
+        "ticket__resolved_at",
+        "ticket__created_at",
         "ticket__accumulated_pause",
     )
     enriched = []
@@ -224,14 +234,16 @@ def _csat_driver(scoped_qs, date_range):
     avg_fast = sum(fast) / len(fast)
     if avg_fast - avg_slow < CSAT_DRIVER_GAP:
         return []
-    return [{
-        "type": "csat_driver",
-        "severity": "med",
-        "avg_rating_slow": round(avg_slow, 2),
-        "avg_rating_fast": round(avg_fast, 2),
-        "message": (
-            f"Satisfaction drops on slow tickets: avg rating {round(avg_slow, 2)} "
-            f"for the slowest 10% vs {round(avg_fast, 2)} for the rest — resolution "
-            f"speed is a CSAT driver."
-        ),
-    }]
+    return [
+        {
+            "type": "csat_driver",
+            "severity": "med",
+            "avg_rating_slow": round(avg_slow, 2),
+            "avg_rating_fast": round(avg_fast, 2),
+            "message": (
+                f"Satisfaction drops on slow tickets: avg rating {round(avg_slow, 2)} "
+                f"for the slowest 10% vs {round(avg_fast, 2)} for the rest — resolution "
+                f"speed is a CSAT driver."
+            ),
+        }
+    ]

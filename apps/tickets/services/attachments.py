@@ -99,7 +99,9 @@ def _compress_image(raw: bytes, content_type: str) -> tuple[bytes, str]:
         png_buf = io.BytesIO()
         img.save(png_buf, format="PNG", optimize=True)
         jpg_buf = io.BytesIO()
-        img.convert("RGB").save(jpg_buf, format="JPEG", quality=IMAGE_QUALITY, optimize=True)
+        img.convert("RGB").save(
+            jpg_buf, format="JPEG", quality=IMAGE_QUALITY, optimize=True
+        )
         if len(png_buf.getvalue()) <= len(jpg_buf.getvalue()):
             return png_buf.getvalue(), "image/png"
         return jpg_buf.getvalue(), "image/jpeg"

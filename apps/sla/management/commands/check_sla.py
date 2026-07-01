@@ -94,11 +94,15 @@ class Command(BaseCommand):
                 "breachedAt": now.isoformat(),
             }
             if section_id and campus_id:
-                emit_ws_event(f"section_{section_id}_{campus_id}", "sla_breach", payload)
+                emit_ws_event(
+                    f"section_{section_id}_{campus_id}", "sla_breach", payload
+                )
             if dept_id and campus_id:
                 emit_ws_event(f"dept_{dept_id}_{campus_id}", "sla_breach", payload)
 
             count += 1
 
         label = "[DRY RUN] " if dry_run else ""
-        self.stdout.write(f"{label}SLA check complete: {count} new breach(es) recorded.")
+        self.stdout.write(
+            f"{label}SLA check complete: {count} new breach(es) recorded."
+        )

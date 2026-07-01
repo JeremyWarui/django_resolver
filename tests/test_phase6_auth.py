@@ -16,10 +16,10 @@ from datetime import timedelta
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def api_client():
@@ -29,37 +29,50 @@ def api_client():
 @pytest.fixture
 def campus(db):
     from apps.org.models import Campus
+
     return Campus.objects.create(name="Nairobi", code="NRB")
 
 
 @pytest.fixture
 def dept(db):
     from apps.org.models import Department
+
     return Department.objects.create(name="ICT", code="ICT")
 
 
 @pytest.fixture
 def campus_dept(campus, dept):
     from apps.org.models import CampusDepartment
+
     return CampusDepartment.objects.create(campus=campus, department=dept)
 
 
 @pytest.fixture
 def section_type(dept):
     from apps.org.models import SectionType
+
     return SectionType.objects.create(department=dept, name="Software", code="SW")
 
 
 @pytest.fixture
 def section(campus_dept, section_type):
     from apps.org.models import Section
+
     return Section.objects.create(
         campus_department=campus_dept, section_type=section_type, is_active=True
     )
 
 
-def make_user(username, campus=None, role=None, section=None, campus_department=None, department=None):
+def make_user(
+    username,
+    campus=None,
+    role=None,
+    section=None,
+    campus_department=None,
+    department=None,
+):
     from apps.accounts.models import CustomUser, UserProfile, RoleAssignment
+
     user = CustomUser.objects.create_user(username=username, password="pass")
     if campus:
         UserProfile.objects.create(user=user, campus=campus)
@@ -78,6 +91,7 @@ def make_user(username, campus=None, role=None, section=None, campus_department=
 # ---------------------------------------------------------------------------
 # TestMeEndpoint
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.django_db
 class TestMeEndpoint:
@@ -116,6 +130,7 @@ class TestMeEndpoint:
     ):
         from apps.accounts.models import RoleAssignment
         from apps.org.models import SectionType, Section
+
         user = make_user("me_multi", campus=campus, role="technician", section=section)
         # Add a cover HOS assignment.
         RoleAssignment.objects.create(
@@ -135,6 +150,7 @@ class TestMeEndpoint:
 # TestSwitchRole
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.django_db
 class TestSwitchRole:
 
@@ -150,10 +166,13 @@ class TestSwitchRole:
 
     def test_switch_to_own_active_assignment(self, api_client, campus, section):
         from apps.accounts.models import RoleAssignment
+
         user = make_user("sw_own", campus=campus, role="technician", section=section)
         ra = user.role_assignments.first()
         api_client.force_authenticate(user=user)
-        response = api_client.post("/api/v1/auth/switch-role/", {"roleAssignmentId": ra.id})
+        response = api_client.post(
+            "/api/v1/auth/switch-role/", {"roleAssignmentId": ra.id}
+        )
         assert response.status_code == 200
         assert "accessToken" in response.data
 
@@ -161,12 +180,15 @@ class TestSwitchRole:
         self, api_client, campus, section
     ):
         from apps.accounts.models import RoleAssignment
+
         user_a = make_user("sw_a", campus=campus, role="technician", section=section)
         user_b = make_user("sw_b", campus=campus, role="hos", section=section)
         ra_b = user_b.role_assignments.first()
 
         api_client.force_authenticate(user=user_a)
-        response = api_client.post("/api/v1/auth/switch-role/", {"roleAssignmentId": ra_b.id})
+        response = api_client.post(
+            "/api/v1/auth/switch-role/", {"roleAssignmentId": ra_b.id}
+        )
         assert response.status_code == 403
 
     def test_switch_to_nonexistent_assignment_returns_404(
@@ -174,13 +196,16 @@ class TestSwitchRole:
     ):
         user = make_user("sw_404", campus=campus, role="technician", section=section)
         api_client.force_authenticate(user=user)
-        response = api_client.post("/api/v1/auth/switch-role/", {"roleAssignmentId": 99999})
+        response = api_client.post(
+            "/api/v1/auth/switch-role/", {"roleAssignmentId": 99999}
+        )
         assert response.status_code == 404
 
     def test_switch_to_expired_assignment_returns_400(
         self, api_client, campus, section
     ):
         from apps.accounts.models import RoleAssignment
+
         user = make_user("sw_exp", campus=campus, role="technician", section=section)
         ra_expired = RoleAssignment.objects.create(
             user=user,
@@ -190,13 +215,16 @@ class TestSwitchRole:
             valid_until=timezone.now() - timedelta(days=1),
         )
         api_client.force_authenticate(user=user)
-        response = api_client.post("/api/v1/auth/switch-role/", {"roleAssignmentId": ra_expired.id})
+        response = api_client.post(
+            "/api/v1/auth/switch-role/", {"roleAssignmentId": ra_expired.id}
+        )
         assert response.status_code == 400
 
 
 # ---------------------------------------------------------------------------
 # TestRoleAssignmentCRUD
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.django_db
 class TestRoleAssignmentCRUD:
@@ -221,7 +249,9 @@ class TestRoleAssignmentCRUD:
     def test_hod_creates_cover_within_own_campus_dept(
         self, api_client, campus, section, campus_dept
     ):
-        hod = make_user("ra_hod", campus=campus, role="hod", campus_department=campus_dept)
+        hod = make_user(
+            "ra_hod", campus=campus, role="hod", campus_department=campus_dept
+        )
         campus_dept.head_of_department = hod
         campus_dept.save()
         target = make_user("ra_target2", campus=campus)
@@ -240,7 +270,10 @@ class TestRoleAssignmentCRUD:
         self, api_client, campus, section, campus_dept
     ):
         from apps.org.models import Department, SectionType, CampusDepartment, Section
-        hod = make_user("ra_hod2", campus=campus, role="hod", campus_department=campus_dept)
+
+        hod = make_user(
+            "ra_hod2", campus=campus, role="hod", campus_department=campus_dept
+        )
         campus_dept.head_of_department = hod
         campus_dept.save()
 
@@ -262,9 +295,7 @@ class TestRoleAssignmentCRUD:
         )
         assert response.status_code == 403
 
-    def test_plain_user_cannot_create_cover(
-        self, api_client, campus, section
-    ):
+    def test_plain_user_cannot_create_cover(self, api_client, campus, section):
         user = make_user("ra_plain", campus=campus)
         target = make_user("ra_target4", campus=campus)
         api_client.force_authenticate(user=user)
@@ -274,9 +305,7 @@ class TestRoleAssignmentCRUD:
         )
         assert response.status_code == 403
 
-    def test_technician_cannot_create_cover(
-        self, api_client, campus, section
-    ):
+    def test_technician_cannot_create_cover(self, api_client, campus, section):
         tech = make_user("ra_tech", campus=campus, role="technician", section=section)
         target = make_user("ra_target5", campus=campus)
         api_client.force_authenticate(user=tech)
@@ -286,11 +315,12 @@ class TestRoleAssignmentCRUD:
         )
         assert response.status_code == 403
 
-    def test_patch_valid_until_by_hod(
-        self, api_client, campus, section, campus_dept
-    ):
+    def test_patch_valid_until_by_hod(self, api_client, campus, section, campus_dept):
         from apps.accounts.models import RoleAssignment
-        hod = make_user("ra_hod_patch", campus=campus, role="hod", campus_department=campus_dept)
+
+        hod = make_user(
+            "ra_hod_patch", campus=campus, role="hod", campus_department=campus_dept
+        )
         campus_dept.head_of_department = hod
         campus_dept.save()
         target = make_user("ra_target6", campus=campus)
@@ -310,11 +340,12 @@ class TestRoleAssignmentCRUD:
         )
         assert response.status_code == 200
 
-    def test_delete_cover_by_hod(
-        self, api_client, campus, section, campus_dept
-    ):
+    def test_delete_cover_by_hod(self, api_client, campus, section, campus_dept):
         from apps.accounts.models import RoleAssignment
-        hod = make_user("ra_hod_del", campus=campus, role="hod", campus_department=campus_dept)
+
+        hod = make_user(
+            "ra_hod_del", campus=campus, role="hod", campus_department=campus_dept
+        )
         campus_dept.head_of_department = hod
         campus_dept.save()
         target = make_user("ra_target7", campus=campus)
@@ -333,11 +364,11 @@ class TestRoleAssignmentCRUD:
         assert response.status_code == 204
         assert not RoleAssignment.objects.filter(pk=ra.id).exists()
 
-    def test_cannot_delete_primary_assignment(
-        self, api_client, campus, section
-    ):
+    def test_cannot_delete_primary_assignment(self, api_client, campus, section):
         admin = make_user("ra_del_primary_admin", campus=campus, role="admin")
-        target = make_user("ra_target8", campus=campus, role="technician", section=section)
+        target = make_user(
+            "ra_target8", campus=campus, role="technician", section=section
+        )
         ra = target.role_assignments.first()
         api_client.force_authenticate(user=admin)
         response = api_client.delete(
@@ -349,6 +380,7 @@ class TestRoleAssignmentCRUD:
 # ---------------------------------------------------------------------------
 # TestScopeClaimsCasing — scope must survive a token refresh (R: claim casing)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.django_db
 class TestScopeClaimsCasing:
@@ -364,7 +396,9 @@ class TestScopeClaimsCasing:
         from rest_framework_simplejwt.tokens import AccessToken
         from apps.accounts.jwt_utils import build_tokens_for_assignment
 
-        user = make_user("refresh_scope_user", campus=campus, role="hos", section=section)
+        user = make_user(
+            "refresh_scope_user", campus=campus, role="hos", section=section
+        )
         section.hos = user
         section.save()
         ra = user.role_assignments.first()
@@ -381,10 +415,16 @@ class TestScopeClaimsCasing:
 
         # All scope claims must survive rotation — snake_case throughout.
         assert new_access.get("role") == "hos", "role claim lost after refresh"
-        assert new_access.get("section_id") == section.id, "section_id claim lost after refresh"
-        assert new_access.get("role_assignment_id") == ra.pk, "role_assignment_id claim lost after refresh"
+        assert (
+            new_access.get("section_id") == section.id
+        ), "section_id claim lost after refresh"
+        assert (
+            new_access.get("role_assignment_id") == ra.pk
+        ), "role_assignment_id claim lost after refresh"
 
-    def test_scope_absent_before_fix_with_camel_casing(self, api_client, campus, section):
+    def test_scope_absent_before_fix_with_camel_casing(
+        self, api_client, campus, section
+    ):
         """Regression guard: camelCase claim names must NOT appear in issued tokens."""
         from rest_framework_simplejwt.tokens import AccessToken
         from apps.accounts.jwt_utils import build_tokens_for_assignment
@@ -401,4 +441,6 @@ class TestScopeClaimsCasing:
         assert token.get("sectionId") is None, "camelCase sectionId found in token"
         assert token.get("campusId") is None, "camelCase campusId found in token"
         assert token.get("deptId") is None, "camelCase deptId found in token"
-        assert token.get("roleAssignmentId") is None, "camelCase roleAssignmentId found in token"
+        assert (
+            token.get("roleAssignmentId") is None
+        ), "camelCase roleAssignmentId found in token"

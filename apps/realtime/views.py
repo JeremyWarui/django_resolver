@@ -26,10 +26,12 @@ class NotificationListView(APIView):
     def get(self, request):
         qs = Notification.objects.filter(user=request.user).order_by("-created_at")[:50]
         data = [_serialize_notification(n) for n in qs]
-        return Response({
-            "data": data,
-            "unreadCount": sum(1 for n in data if not n["read"]),
-        })
+        return Response(
+            {
+                "data": data,
+                "unreadCount": sum(1 for n in data if not n["read"]),
+            }
+        )
 
 
 class NotificationMarkReadView(APIView):
@@ -59,7 +61,10 @@ class PushSubscribeView(APIView):
         auth = request.data.get("keys", {}).get("auth")
 
         if not all([endpoint, p256dh, auth]):
-            return Response({"detail": "endpoint, keys.p256dh, and keys.auth are required."}, status=400)
+            return Response(
+                {"detail": "endpoint, keys.p256dh, and keys.auth are required."},
+                status=400,
+            )
 
         PushSubscription.objects.update_or_create(
             endpoint=endpoint,
@@ -77,6 +82,7 @@ class PushSubscribeView(APIView):
 
 class VapidPublicKeyView(APIView):
     """Returns the VAPID public key so the frontend can subscribe."""
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):

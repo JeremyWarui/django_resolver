@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 # ── WebSocket emit ────────────────────────────────────────────────────────────
 
+
 def emit_ws_event(group_name: str, event_type: str, data: dict) -> None:
     """Send an event to a Django Channels group (no-op without a channel layer)."""
     try:
@@ -39,11 +40,15 @@ def emit_ws_event(group_name: str, event_type: str, data: dict) -> None:
 
 # ── Scope helpers ─────────────────────────────────────────────────────────────
 
+
 def _campus_department_id(ticket) -> int | None:
     """Return the campus_department_id for a ticket's section — one targeted query."""
     try:
         from apps.org.models import Section
-        return Section.objects.values_list("campus_department_id", flat=True).get(pk=ticket.section_id)
+
+        return Section.objects.values_list("campus_department_id", flat=True).get(
+            pk=ticket.section_id
+        )
     except Exception:
         return None
 
@@ -52,6 +57,7 @@ def _hos_user_ids(section_id) -> list[int]:
     """User IDs of all active HOS role-holders for a section."""
     try:
         from apps.accounts.models import RoleAssignment
+
         return list(
             RoleAssignment.objects.filter(
                 role="hos", section_id=section_id, is_primary=True
@@ -67,6 +73,7 @@ def _hod_user_ids(cd_id) -> list[int]:
         return []
     try:
         from apps.accounts.models import RoleAssignment
+
         return list(
             RoleAssignment.objects.filter(
                 role="hod", campus_department_id=cd_id, is_primary=True
@@ -77,6 +84,7 @@ def _hod_user_ids(cd_id) -> list[int]:
 
 
 # ── DB notification helper ────────────────────────────────────────────────────
+
 
 def _notify_users(
     user_ids: list[int],
@@ -90,22 +98,26 @@ def _notify_users(
         return
     try:
         from apps.realtime.models import Notification
-        Notification.objects.bulk_create([
-            Notification(
-                user_id=uid,
-                event_type=event_type,
-                title=title,
-                body=body,
-                ticket=ticket,
-                ticket_no=ticket.ticket_no if ticket else "",
-            )
-            for uid in set(user_ids)
-        ])
+
+        Notification.objects.bulk_create(
+            [
+                Notification(
+                    user_id=uid,
+                    event_type=event_type,
+                    title=title,
+                    body=body,
+                    ticket=ticket,
+                    ticket_no=ticket.ticket_no if ticket else "",
+                )
+                for uid in set(user_ids)
+            ]
+        )
     except Exception as exc:
         logger.warning("_notify_users failed: %s", exc)
 
 
 # ── Public emit functions ─────────────────────────────────────────────────────
+
 
 def emit_ticket_created(ticket) -> None:
     payload = {
@@ -130,6 +142,7 @@ def emit_ticket_created(ticket) -> None:
 
     try:
         from apps.realtime.push_service import notify_ticket_created
+
         notify_ticket_created(ticket)
     except Exception as exc:
         logger.warning("Push notify_ticket_created failed: %s", exc)
@@ -137,7 +150,9 @@ def emit_ticket_created(ticket) -> None:
 
 def emit_ticket_assigned(ticket, previous_assignee=None) -> None:
     assignee = ticket.assigned_to
-    assignee_name = (assignee.get_full_name() or assignee.username) if assignee else None
+    assignee_name = (
+        (assignee.get_full_name() or assignee.username) if assignee else None
+    )
     is_reassignment = previous_assignee is not None
     payload = {
         "ticketId": ticket.id,
@@ -146,14 +161,20 @@ def emit_ticket_assigned(ticket, previous_assignee=None) -> None:
         "assignedToName": assignee_name,
         "isReassignment": is_reassignment,
     }
-    for group in [f"ticket_{ticket.id}", f"section_{ticket.section_id}", f"user_{ticket.raised_by_id}"]:
+    for group in [
+        f"ticket_{ticket.id}",
+        f"section_{ticket.section_id}",
+        f"user_{ticket.raised_by_id}",
+    ]:
         emit_ws_event(group, "ticket_assigned", payload)
     cd_id = _campus_department_id(ticket)
     if cd_id:
         emit_ws_event(f"campus_department_{cd_id}", "ticket_assigned", payload)
 
     if assignee:
-        title = "Ticket reassigned to you" if is_reassignment else "Ticket assigned to you"
+        title = (
+            "Ticket reassigned to you" if is_reassignment else "Ticket assigned to you"
+        )
         _notify_users(
             [assignee.id],
             "ticket_assigned",
@@ -175,13 +196,20 @@ def emit_ticket_assigned(ticket, previous_assignee=None) -> None:
     requester_title = "Ticket reassigned" if is_reassignment else "Ticket assigned"
     requester_body = (
         f"Ticket #{ticket.ticket_no} has been reassigned to {assignee_name or 'a technician'}."
-        if is_reassignment else
-        f"Ticket #{ticket.ticket_no} has been assigned to {assignee_name or 'a technician'}."
+        if is_reassignment
+        else f"Ticket #{ticket.ticket_no} has been assigned to {assignee_name or 'a technician'}."
     )
-    _notify_users([ticket.raised_by_id], "ticket_assigned", requester_title, requester_body, ticket)
+    _notify_users(
+        [ticket.raised_by_id],
+        "ticket_assigned",
+        requester_title,
+        requester_body,
+        ticket,
+    )
 
     try:
         from apps.realtime.push_service import notify_ticket_assigned
+
         notify_ticket_assigned(ticket)
     except Exception as exc:
         logger.warning("Push notify_ticket_assigned failed: %s", exc)
@@ -194,7 +222,11 @@ def emit_ticket_status_changed(ticket, from_status: str) -> None:
         "fromStatus": from_status,
         "toStatus": ticket.status,
     }
-    for group in [f"ticket_{ticket.id}", f"section_{ticket.section_id}", f"user_{ticket.raised_by_id}"]:
+    for group in [
+        f"ticket_{ticket.id}",
+        f"section_{ticket.section_id}",
+        f"user_{ticket.raised_by_id}",
+    ]:
         emit_ws_event(group, "ticket_status_changed", payload)
     cd_id = _campus_department_id(ticket)
     if cd_id:
@@ -210,6 +242,7 @@ def emit_ticket_status_changed(ticket, from_status: str) -> None:
 
     try:
         from apps.realtime.push_service import notify_ticket_status_changed
+
         notify_ticket_status_changed(ticket, from_status)
     except Exception as exc:
         logger.warning("Push notify_ticket_status_changed failed: %s", exc)
@@ -220,7 +253,9 @@ def emit_ticket_resolved(ticket) -> None:
     payload = {
         "ticketId": ticket.id,
         "ticket_no": ticket.ticket_no,
-        "resolvedBy": (assignee.get_full_name() or assignee.username) if assignee else "System",
+        "resolvedBy": (
+            (assignee.get_full_name() or assignee.username) if assignee else "System"
+        ),
     }
     for group in [f"ticket_{ticket.id}", f"user_{ticket.raised_by_id}"]:
         emit_ws_event(group, "ticket_resolved", payload)
@@ -235,6 +270,7 @@ def emit_ticket_resolved(ticket) -> None:
 
     try:
         from apps.realtime.push_service import notify_ticket_resolved
+
         notify_ticket_resolved(ticket)
     except Exception as exc:
         logger.warning("Push notify_ticket_resolved failed: %s", exc)
@@ -262,6 +298,7 @@ def emit_comment_added(ticket, comment) -> None:
 
     try:
         from apps.realtime.push_service import notify_comment_added
+
         notify_comment_added(ticket, comment)
     except Exception as exc:
         logger.warning("Push notify_comment_added failed: %s", exc)
@@ -273,7 +310,11 @@ def emit_ticket_escalated(ticket) -> None:
         "ticket_no": ticket.ticket_no,
         "currentLevel": ticket.current_level,
     }
-    for group in [f"ticket_{ticket.id}", f"section_{ticket.section_id}", f"user_{ticket.raised_by_id}"]:
+    for group in [
+        f"ticket_{ticket.id}",
+        f"section_{ticket.section_id}",
+        f"user_{ticket.raised_by_id}",
+    ]:
         emit_ws_event(group, "ticket_escalated", payload)
     cd_id = _campus_department_id(ticket)
     if cd_id:
@@ -290,6 +331,7 @@ def emit_ticket_escalated(ticket) -> None:
 
     try:
         from apps.realtime.push_service import notify_ticket_escalated
+
         notify_ticket_escalated(ticket)
     except Exception as exc:
         logger.warning("Push notify_ticket_escalated failed: %s", exc)

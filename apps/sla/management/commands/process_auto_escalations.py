@@ -32,7 +32,9 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         dry_run = options["dry_run"]
         if dry_run:
-            self.stdout.write(self.style.WARNING("DRY RUN MODE — no changes will be made."))
+            self.stdout.write(
+                self.style.WARNING("DRY RUN MODE — no changes will be made.")
+            )
             return
 
         count = run_escalations()

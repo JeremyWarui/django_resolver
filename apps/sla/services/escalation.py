@@ -20,9 +20,7 @@ def resolve_active_holder(section, level, now=None):
                 section=section,
                 is_primary=False,
             )
-            .filter(
-                active_window_q(now)
-            )
+            .filter(active_window_q(now))
             .select_related("user")
             .first()
         )
@@ -38,9 +36,7 @@ def resolve_active_holder(section, level, now=None):
                 campus_department=campus_department,
                 is_primary=False,
             )
-            .filter(
-                active_window_q(now)
-            )
+            .filter(active_window_q(now))
             .select_related("user")
             .first()
         )
@@ -58,7 +54,9 @@ def run_escalation_for_ticket(ticket, now, rules):
         return False
 
     if ticket.paused_at is not None:
-        active_elapsed = (ticket.paused_at - ticket.created_at) - ticket.accumulated_pause
+        active_elapsed = (
+            ticket.paused_at - ticket.created_at
+        ) - ticket.accumulated_pause
     else:
         active_elapsed = (now - ticket.created_at) - ticket.accumulated_pause
 
@@ -91,6 +89,7 @@ def run_escalation_for_ticket(ticket, now, rules):
                 level_user=holder,
             )
             from apps.realtime.ws_utils import emit_ticket_escalated
+
             emit_ticket_escalated(ticket)
             return True
 

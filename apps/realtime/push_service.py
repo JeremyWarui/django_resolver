@@ -17,12 +17,15 @@ VAPID_ADMIN_EMAIL = os.getenv("VAPID_ADMIN_EMAIL", "admin@resolver.local")
 _ENABLED = bool(VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY)
 
 
-def send_push_to_user(user_id: int, title: str, body: str, data: dict | None = None) -> None:
+def send_push_to_user(
+    user_id: int, title: str, body: str, data: dict | None = None
+) -> None:
     """Send a push notification to all subscribed devices for a user."""
     if not _ENABLED:
         return
     try:
         from apps.realtime.models import PushSubscription
+
         subs = PushSubscription.objects.filter(user_id=user_id)
         stale_ids = []
         for sub in subs:
@@ -62,6 +65,7 @@ def _send_one(sub, title: str, body: str, data: dict) -> bool:
 
 # ── Convenience helpers called from ws_utils ──────────────────────────────────
 
+
 def notify_ticket_assigned(ticket) -> None:
     assignee = ticket.assigned_to
     if not assignee:
@@ -78,6 +82,7 @@ def notify_ticket_created(ticket) -> None:
     """Push to all HOS users for the ticket's section so they know to assign it."""
     try:
         from apps.accounts.models import RoleAssignment
+
         hos_ids = list(
             RoleAssignment.objects.filter(
                 role="hos", section_id=ticket.section_id, is_primary=True
@@ -90,7 +95,11 @@ def notify_ticket_created(ticket) -> None:
             user_id=uid,
             title="New Ticket",
             body=f"{ticket.ticket_no}: {ticket.service_item.name}",
-            data={"ticketId": ticket.id, "ticket_no": ticket.ticket_no, "type": "created"},
+            data={
+                "ticketId": ticket.id,
+                "ticket_no": ticket.ticket_no,
+                "type": "created",
+            },
         )
 
 
@@ -100,7 +109,11 @@ def notify_ticket_status_changed(ticket, from_status: str) -> None:
         user_id=ticket.raised_by_id,
         title="Ticket Updated",
         body=f"Ticket #{ticket.ticket_no}: {from_status.replace('_', ' ')} → {ticket.status.replace('_', ' ')}",
-        data={"ticketId": ticket.id, "ticket_no": ticket.ticket_no, "type": "status_changed"},
+        data={
+            "ticketId": ticket.id,
+            "ticket_no": ticket.ticket_no,
+            "type": "status_changed",
+        },
     )
 
 
@@ -149,6 +162,7 @@ def notify_ticket_escalated(ticket) -> None:
     try:
         from apps.accounts.models import RoleAssignment
         from apps.org.models import Section
+
         cd_id = Section.objects.values_list("campus_department_id", flat=True).get(
             pk=ticket.section_id
         )

@@ -14,10 +14,10 @@ from datetime import timedelta
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def api_client():
@@ -27,54 +27,63 @@ def api_client():
 @pytest.fixture
 def campus(db):
     from apps.org.models import Campus
+
     return Campus.objects.create(name="Nairobi", code="NRB")
 
 
 @pytest.fixture
 def campus2(db):
     from apps.org.models import Campus
+
     return Campus.objects.create(name="Mombasa", code="MSA")
 
 
 @pytest.fixture
 def dept(db):
     from apps.org.models import Department
+
     return Department.objects.create(name="ICT", code="ICT")
 
 
 @pytest.fixture
 def dept2(db):
     from apps.org.models import Department
+
     return Department.objects.create(name="Facilities", code="FAC")
 
 
 @pytest.fixture
 def campus_dept(campus, dept):
     from apps.org.models import CampusDepartment
+
     return CampusDepartment.objects.create(campus=campus, department=dept)
 
 
 @pytest.fixture
 def campus_dept2(campus, dept2):
     from apps.org.models import CampusDepartment
+
     return CampusDepartment.objects.create(campus=campus, department=dept2)
 
 
 @pytest.fixture
 def section_type(dept):
     from apps.org.models import SectionType
+
     return SectionType.objects.create(department=dept, name="Software", code="SW")
 
 
 @pytest.fixture
 def section_type2(dept):
     from apps.org.models import SectionType
+
     return SectionType.objects.create(department=dept, name="Networks", code="NET")
 
 
 @pytest.fixture
 def section(campus_dept, section_type):
     from apps.org.models import Section
+
     return Section.objects.create(
         campus_department=campus_dept, section_type=section_type, is_active=True
     )
@@ -83,6 +92,7 @@ def section(campus_dept, section_type):
 @pytest.fixture
 def section2(campus_dept, section_type2):
     from apps.org.models import Section
+
     return Section.objects.create(
         campus_department=campus_dept, section_type=section_type2, is_active=True
     )
@@ -91,6 +101,7 @@ def section2(campus_dept, section_type2):
 @pytest.fixture
 def priority(db):
     from apps.sla.models import Priority
+
     return Priority.objects.create(
         name="Low", rank=1, response_minutes=480, resolution_minutes=4320
     )
@@ -99,20 +110,33 @@ def priority(db):
 @pytest.fixture
 def service_cat(section_type, priority):
     from apps.catalog.models import ServiceCategory
+
     return ServiceCategory.objects.create(
-        section_type=section_type, name="Hardware", location_details=False, default_priority=priority
+        section_type=section_type,
+        name="Hardware",
+        location_details=False,
+        default_priority=priority,
     )
 
 
 @pytest.fixture
 def service_item(service_cat):
     from apps.catalog.models import ServiceItem
+
     return ServiceItem.objects.create(category=service_cat, name="Laptop Repair")
 
 
-def make_user(username, campus=None, role=None, section=None, campus_department=None, department=None):
+def make_user(
+    username,
+    campus=None,
+    role=None,
+    section=None,
+    campus_department=None,
+    department=None,
+):
     """Create a user with optional profile and primary RoleAssignment."""
     from apps.accounts.models import CustomUser, UserProfile, RoleAssignment
+
     user = CustomUser.objects.create_user(username=username, password="pass")
     if campus:
         UserProfile.objects.create(user=user, campus=campus)
@@ -130,6 +154,7 @@ def make_user(username, campus=None, role=None, section=None, campus_department=
 
 def make_ticket(raised_by, campus, service_item, section, priority):
     from apps.tickets.models import Ticket
+
     return Ticket.objects.create(
         raised_by=raised_by,
         requester_campus=campus,
@@ -142,6 +167,7 @@ def make_ticket(raised_by, campus, service_item, section, priority):
 # ---------------------------------------------------------------------------
 # TestTicketListScoping
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.django_db
 class TestTicketListScoping:
@@ -165,6 +191,7 @@ class TestTicketListScoping:
         self, api_client, campus, service_item, section, section2, priority
     ):
         from apps.org.models import SectionTechnician
+
         tech = make_user("tech1", campus=campus, role="technician", section=section)
         SectionTechnician.objects.create(user=tech, section=section)
         raiser = make_user("raiser1", campus=campus)
@@ -182,7 +209,9 @@ class TestTicketListScoping:
     def test_technician_with_no_section_technician_link_sees_nothing(
         self, api_client, campus, service_item, section, priority
     ):
-        tech = make_user("tech_nolink", campus=campus, role="technician", section=section)
+        tech = make_user(
+            "tech_nolink", campus=campus, role="technician", section=section
+        )
         raiser = make_user("raiser2", campus=campus)
         make_ticket(raiser, campus, service_item, section, priority)
 
@@ -212,7 +241,9 @@ class TestTicketListScoping:
     def test_hod_sees_all_tickets_in_campus_dept(
         self, api_client, campus, campus_dept, service_item, section, section2, priority
     ):
-        hod = make_user("hod1", campus=campus, role="hod", campus_department=campus_dept)
+        hod = make_user(
+            "hod1", campus=campus, role="hod", campus_department=campus_dept
+        )
         campus_dept.head_of_department = hod
         campus_dept.save()
 
@@ -228,7 +259,15 @@ class TestTicketListScoping:
         assert t2.id in ids
 
     def test_manager_sees_all_dept_tickets_across_sections(
-        self, api_client, campus, dept, campus_dept, service_item, section, section2, priority
+        self,
+        api_client,
+        campus,
+        dept,
+        campus_dept,
+        service_item,
+        section,
+        section2,
+        priority,
     ):
         mgr = make_user("mgr1", campus=campus, role="manager", department=dept)
         dept.manager_user = mgr
@@ -246,16 +285,26 @@ class TestTicketListScoping:
         assert t2.id in ids
 
     def test_admin_sees_all_tickets(
-        self, api_client, campus, service_item, section, section2, priority, campus_dept2
+        self,
+        api_client,
+        campus,
+        service_item,
+        section,
+        section2,
+        priority,
+        campus_dept2,
     ):
         from apps.org.models import SectionType, Section
+
         admin_user = make_user("admin1", campus=campus, role="admin")
 
         # Create ticket in a completely different dept's section.
         from apps.org.models import SectionType, Department
+
         dept3 = Department.objects.create(name="HR", code="HR")
         st3 = SectionType.objects.create(department=dept3, name="Recruit", code="REC")
         from apps.org.models import CampusDepartment
+
         cd3 = CampusDepartment.objects.create(campus=campus, department=dept3)
         s3 = Section.objects.create(campus_department=cd3, section_type=st3)
 
@@ -277,7 +326,9 @@ class TestTicketListScoping:
         from apps.accounts.models import RoleAssignment
         from apps.accounts.jwt_utils import build_tokens_for_assignment
 
-        cover_user = make_user("cover_hos", campus=campus, role="technician", section=section)
+        cover_user = make_user(
+            "cover_hos", campus=campus, role="technician", section=section
+        )
         raiser = make_user("raiser7", campus=campus)
         covered_ticket = make_ticket(raiser, campus, service_item, section2, priority)
 
@@ -303,6 +354,7 @@ class TestTicketListScoping:
 # TestMineFilter — R15 universal requester
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.django_db
 class TestMineFilter:
 
@@ -325,6 +377,7 @@ class TestMineFilter:
         self, api_client, campus, service_item, section, priority
     ):
         from apps.org.models import SectionTechnician
+
         tech = make_user("mine_tech", campus=campus, role="technician", section=section)
         SectionTechnician.objects.create(user=tech, section=section)
 
@@ -359,6 +412,7 @@ class TestMineFilter:
 # TestTicketDetail — R15 + scoping
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.django_db
 class TestTicketDetail:
 
@@ -376,6 +430,7 @@ class TestTicketDetail:
         self, api_client, campus, service_item, section, priority
     ):
         from apps.org.models import SectionTechnician
+
         tech = make_user("det_tech", campus=campus, role="technician", section=section)
         SectionTechnician.objects.create(user=tech, section=section)
         raiser = make_user("det_raiser", campus=campus)
@@ -389,6 +444,7 @@ class TestTicketDetail:
         self, api_client, campus, service_item, section, section2, priority
     ):
         from apps.org.models import SectionTechnician
+
         tech = make_user("det_tech2", campus=campus, role="technician", section=section)
         SectionTechnician.objects.create(user=tech, section=section)
         raiser = make_user("det_raiser2", campus=campus)
@@ -414,13 +470,21 @@ class TestTicketDetail:
         api_client.force_authenticate(user=user)
         response = api_client.get(f"/api/v1/tickets/{ticket.id}/")
         assert response.status_code == 200
-        for field in ("ticket_no", "status", "current_level", "priority", "service_item", "is_breaching"):
+        for field in (
+            "ticket_no",
+            "status",
+            "current_level",
+            "priority",
+            "service_item",
+            "is_breaching",
+        ):
             assert field in response.data, f"Missing field: {field}"
 
 
 # ---------------------------------------------------------------------------
 # TestStatusFilters
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.django_db
 class TestStatusFilters:
@@ -429,6 +493,7 @@ class TestStatusFilters:
         self, api_client, campus, service_item, section, priority
     ):
         from apps.org.models import SectionTechnician
+
         tech = make_user("filt_tech", campus=campus, role="technician", section=section)
         SectionTechnician.objects.create(user=tech, section=section)
         raiser = make_user("filt_raiser", campus=campus)
@@ -436,6 +501,7 @@ class TestStatusFilters:
         t_open = make_ticket(raiser, campus, service_item, section, priority)
         t_resolved = make_ticket(raiser, campus, service_item, section, priority)
         from apps.tickets.models import Ticket
+
         Ticket.objects.filter(pk=t_resolved.pk).update(status="resolved")
 
         api_client.force_authenticate(user=tech)
@@ -450,16 +516,27 @@ class TestStatusFilters:
 # TestNegativeScopeBoundaries — HOD / Manager cross-scope isolation
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.django_db
 class TestNegativeScopeBoundaries:
     """Negative tests: each role sees ZERO tickets outside their scope boundary."""
 
     def test_hod_sees_zero_from_other_campus_dept(
-        self, api_client, campus, dept, campus_dept, campus_dept2,
-        section, section2, service_item, priority
+        self,
+        api_client,
+        campus,
+        dept,
+        campus_dept,
+        campus_dept2,
+        section,
+        section2,
+        service_item,
+        priority,
     ):
         """HOD of campus-dept A sees zero tickets belonging to campus-dept B."""
-        hod_a = make_user("neg_hod_a", campus=campus, role="hod", campus_department=campus_dept)
+        hod_a = make_user(
+            "neg_hod_a", campus=campus, role="hod", campus_department=campus_dept
+        )
         campus_dept.head_of_department = hod_a
         campus_dept.save()
 
@@ -468,12 +545,19 @@ class TestNegativeScopeBoundaries:
         t_a = make_ticket(raiser, campus, service_item, section, priority)
         # ticket in campus_dept2 (scope B) — must be invisible to hod_a
         from apps.org.models import SectionType, Section
-        st2 = SectionType.objects.create(department=campus_dept2.department, name="NegST2", code="NST2")
+
+        st2 = SectionType.objects.create(
+            department=campus_dept2.department, name="NegST2", code="NST2"
+        )
         s_b = Section.objects.create(campus_department=campus_dept2, section_type=st2)
         from apps.sla.models import Priority
         from apps.catalog.models import ServiceCategory, ServiceItem
+
         cat_b = ServiceCategory.objects.create(
-            section_type=st2, name="NegCat2", location_details=False, default_priority=priority
+            section_type=st2,
+            name="NegCat2",
+            location_details=False,
+            default_priority=priority,
         )
         item_b = ServiceItem.objects.create(category=cat_b, name="NegItem2")
         t_b = make_ticket(raiser, campus, item_b, s_b, priority)
@@ -495,13 +579,18 @@ class TestNegativeScopeBoundaries:
 
         # dept_y — completely different department
         from apps.org.models import Department, SectionType, CampusDepartment, Section
+
         dept_y = Department.objects.create(name="NegDeptY", code="NDY")
         cd_y = CampusDepartment.objects.create(campus=campus, department=dept_y)
         st_y = SectionType.objects.create(department=dept_y, name="NegSTY", code="NSTY")
         s_y = Section.objects.create(campus_department=cd_y, section_type=st_y)
         from apps.catalog.models import ServiceCategory, ServiceItem
+
         cat_y = ServiceCategory.objects.create(
-            section_type=st_y, name="NegCatY", location_details=False, default_priority=priority
+            section_type=st_y,
+            name="NegCatY",
+            location_details=False,
+            default_priority=priority,
         )
         item_y = ServiceItem.objects.create(category=cat_y, name="NegItemY")
 
@@ -521,6 +610,7 @@ class TestNegativeScopeBoundaries:
     ):
         """Manager of dept X sees tickets at ALL campuses, not just their home campus."""
         from apps.org.models import CampusDepartment, SectionType, Section
+
         mgr = make_user("neg_mgr_multi", campus=campus, role="manager", department=dept)
         dept.manager_user = mgr
         dept.save()
@@ -529,11 +619,16 @@ class TestNegativeScopeBoundaries:
         cd_c2 = CampusDepartment.objects.create(campus=campus2, department=dept)
         # section_type is already linked to dept; create a section at campus2
         from apps.org.models import SectionType
+
         st2 = SectionType.objects.create(department=dept, name="NegNet2", code="NN2")
         s_c2 = Section.objects.create(campus_department=cd_c2, section_type=st2)
         from apps.catalog.models import ServiceCategory, ServiceItem
+
         cat_c2 = ServiceCategory.objects.create(
-            section_type=st2, name="NegCat_C2", location_details=False, default_priority=priority
+            section_type=st2,
+            name="NegCat_C2",
+            location_details=False,
+            default_priority=priority,
         )
         item_c2 = ServiceItem.objects.create(category=cat_c2, name="NegItem_C2")
 
@@ -552,6 +647,7 @@ class TestNegativeScopeBoundaries:
 # ---------------------------------------------------------------------------
 # TestFailClosed — unresolvable scope must return NONE, never everything
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.django_db
 class TestFailClosed:
@@ -611,6 +707,7 @@ class TestFailClosed:
 # TestTechnicianScopeSubset — individual ⊂ sectional
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.django_db
 class TestTechnicianScopeSubset:
 
@@ -623,8 +720,13 @@ class TestTechnicianScopeSubset:
         a ticket assigned to tech B is visible to tech A through sectional scope.
         """
         from apps.org.models import SectionTechnician
-        tech_a = make_user("sub_tech_a", campus=campus, role="technician", section=section)
-        tech_b = make_user("sub_tech_b", campus=campus, role="technician", section=section)
+
+        tech_a = make_user(
+            "sub_tech_a", campus=campus, role="technician", section=section
+        )
+        tech_b = make_user(
+            "sub_tech_b", campus=campus, role="technician", section=section
+        )
         SectionTechnician.objects.create(user=tech_a, section=section)
         SectionTechnician.objects.create(user=tech_b, section=section)
 
@@ -633,8 +735,13 @@ class TestTechnicianScopeSubset:
         t_assigned_b = make_ticket(raiser, campus, service_item, section, priority)
         # Assign tickets
         from apps.tickets.models import Ticket
-        Ticket.objects.filter(pk=t_assigned_a.pk).update(assigned_to=tech_a, status="assigned")
-        Ticket.objects.filter(pk=t_assigned_b.pk).update(assigned_to=tech_b, status="assigned")
+
+        Ticket.objects.filter(pk=t_assigned_a.pk).update(
+            assigned_to=tech_a, status="assigned"
+        )
+        Ticket.objects.filter(pk=t_assigned_b.pk).update(
+            assigned_to=tech_b, status="assigned"
+        )
 
         api_client.force_authenticate(user=tech_a)
         response = api_client.get("/api/v1/tickets/")
@@ -648,6 +755,7 @@ class TestTechnicianScopeSubset:
 # ---------------------------------------------------------------------------
 # TestExpiredCoverScope — expired cover assignment grants nothing
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.django_db
 class TestExpiredCoverScope:
@@ -664,7 +772,9 @@ class TestExpiredCoverScope:
         from apps.accounts.models import RoleAssignment
         from apps.accounts.jwt_utils import build_tokens_for_assignment
 
-        user = make_user("exp_cover_user", campus=campus, role="technician", section=section)
+        user = make_user(
+            "exp_cover_user", campus=campus, role="technician", section=section
+        )
         raiser = make_user("exp_cover_raiser", campus=campus)
         covered_ticket = make_ticket(raiser, campus, service_item, section2, priority)
 

@@ -39,7 +39,15 @@ class SectionTypeWithCategoriesSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SectionType
-        fields = ["id", "name", "code", "department_id", "department_code", "department_name", "service_categories"]
+        fields = [
+            "id",
+            "name",
+            "code",
+            "department_id",
+            "department_code",
+            "department_name",
+            "service_categories",
+        ]
 
     def get_service_categories(self, obj):
         return [
@@ -57,7 +65,9 @@ class SectionTypeWithCategoriesSerializer(serializers.ModelSerializer):
                         "description": item.description,
                         "is_active": item.is_active,
                     }
-                    for item in cat.service_items.filter(is_active=True).order_by("name")
+                    for item in cat.service_items.filter(is_active=True).order_by(
+                        "name"
+                    )
                 ],
             }
             for cat in obj.service_categories.filter(is_active=True).order_by("name")

@@ -9,6 +9,7 @@ User = get_user_model()
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 def _campus_from_ra(ra):
     """Resolve the campus object from any role assignment variant."""
     if ra is None:
@@ -35,6 +36,7 @@ def _department_from_ra(ra):
 
 # ── RoleAssignment serializers ────────────────────────────────────────────────
 
+
 class RoleAssignmentSerializer(serializers.ModelSerializer):
     """Read serializer — fields match the frontend RoleAssignment interface."""
 
@@ -49,11 +51,17 @@ class RoleAssignmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = RoleAssignment
         fields = [
-            "id", "role", "is_primary",
-            "campus_id", "campus_name",
-            "department_id", "department_name",
-            "section_id", "section_name",
-            "assigned_by_username", "assigned_at",
+            "id",
+            "role",
+            "is_primary",
+            "campus_id",
+            "campus_name",
+            "department_id",
+            "department_name",
+            "section_id",
+            "section_name",
+            "assigned_by_username",
+            "assigned_at",
         ]
         read_only_fields = fields
 
@@ -79,7 +87,9 @@ class RoleAssignmentSerializer(serializers.ModelSerializer):
         return d.name if d else None
 
     def get_assigned_by_username(self, obj):
-        return obj.assigned_by.username if obj.assigned_by_id and obj.assigned_by else None
+        return (
+            obj.assigned_by.username if obj.assigned_by_id and obj.assigned_by else None
+        )
 
 
 class RoleAssignmentCreateSerializer(serializers.Serializer):
@@ -131,7 +141,9 @@ class RoleAssignmentCreateSerializer(serializers.Serializer):
                 )
             except CampusDepartment.DoesNotExist:
                 raise serializers.ValidationError(
-                    {"campus_id": "No campus-department found for that campus + department combination."}
+                    {
+                        "campus_id": "No campus-department found for that campus + department combination."
+                    }
                 )
 
         elif role == "manager":
@@ -142,7 +154,9 @@ class RoleAssignmentCreateSerializer(serializers.Serializer):
             try:
                 attrs["department"] = Department.objects.get(pk=department_id)
             except Department.DoesNotExist:
-                raise serializers.ValidationError({"department_id": "Department not found."})
+                raise serializers.ValidationError(
+                    {"department_id": "Department not found."}
+                )
 
         elif role in ("admin", "user"):
             pass  # no scope required
@@ -164,6 +178,7 @@ class RoleAssignmentUpdateSerializer(serializers.ModelSerializer):
 
 
 # ── User admin serializers ────────────────────────────────────────────────────
+
 
 def _primary_ra(user_obj):
     """Return the primary RoleAssignment from the prefetched attribute or a DB hit."""
@@ -200,10 +215,19 @@ class UserAdminSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            "id", "username", "first_name", "last_name", "email",
-            "role", "campus_name", "sections", "section_names",
-            "primary_campus_id", "primary_campus_display",
-            "primary_department_id", "primary_department_display",
+            "id",
+            "username",
+            "first_name",
+            "last_name",
+            "email",
+            "role",
+            "campus_name",
+            "sections",
+            "section_names",
+            "primary_campus_id",
+            "primary_campus_display",
+            "primary_department_id",
+            "primary_department_display",
             "primary_department_name",
         ]
 
@@ -268,7 +292,9 @@ class UserCreateSerializer(serializers.Serializer):
 
     def validate_username(self, value):
         if value and User.objects.filter(username=value).exists():
-            raise serializers.ValidationError("A user with this username already exists.")
+            raise serializers.ValidationError(
+                "A user with this username already exists."
+            )
         return value
 
     def create(self, validated_data):

@@ -17,7 +17,6 @@ from dotenv import load_dotenv
 
 from pathlib import Path
 
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -75,6 +74,7 @@ INSTALLED_APPS = [
 # no separate `daphne` command needed in development.
 try:
     import channels  # noqa: F401
+
     INSTALLED_APPS = ["daphne"] + INSTALLED_APPS + ["channels"]
     ASGI_APPLICATION = "resolver.asgi.application"
     CHANNEL_LAYERS = {

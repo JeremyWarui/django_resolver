@@ -117,8 +117,8 @@ class RoleAssignment(models.Model):
     )
 
     is_primary = models.BooleanField(default=False)
-    valid_from = models.DateTimeField(null=True, blank=True)    # null = effective now
-    valid_until = models.DateTimeField(null=True, blank=True)   # null = standing role
+    valid_from = models.DateTimeField(null=True, blank=True)  # null = effective now
+    valid_until = models.DateTimeField(null=True, blank=True)  # null = standing role
     assigned_by = models.ForeignKey(
         "accounts.CustomUser",
         on_delete=models.SET_NULL,
@@ -154,7 +154,9 @@ class RoleAssignment(models.Model):
         elif self.role == "hod":
             if not self.campus_department_id:
                 raise ValidationError(
-                    {"campus_department": "An HOD assignment requires a campus_department."}
+                    {
+                        "campus_department": "An HOD assignment requires a campus_department."
+                    }
                 )
         elif self.role == "manager":
             if not self.department_id:

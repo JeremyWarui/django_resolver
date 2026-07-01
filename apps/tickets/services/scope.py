@@ -33,9 +33,7 @@ def scoped_ticket_qs(user, role):
 
     if role == "manager":
         # Manager sees all tickets in their department across all campuses.
-        return base.filter(
-            section__campus_department__department__manager_user=user
-        )
+        return base.filter(section__campus_department__department__manager_user=user)
 
     if role == "hod":
         now = timezone.now()
@@ -51,7 +49,11 @@ def scoped_ticket_qs(user, role):
             .filter(active_window_q(now))
             .values_list("campus_department_id", flat=True)
         )
-        cover_q = Q(section__campus_department__in=covered_cd_ids) if covered_cd_ids else Q(pk__in=[])
+        cover_q = (
+            Q(section__campus_department__in=covered_cd_ids)
+            if covered_cd_ids
+            else Q(pk__in=[])
+        )
         return base.filter(primary_q | cover_q)
 
     if role == "hos":
@@ -68,7 +70,9 @@ def scoped_ticket_qs(user, role):
             .filter(active_window_q(now))
             .values_list("section_id", flat=True)
         )
-        cover_q = Q(section__in=covered_section_ids) if covered_section_ids else Q(pk__in=[])
+        cover_q = (
+            Q(section__in=covered_section_ids) if covered_section_ids else Q(pk__in=[])
+        )
         return base.filter(primary_q | cover_q)
 
     if role == "technician":
@@ -115,7 +119,9 @@ def scoped_section_qs(user, role):
             .filter(active_window_q(now))
             .values_list("campus_department_id", flat=True)
         )
-        cover_q = Q(campus_department__in=covered_cd_ids) if covered_cd_ids else Q(pk__in=[])
+        cover_q = (
+            Q(campus_department__in=covered_cd_ids) if covered_cd_ids else Q(pk__in=[])
+        )
         return base.filter(primary_q | cover_q)
 
     if role == "hos":

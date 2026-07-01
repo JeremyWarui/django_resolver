@@ -1,4 +1,5 @@
 """Central URL router for all /api/v1/ endpoints."""
+
 from django.urls import include, path
 
 urlpatterns = [

@@ -16,7 +16,14 @@ class ServiceItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ServiceItem
-        fields = ["id", "category", "name", "description", "is_active", "default_priority"]
+        fields = [
+            "id",
+            "category",
+            "name",
+            "description",
+            "is_active",
+            "default_priority",
+        ]
 
 
 class ServiceCategorySerializer(serializers.ModelSerializer):
@@ -33,7 +40,9 @@ class ServiceCategorySerializer(serializers.ModelSerializer):
     # Write: accept the FK as an integer PK
     default_priority_id = serializers.PrimaryKeyRelatedField(
         source="default_priority",
-        queryset=__import__("apps.sla.models", fromlist=["Priority"]).Priority.objects.all(),
+        queryset=__import__(
+            "apps.sla.models", fromlist=["Priority"]
+        ).Priority.objects.all(),
         write_only=True,
         required=False,
         allow_null=True,

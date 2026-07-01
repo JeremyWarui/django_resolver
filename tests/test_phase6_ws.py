@@ -10,10 +10,10 @@ pytest tests (pytest-asyncio not required).
 import pytest
 from asgiref.sync import async_to_sync
 
-
 # ---------------------------------------------------------------------------
 # JWT middleware unit tests (no channels layer needed)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.django_db
 class TestJWTMiddlewareTokenValidation:
@@ -21,22 +21,26 @@ class TestJWTMiddlewareTokenValidation:
 
     def _validate(self, token_str):
         from apps.realtime.middleware import _get_user_and_claims_from_token
+
         return async_to_sync(_get_user_and_claims_from_token)(token_str)
 
     def test_invalid_token_returns_anonymous(self):
         from django.contrib.auth.models import AnonymousUser
+
         user, claims = self._validate("not_a_jwt")
         assert isinstance(user, AnonymousUser)
         assert claims == {}
 
     def test_garbage_token_returns_anonymous(self):
         from django.contrib.auth.models import AnonymousUser
+
         user, claims = self._validate("eyJhbGciOiJIUzI1NiJ9.garbage.signature")
         assert isinstance(user, AnonymousUser)
         assert claims == {}
 
     def test_empty_string_returns_anonymous(self):
         from django.contrib.auth.models import AnonymousUser
+
         user, claims = self._validate("")
         assert isinstance(user, AnonymousUser)
         assert claims == {}
@@ -59,7 +63,13 @@ class TestJWTMiddlewareTokenValidation:
 
     def test_valid_token_with_role_claims(self, db):
         from apps.accounts.models import CustomUser, UserProfile, RoleAssignment
-        from apps.org.models import Campus, Department, SectionType, CampusDepartment, Section
+        from apps.org.models import (
+            Campus,
+            Department,
+            SectionType,
+            CampusDepartment,
+            Section,
+        )
         from apps.accounts.jwt_utils import build_tokens_for_assignment
 
         campus = Campus.objects.create(name="ClaimC", code="CLC")
@@ -84,6 +94,7 @@ class TestJWTMiddlewareTokenValidation:
 # ---------------------------------------------------------------------------
 # Consumer channel-guard unit tests (no network I/O)
 # ---------------------------------------------------------------------------
+
 
 class TestConsumerChannelGuard:
     """Directly instantiate ServiceDeskConsumer and test _is_allowed_channel."""
@@ -157,6 +168,7 @@ class TestConsumerChannelGuard:
 # ---------------------------------------------------------------------------
 # WebSocket integration tests using channels.testing
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.django_db(transaction=True)
 class TestWebSocketIntegration:

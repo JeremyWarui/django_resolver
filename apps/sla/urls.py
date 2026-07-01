@@ -14,12 +14,14 @@ urlpatterns = router.urls + [
     ),
     path(
         "priorities/<int:priority_pk>/escalation-rules/<int:pk>/",
-        EscalationRuleViewSet.as_view({
-            "get": "retrieve",
-            "put": "update",
-            "patch": "partial_update",
-            "delete": "destroy",
-        }),
+        EscalationRuleViewSet.as_view(
+            {
+                "get": "retrieve",
+                "put": "update",
+                "patch": "partial_update",
+                "delete": "destroy",
+            }
+        ),
         name="escalation-rules-detail",
     ),
 ]

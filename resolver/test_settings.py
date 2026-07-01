@@ -1,4 +1,5 @@
 """Test settings — extends base settings, switches DATABASES to SQLite in-memory."""
+
 from .settings import *  # noqa: F401, F403
 
 # Allow all origins/hosts so WebsocketCommunicator (no Origin header) passes OriginValidator.

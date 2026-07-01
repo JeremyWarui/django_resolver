@@ -48,10 +48,10 @@ from datetime import timedelta
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def api_client():
@@ -61,42 +61,49 @@ def api_client():
 @pytest.fixture
 def campus(db):
     from apps.org.models import Campus
+
     return Campus.objects.create(name="Nairobi", code="NRB", location="CBD")
 
 
 @pytest.fixture
 def campus_b(db):
     from apps.org.models import Campus
+
     return Campus.objects.create(name="Mombasa", code="MSA", location="Coast")
 
 
 @pytest.fixture
 def dept(db):
     from apps.org.models import Department
+
     return Department.objects.create(name="ICT", code="ICT")
 
 
 @pytest.fixture
 def campus_dept(campus, dept):
     from apps.org.models import CampusDepartment
+
     return CampusDepartment.objects.create(campus=campus, department=dept)
 
 
 @pytest.fixture
 def section_type(dept):
     from apps.org.models import SectionType
+
     return SectionType.objects.create(department=dept, name="Software", code="SW")
 
 
 @pytest.fixture
 def section_type_net(dept):
     from apps.org.models import SectionType
+
     return SectionType.objects.create(department=dept, name="Networks", code="NET")
 
 
 @pytest.fixture
 def section(campus_dept, section_type):
     from apps.org.models import Section
+
     return Section.objects.create(
         campus_department=campus_dept, section_type=section_type, is_active=True
     )
@@ -105,6 +112,7 @@ def section(campus_dept, section_type):
 @pytest.fixture
 def priority(db):
     from apps.sla.models import Priority
+
     return Priority.objects.create(
         name="Low", rank=1, response_minutes=480, resolution_minutes=4320
     )
@@ -113,6 +121,7 @@ def priority(db):
 @pytest.fixture
 def priority_high(db):
     from apps.sla.models import Priority
+
     return Priority.objects.create(
         name="High", rank=4, response_minutes=60, resolution_minutes=240
     )
@@ -121,6 +130,7 @@ def priority_high(db):
 @pytest.fixture
 def hos_rule(priority):
     from apps.sla.models import EscalationRule
+
     return EscalationRule.objects.create(
         priority=priority, to_level="hos", threshold_minutes=30, order=1
     )
@@ -129,6 +139,7 @@ def hos_rule(priority):
 @pytest.fixture
 def hod_rule(priority, hos_rule):
     from apps.sla.models import EscalationRule
+
     return EscalationRule.objects.create(
         priority=priority, to_level="hod", threshold_minutes=60, order=2
     )
@@ -137,6 +148,7 @@ def hod_rule(priority, hos_rule):
 @pytest.fixture
 def service_cat(section_type, priority):
     from apps.catalog.models import ServiceCategory
+
     return ServiceCategory.objects.create(
         section_type=section_type,
         name="Hardware",
@@ -149,6 +161,7 @@ def service_cat(section_type, priority):
 @pytest.fixture
 def service_cat_with_location(section_type, priority):
     from apps.catalog.models import ServiceCategory
+
     return ServiceCategory.objects.create(
         section_type=section_type,
         name="On-site Repairs",
@@ -161,6 +174,7 @@ def service_cat_with_location(section_type, priority):
 @pytest.fixture
 def service_item(service_cat):
     from apps.catalog.models import ServiceItem
+
     return ServiceItem.objects.create(
         category=service_cat,
         name="Laptop Repair",
@@ -172,6 +186,7 @@ def service_item(service_cat):
 @pytest.fixture
 def service_item_with_location(service_cat_with_location):
     from apps.catalog.models import ServiceItem
+
     return ServiceItem.objects.create(
         category=service_cat_with_location,
         name="Broken Printer",
@@ -183,6 +198,7 @@ def service_item_with_location(service_cat_with_location):
 @pytest.fixture
 def requester(campus):
     from apps.accounts.models import CustomUser, UserProfile
+
     user = CustomUser.objects.create_user(username="requester", password="pass")
     UserProfile.objects.create(user=user, campus=campus)
     return user
@@ -192,15 +208,19 @@ def requester(campus):
 def technician(section):
     from apps.accounts.models import CustomUser, RoleAssignment
     from apps.org.models import SectionTechnician
+
     user = CustomUser.objects.create_user(username="technician", password="pass")
     SectionTechnician.objects.create(user=user, section=section)
-    RoleAssignment.objects.create(user=user, role="technician", section=section, is_primary=True)
+    RoleAssignment.objects.create(
+        user=user, role="technician", section=section, is_primary=True
+    )
     return user
 
 
 @pytest.fixture
 def hos_user(section):
     from apps.accounts.models import CustomUser, RoleAssignment
+
     user = CustomUser.objects.create_user(username="hos_user", password="pass")
     section.hos = user
     section.save()
@@ -213,6 +233,7 @@ def hos_user(section):
 @pytest.fixture
 def hod_user(campus_dept):
     from apps.accounts.models import CustomUser, RoleAssignment
+
     user = CustomUser.objects.create_user(username="hod_user", password="pass")
     campus_dept.head_of_department = user
     campus_dept.save()
@@ -225,6 +246,7 @@ def hod_user(campus_dept):
 @pytest.fixture
 def admin_user(db):
     from apps.accounts.models import CustomUser, RoleAssignment
+
     user = CustomUser.objects.create_user(username="admin_user", password="pass")
     RoleAssignment.objects.create(user=user, role="admin", is_primary=True)
     return user
@@ -233,6 +255,7 @@ def admin_user(db):
 @pytest.fixture
 def open_ticket(requester, campus, service_item, section, priority):
     from apps.tickets.models import Ticket
+
     t = Ticket.objects.create(
         raised_by=requester,
         requester_campus=campus,
@@ -251,6 +274,7 @@ def open_ticket(requester, campus, service_item, section, priority):
 # R6 — Routing: section resolved from (requester_campus, service_item→category→section_type)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.django_db
 class TestR6Routing:
     """
@@ -261,7 +285,13 @@ class TestR6Routing:
     def test_section_resolved_server_side_on_creation(self, api_client):
         """POST /api/v1/tickets/ — section and priority are set by the server,
         not by any client-supplied value."""
-        from apps.org.models import Campus, Department, CampusDepartment, SectionType, Section
+        from apps.org.models import (
+            Campus,
+            Department,
+            CampusDepartment,
+            SectionType,
+            Section,
+        )
         from apps.sla.models import Priority
         from apps.catalog.models import ServiceCategory, ServiceItem
         from apps.accounts.models import CustomUser, UserProfile
@@ -284,7 +314,9 @@ class TestR6Routing:
             location_details=False,
             is_active=True,
         )
-        item = ServiceItem.objects.create(category=cat, name="Route Item", is_active=True)
+        item = ServiceItem.objects.create(
+            category=cat, name="Route Item", is_active=True
+        )
 
         user = CustomUser.objects.create_user(username="route_req", password="pass")
         UserProfile.objects.create(user=user, campus=campus)
@@ -310,7 +342,13 @@ class TestR6Routing:
     def test_routing_fails_when_no_active_section_at_user_campus(self, api_client):
         """User at campus_b cannot create a ticket for a service that has no active
         section at campus_b — should return 400 with an error on service_item."""
-        from apps.org.models import Campus, Department, CampusDepartment, SectionType, Section
+        from apps.org.models import (
+            Campus,
+            Department,
+            CampusDepartment,
+            SectionType,
+            Section,
+        )
         from apps.sla.models import Priority
         from apps.catalog.models import ServiceCategory, ServiceItem
         from apps.accounts.models import CustomUser, UserProfile
@@ -325,13 +363,20 @@ class TestR6Routing:
             name="RouteHigh2", rank=12, response_minutes=30, resolution_minutes=120
         )
         cat = ServiceCategory.objects.create(
-            section_type=st, name="Route Cat B", default_priority=prio,
-            location_details=False, is_active=True,
+            section_type=st,
+            name="Route Cat B",
+            default_priority=prio,
+            location_details=False,
+            is_active=True,
         )
-        item = ServiceItem.objects.create(category=cat, name="Route Item B", is_active=True)
+        item = ServiceItem.objects.create(
+            category=cat, name="Route Item B", is_active=True
+        )
 
         # User is at campus_msa which has NO section for this service_type
-        msa_user = CustomUser.objects.create_user(username="msa_route_user", password="pass")
+        msa_user = CustomUser.objects.create_user(
+            username="msa_route_user", password="pass"
+        )
         UserProfile.objects.create(user=msa_user, campus=campus_msa)
 
         api_client.force_authenticate(user=msa_user)
@@ -347,6 +392,7 @@ class TestR6Routing:
     def test_user_without_campus_profile_rejected(self, api_client, service_item):
         """A user with no UserProfile (no campus) cannot create a ticket."""
         from apps.accounts.models import CustomUser
+
         campusless = CustomUser.objects.create_user(
             username="no_campus_r6", password="pass"
         )
@@ -364,6 +410,7 @@ class TestR6Routing:
 # R7 — Priority server-set from item.default_priority or category.default_priority
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.django_db
 class TestR7PriorityResolution:
     """
@@ -377,6 +424,7 @@ class TestR7PriorityResolution:
         """ServiceItem.resolved_priority returns the item's own default_priority
         when set, not the category's default_priority (R7, R16 config-driven)."""
         from apps.catalog.models import ServiceItem
+
         item = ServiceItem.objects.create(
             category=service_cat,
             name="Priority Override Item",
@@ -391,6 +439,7 @@ class TestR7PriorityResolution:
     ):
         """ServiceItem with no default_priority inherits category.default_priority."""
         from apps.catalog.models import ServiceItem
+
         item = ServiceItem.objects.create(
             category=service_cat,
             name="No Override Item",
@@ -426,6 +475,7 @@ class TestR7PriorityResolution:
 # R8 — Status machine: only allowed transitions; pending requires reason
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.django_db
 class TestR8StatusMachine:
     """
@@ -457,7 +507,9 @@ class TestR8StatusMachine:
         with pytest.raises(TransitionError):
             transition_status(open_ticket, "resolved", technician)
 
-    def test_invalid_transition_in_progress_to_closed_raises(self, open_ticket, technician):
+    def test_invalid_transition_in_progress_to_closed_raises(
+        self, open_ticket, technician
+    ):
         """in_progress → closed must raise TransitionError (must go via resolved)."""
         from apps.tickets.services.lifecycle import transition_status, TransitionError
 
@@ -537,6 +589,7 @@ class TestR8StatusMachine:
 # R9 — SLA clock pauses while pending; accumulated_pause + due timestamp shift
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.django_db
 class TestR9SLAPauseResume:
     """
@@ -579,9 +632,7 @@ class TestR9SLAPauseResume:
 
         transition_status(open_ticket, "assigned", technician)
         transition_status(open_ticket, "in_progress", technician)
-        transition_status(
-            open_ticket, "pending", technician, reason="Supply delay"
-        )
+        transition_status(open_ticket, "pending", technician, reason="Supply delay")
         transition_status(open_ticket, "in_progress", technician)
         open_ticket.refresh_from_db()
 
@@ -595,9 +646,7 @@ class TestR9SLAPauseResume:
 
         transition_status(open_ticket, "assigned", technician)
         transition_status(open_ticket, "in_progress", technician)
-        transition_status(
-            open_ticket, "pending", technician, reason="Parts on order"
-        )
+        transition_status(open_ticket, "pending", technician, reason="Parts on order")
         transition_status(open_ticket, "in_progress", technician)
         open_ticket.refresh_from_db()
 
@@ -612,9 +661,7 @@ class TestR9SLAPauseResume:
         from apps.sla.services.escalation import run_escalation_for_ticket
         from apps.sla.models import EscalationRule
 
-        rules = list(
-            EscalationRule.objects.filter(priority=priority).order_by("order")
-        )
+        rules = list(EscalationRule.objects.filter(priority=priority).order_by("order"))
         now = timezone.now()
 
         # Ticket is 45 min old (above 30-min HOS threshold) but 20 min were paused.
@@ -644,6 +691,7 @@ class TestR9SLAPauseResume:
 # R10 — Escalation: advances current_level, skips vacant rungs, writes TicketLog
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.django_db
 class TestR10EscalationEngine:
     """
@@ -654,6 +702,7 @@ class TestR10EscalationEngine:
 
     def _rules(self, ticket):
         from apps.sla.models import EscalationRule
+
         return list(
             EscalationRule.objects.filter(priority=ticket.priority).order_by("order")
         )
@@ -708,9 +757,9 @@ class TestR10EscalationEngine:
 
         assert result is True
         open_ticket.refresh_from_db()
-        assert open_ticket.current_level == "hod", (
-            "Engine must skip vacant HOS and advance to HOD"
-        )
+        assert (
+            open_ticket.current_level == "hod"
+        ), "Engine must skip vacant HOS and advance to HOD"
         log = TicketLog.objects.filter(
             ticket=open_ticket, event_type="escalated"
         ).first()
@@ -769,9 +818,7 @@ class TestR10EscalationEngine:
         from apps.sla.services.escalation import run_escalation_for_ticket
         from apps.sla.models import EscalationRule
 
-        rules = list(
-            EscalationRule.objects.filter(priority=priority).order_by("order")
-        )
+        rules = list(EscalationRule.objects.filter(priority=priority).order_by("order"))
 
         t = Ticket.objects.create(
             raised_by=requester,
@@ -798,6 +845,7 @@ class TestR10EscalationEngine:
 # R11 — TicketLog is append-only / immutable
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.django_db
 class TestR11TicketLogImmutability:
     """
@@ -808,6 +856,7 @@ class TestR11TicketLogImmutability:
     def test_create_log_succeeds(self, open_ticket, requester):
         """Creating a new TicketLog succeeds and assigns a pk."""
         from apps.tickets.models import TicketLog
+
         log = TicketLog.objects.create(
             ticket=open_ticket,
             actor=requester,
@@ -819,6 +868,7 @@ class TestR11TicketLogImmutability:
     def test_save_with_pk_raises_value_error(self, open_ticket, requester):
         """Attempting to re-save an existing TicketLog raises ValueError."""
         from apps.tickets.models import TicketLog
+
         log = TicketLog.objects.create(
             ticket=open_ticket,
             actor=requester,
@@ -831,6 +881,7 @@ class TestR11TicketLogImmutability:
     def test_delete_raises_value_error(self, open_ticket, requester):
         """Attempting to delete a TicketLog raises ValueError."""
         from apps.tickets.models import TicketLog
+
         log = TicketLog.objects.create(
             ticket=open_ticket,
             actor=requester,
@@ -842,6 +893,7 @@ class TestR11TicketLogImmutability:
     def test_null_actor_allowed_for_system_events(self, open_ticket):
         """System-generated logs may have actor=None (e.g. auto-escalation)."""
         from apps.tickets.models import TicketLog
+
         log = TicketLog.objects.create(
             ticket=open_ticket,
             actor=None,
@@ -863,6 +915,7 @@ class TestR11TicketLogImmutability:
 # ---------------------------------------------------------------------------
 # R12 — Transfer: changing role-holder re-homes open tickets to section pool
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.django_db
 class TestR12TransferRehome:
@@ -930,8 +983,15 @@ class TestR12TransferRehome:
         assert count == len(active_statuses)
 
     def test_tickets_from_other_sections_not_touched(
-        self, requester, campus, service_item, section, priority, technician,
-        campus_dept, section_type_net
+        self,
+        requester,
+        campus,
+        service_item,
+        section,
+        priority,
+        technician,
+        campus_dept,
+        section_type_net,
     ):
         """transfer_open_tickets() only touches tickets in the specified section."""
         from apps.org.models import Section
@@ -962,6 +1022,7 @@ class TestR12TransferRehome:
 # ---------------------------------------------------------------------------
 # R13 — Location captured iff category.location_details; validated against field set
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.django_db
 class TestR13LocationDetails:
@@ -1010,7 +1071,9 @@ class TestR13LocationDetails:
         from apps.tickets.models import Ticket, TicketLocation
 
         # Use the canonical code so the hardcoded TYPE_SPECS validator accepts it.
-        ft, _ = FacilityType.objects.get_or_create(code="office_block", defaults={"name": "Office Block"})
+        ft, _ = FacilityType.objects.get_or_create(
+            code="office_block", defaults={"name": "Office Block"}
+        )
         facility = Facility.objects.create(
             campus=campus, facility_type=ft, name="Block P10-A"
         )
@@ -1042,7 +1105,9 @@ class TestR13LocationDetails:
         from apps.facilities.models import FacilityType, Facility
 
         # Use the canonical code so TYPE_SPECS recognises it; the unknown key triggers the values error.
-        ft, _ = FacilityType.objects.get_or_create(code="office_block", defaults={"name": "Office Block"})
+        ft, _ = FacilityType.objects.get_or_create(
+            code="office_block", defaults={"name": "Office Block"}
+        )
         facility = Facility.objects.create(
             campus=campus, facility_type=ft, name="Block R13-A"
         )
@@ -1072,6 +1137,7 @@ class TestR13LocationDetails:
 # ---------------------------------------------------------------------------
 # R14 — FacilityType is admin-managed; the viewset must be read-only
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.django_db
 class TestR14FacilityTypeReadOnly:
@@ -1107,6 +1173,7 @@ class TestR14FacilityTypeReadOnly:
 # ---------------------------------------------------------------------------
 # R15 — Universal requester: ?mine=1 endpoint for own tickets
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.django_db
 class TestR15UniversalRequester:
@@ -1171,6 +1238,7 @@ class TestR15UniversalRequester:
 # R16 — Config-driven: routing, catalogue visibility, priority all derive from ref data
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.django_db
 class TestR16ConfigDriven:
     """
@@ -1181,10 +1249,11 @@ class TestR16ConfigDriven:
     def test_resolved_priority_is_property_not_stored(self, service_cat, priority):
         """ServiceItem.resolved_priority is a computed property, not a stored DB field."""
         from apps.catalog.models import ServiceItem
+
         field_names = [f.name for f in ServiceItem._meta.get_fields()]
-        assert "resolved_priority" not in field_names, (
-            "resolved_priority must be a @property, not a stored DB field"
-        )
+        assert (
+            "resolved_priority" not in field_names
+        ), "resolved_priority must be a @property, not a stored DB field"
         item = ServiceItem.objects.create(
             category=service_cat, name="Config Item", is_active=True
         )
@@ -1203,7 +1272,9 @@ class TestR16ConfigDriven:
         # Section is active → category must be visible
         resp_active = api_client.get("/api/v1/catalog/", {"campus": campus.id})
         assert resp_active.status_code == 200
-        ids_active = [c["id"] for c in resp_active.data.get("results", resp_active.data)]
+        ids_active = [
+            c["id"] for c in resp_active.data.get("results", resp_active.data)
+        ]
         assert service_cat.id in ids_active
 
         # Deactivate the section → category must disappear
@@ -1246,6 +1317,7 @@ class TestR16ConfigDriven:
 # R17 — Role cover: RoleAssignment with valid_until grants temporary role
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.django_db
 class TestR17RoleCover:
     """
@@ -1257,6 +1329,7 @@ class TestR17RoleCover:
     def test_active_cover_is_active(self, requester, section):
         """is_active() returns True for a cover with valid_until in the future."""
         from apps.accounts.models import RoleAssignment
+
         future = timezone.now() + timedelta(days=7)
         ra = RoleAssignment(
             user=requester,
@@ -1270,6 +1343,7 @@ class TestR17RoleCover:
     def test_expired_cover_is_not_active(self, requester, section):
         """is_active() returns False for a cover whose valid_until is in the past."""
         from apps.accounts.models import RoleAssignment
+
         past = timezone.now() - timedelta(hours=1)
         ra = RoleAssignment(
             user=requester,
@@ -1283,6 +1357,7 @@ class TestR17RoleCover:
     def test_standing_role_no_window_always_active(self, requester):
         """is_active() returns True for a permanent assignment (valid_until=None)."""
         from apps.accounts.models import RoleAssignment
+
         ra = RoleAssignment(user=requester, role="admin", is_primary=True)
         assert ra.is_active() is True
 
@@ -1364,7 +1439,9 @@ class TestR17RoleCover:
         open_ticket.refresh_from_db()
 
         rules = list(
-            EscalationRule.objects.filter(priority=open_ticket.priority).order_by("order")
+            EscalationRule.objects.filter(priority=open_ticket.priority).order_by(
+                "order"
+            )
         )
         result = run_escalation_for_ticket(open_ticket, timezone.now(), rules)
 
@@ -1373,14 +1450,15 @@ class TestR17RoleCover:
             ticket=open_ticket, event_type="escalated"
         ).first()
         assert log is not None
-        assert log.level_user == requester, (
-            "level_user must be the active cover user, not the standing HOS"
-        )
+        assert (
+            log.level_user == requester
+        ), "level_user must be the active cover user, not the standing HOS"
 
 
 # ---------------------------------------------------------------------------
 # Escalation edge cases (supplementary)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.django_db
 class TestEscalationEdgeCases:
@@ -1405,7 +1483,9 @@ class TestEscalationEdgeCases:
         open_ticket.refresh_from_db()
 
         rules = list(
-            EscalationRule.objects.filter(priority=open_ticket.priority).order_by("order")
+            EscalationRule.objects.filter(priority=open_ticket.priority).order_by(
+                "order"
+            )
         )
         result = run_escalation_for_ticket(open_ticket, timezone.now(), rules)
 
@@ -1431,7 +1511,9 @@ class TestEscalationEdgeCases:
         open_ticket.refresh_from_db()
 
         rules = list(
-            EscalationRule.objects.filter(priority=open_ticket.priority).order_by("order")
+            EscalationRule.objects.filter(priority=open_ticket.priority).order_by(
+                "order"
+            )
         )
         result = run_escalation_for_ticket(open_ticket, timezone.now(), rules)
         assert result is False
@@ -1462,7 +1544,9 @@ class TestEscalationEdgeCases:
         open_ticket.refresh_from_db()
 
         rules = list(
-            EscalationRule.objects.filter(priority=open_ticket.priority).order_by("order")
+            EscalationRule.objects.filter(priority=open_ticket.priority).order_by(
+                "order"
+            )
         )
         result = run_escalation_for_ticket(open_ticket, timezone.now(), rules)
 
@@ -1471,14 +1555,15 @@ class TestEscalationEdgeCases:
             ticket=open_ticket, event_type="escalated"
         ).first()
         assert log is not None
-        assert log.level_user == hos_user, (
-            "Expired cover must be ignored; standing HOS must receive escalation"
-        )
+        assert (
+            log.level_user == hos_user
+        ), "Expired cover must be ignored; standing HOS must receive escalation"
 
 
 # ---------------------------------------------------------------------------
 # E2E role walkthrough: RequesterFlow
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.django_db
 class TestRequesterFlow:
@@ -1535,7 +1620,9 @@ class TestRequesterFlow:
         from apps.accounts.models import CustomUser, UserProfile
         from apps.tickets.models import Ticket
 
-        other = CustomUser.objects.create_user(username="other_req_e2e", password="pass")
+        other = CustomUser.objects.create_user(
+            username="other_req_e2e", password="pass"
+        )
         UserProfile.objects.create(user=other, campus=campus)
         other_ticket = Ticket.objects.create(
             raised_by=other,
@@ -1568,6 +1655,7 @@ class TestRequesterFlow:
 # E2E role walkthrough: TechnicianFlow
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.django_db
 class TestTechnicianFlow:
     """
@@ -1582,7 +1670,9 @@ class TestTechnicianFlow:
         from apps.accounts.models import CustomUser, UserProfile
         from apps.tickets.models import Ticket
 
-        raiser = CustomUser.objects.create_user(username="raiser_tech_e2e", password="pass")
+        raiser = CustomUser.objects.create_user(
+            username="raiser_tech_e2e", password="pass"
+        )
         UserProfile.objects.create(user=raiser, campus=campus)
         ticket = Ticket.objects.create(
             raised_by=raiser,
@@ -1655,17 +1745,21 @@ class TestTechnicianFlow:
         bodies = [c["body"] for c in results]
         assert "Secret internal note" not in bodies
 
-    def test_staff_can_see_internal_comments(
-        self, api_client, technician, open_ticket
-    ):
+    def test_staff_can_see_internal_comments(self, api_client, technician, open_ticket):
         """Staff (technician) can see both public and internal comments."""
         from apps.tickets.models import TicketComment
 
         TicketComment.objects.create(
-            ticket=open_ticket, author=technician, body="Public note", visibility="public"
+            ticket=open_ticket,
+            author=technician,
+            body="Public note",
+            visibility="public",
         )
         TicketComment.objects.create(
-            ticket=open_ticket, author=technician, body="Secret note", visibility="internal"
+            ticket=open_ticket,
+            author=technician,
+            body="Secret note",
+            visibility="internal",
         )
 
         api_client.force_authenticate(user=technician)
@@ -1682,6 +1776,7 @@ class TestTechnicianFlow:
 # E2E role walkthrough: HOSFlow
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.django_db
 class TestHOSFlow:
     """
@@ -1695,7 +1790,9 @@ class TestHOSFlow:
         from apps.accounts.models import CustomUser, UserProfile
         from apps.tickets.models import Ticket
 
-        raiser = CustomUser.objects.create_user(username="raiser_hos_e2e", password="pass")
+        raiser = CustomUser.objects.create_user(
+            username="raiser_hos_e2e", password="pass"
+        )
         UserProfile.objects.create(user=raiser, campus=campus)
         ticket = Ticket.objects.create(
             raised_by=raiser,
@@ -1717,9 +1814,7 @@ class TestHOSFlow:
         """HOS can assign an unassigned ticket to a technician in the section pool."""
         api_client.force_authenticate(user=hos_user)
         url = f"/api/v1/tickets/{open_ticket.pk}/assign/"
-        resp = api_client.post(
-            url, {"assigned_to": technician.pk}, format="json"
-        )
+        resp = api_client.post(url, {"assigned_to": technician.pk}, format="json")
         assert resp.status_code == 200
         open_ticket.refresh_from_db()
         assert open_ticket.assigned_to == technician
@@ -1729,21 +1824,21 @@ class TestHOSFlow:
     ):
         """HOS cannot assign a ticket to a user not in the section pool."""
         from apps.accounts.models import CustomUser
+
         outsider = CustomUser.objects.create_user(
             username="outsider_hos_e2e", password="pass"
         )
 
         api_client.force_authenticate(user=hos_user)
         url = f"/api/v1/tickets/{open_ticket.pk}/assign/"
-        resp = api_client.post(
-            url, {"assigned_to": outsider.pk}, format="json"
-        )
+        resp = api_client.post(url, {"assigned_to": outsider.pk}, format="json")
         assert resp.status_code == 400
 
 
 # ---------------------------------------------------------------------------
 # E2E role walkthrough: HODFlow
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.django_db
 class TestHODFlow:
@@ -1758,7 +1853,9 @@ class TestHODFlow:
         from apps.accounts.models import CustomUser, UserProfile
         from apps.tickets.models import Ticket
 
-        raiser = CustomUser.objects.create_user(username="raiser_hod_e2e", password="pass")
+        raiser = CustomUser.objects.create_user(
+            username="raiser_hod_e2e", password="pass"
+        )
         UserProfile.objects.create(user=raiser, campus=campus)
         ticket = Ticket.objects.create(
             raised_by=raiser,
@@ -1803,7 +1900,9 @@ class TestHODFlow:
             category=other_cat, name="Finance Item HOD", is_active=True
         )
 
-        raiser = CustomUser.objects.create_user(username="raiser_hod_cross", password="pass")
+        raiser = CustomUser.objects.create_user(
+            username="raiser_hod_cross", password="pass"
+        )
         UserProfile.objects.create(user=raiser, campus=campus)
         other_ticket = Ticket.objects.create(
             raised_by=raiser,
@@ -1823,6 +1922,7 @@ class TestHODFlow:
 # ---------------------------------------------------------------------------
 # E2E role walkthrough: LeaveCoverFlow
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.django_db
 class TestLeaveCoverFlow:
@@ -1846,6 +1946,7 @@ class TestLeaveCoverFlow:
     def test_expired_cover_is_not_active(self, section, requester):
         """An expired cover RoleAssignment returns is_active()=False."""
         from apps.accounts.models import RoleAssignment
+
         expired_ra = RoleAssignment(
             user=requester,
             role="hos",
@@ -1855,10 +1956,10 @@ class TestLeaveCoverFlow:
         )
         assert expired_ra.is_active() is False
 
-    @pytest.mark.xfail(reason="POST /auth/switch-role/ endpoint may not be implemented yet")
-    def test_cover_user_can_switch_role(
-        self, api_client, campus, section, requester
-    ):
+    @pytest.mark.xfail(
+        reason="POST /auth/switch-role/ endpoint may not be implemented yet"
+    )
+    def test_cover_user_can_switch_role(self, api_client, campus, section, requester):
         """
         A user with an active cover RoleAssignment can call POST /auth/switch-role/
         to re-issue a JWT scoped to that cover assignment.
@@ -1918,6 +2019,7 @@ class TestLeaveCoverFlow:
 # Seed verification tests (using pytest fixtures — NOT the actual seed commands)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.django_db
 class TestSeedInvariantsViaFixtures:
     """
@@ -1938,8 +2040,10 @@ class TestSeedInvariantsViaFixtures:
         created_priorities = []
         for rank, name, resp_min, res_min in priority_defs:
             p = Priority.objects.create(
-                name=name, rank=rank,
-                response_minutes=resp_min, resolution_minutes=res_min,
+                name=name,
+                rank=rank,
+                response_minutes=resp_min,
+                resolution_minutes=res_min,
             )
             created_priorities.append(p)
             EscalationRule.objects.create(
@@ -1976,6 +2080,7 @@ class TestSeedInvariantsViaFixtures:
     def test_no_service_category_has_department_field(self, db):
         """R4: ServiceCategory must NOT have a 'department' DB column."""
         from apps.catalog.models import ServiceCategory
+
         field_names = [f.name for f in ServiceCategory._meta.get_fields()]
         assert "department" not in field_names, (
             "R4 violated: ServiceCategory must not have a 'department' field. "
@@ -1987,7 +2092,13 @@ class TestSeedInvariantsViaFixtures:
         Seed: a cover (non-primary) HOS RoleAssignment must have valid_until set
         so it automatically expires. Verify is_active() returns True in window.
         """
-        from apps.org.models import Campus, Department, CampusDepartment, SectionType, Section
+        from apps.org.models import (
+            Campus,
+            Department,
+            CampusDepartment,
+            SectionType,
+            Section,
+        )
         from apps.accounts.models import CustomUser, RoleAssignment
 
         campus = Campus.objects.create(name="Cover Seed Campus", code="CSC")
@@ -2006,9 +2117,9 @@ class TestSeedInvariantsViaFixtures:
             valid_until=timezone.now() + timedelta(days=14),
         )
 
-        assert ra.valid_until is not None, (
-            "Cover HOS RoleAssignment must have valid_until set (it is a temporary cover)"
-        )
+        assert (
+            ra.valid_until is not None
+        ), "Cover HOS RoleAssignment must have valid_until set (it is a temporary cover)"
         assert ra.is_active() is True
 
     def test_campus_department_uniqueness_r1(self, db):
@@ -2033,6 +2144,7 @@ class TestSeedInvariantsViaFixtures:
     def test_section_unique_per_campus_dept_type_r3(self, campus_dept, section_type):
         """R3: (campus_department, section_type) duplicate raises an IntegrityError."""
         from apps.org.models import Section
+
         Section.objects.create(
             campus_department=campus_dept, section_type=section_type, is_active=True
         )
@@ -2045,6 +2157,7 @@ class TestSeedInvariantsViaFixtures:
 # ---------------------------------------------------------------------------
 # Additional model-level tests not in phases 1-7
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.django_db
 class TestModelInvariantsGapFill:
@@ -2071,15 +2184,15 @@ class TestModelInvariantsGapFill:
     def test_ticket_feedback_valid_ratings_pass(self, open_ticket):
         """Ratings 1–5 must all pass TicketFeedback.clean()."""
         from apps.tickets.models import TicketFeedback
+
         for rating in range(1, 6):
             fb = TicketFeedback(ticket=open_ticket, rating=rating)
             fb.clean()  # must not raise
 
-    def test_service_item_resolved_priority_property_not_a_field(
-        self, service_cat
-    ):
+    def test_service_item_resolved_priority_property_not_a_field(self, service_cat):
         """ServiceItem.resolved_priority must be a @property, not a DB column."""
         from apps.catalog.models import ServiceItem
+
         db_fields = [f.name for f in ServiceItem._meta.get_fields()]
         assert "resolved_priority" not in db_fields
         item = ServiceItem.objects.create(category=service_cat, name="Prop Check")
@@ -2088,9 +2201,7 @@ class TestModelInvariantsGapFill:
 
     def test_section_clean_enforces_r2_mismatch_raises(self, campus, dept):
         """Section.clean() raises ValidationError when depts don't match (R2)."""
-        from apps.org.models import (
-            Department, CampusDepartment, SectionType, Section
-        )
+        from apps.org.models import Department, CampusDepartment, SectionType, Section
         from django.core.exceptions import ValidationError
 
         other_dept = Department.objects.create(name="Other Dept R2", code="ODR2")
@@ -2119,18 +2230,22 @@ class TestModelInvariantsGapFill:
         )
 
         logs = list(TicketLog.objects.filter(ticket=open_ticket))
-        assert logs[0].pk == log2.pk, "Most recent log must come first (newest-first ordering)"
+        assert (
+            logs[0].pk == log2.pk
+        ), "Most recent log must come first (newest-first ordering)"
         assert logs[1].pk == log1.pk
 
     def test_ticket_comment_visibility_choices_are_public_and_internal(self):
         """TicketComment.VISIBILITY must contain exactly 'public' and 'internal'."""
         from apps.tickets.models import TicketComment
+
         choices = {v for v, _ in TicketComment.VISIBILITY}
         assert choices == {"public", "internal"}
 
     def test_escalation_rule_has_hos_and_hod_to_level_choices(self):
         """EscalationRule.TO_LEVEL_CHOICES must contain 'hos' and 'hod'."""
         from apps.sla.models import EscalationRule
+
         choices = {v for v, _ in EscalationRule.TO_LEVEL_CHOICES}
         assert "hos" in choices
         assert "hod" in choices
@@ -2138,6 +2253,7 @@ class TestModelInvariantsGapFill:
     def test_ticket_status_choices_canonical_set(self):
         """Ticket.STATUS must be exactly the canonical 6-value set (R8)."""
         from apps.tickets.models import Ticket
+
         expected = {"open", "assigned", "in_progress", "pending", "resolved", "closed"}
         actual = {v for v, _ in Ticket.STATUS}
         assert actual == expected
@@ -2145,6 +2261,7 @@ class TestModelInvariantsGapFill:
     def test_ticket_level_choices(self):
         """Ticket.LEVEL must contain exactly 'technician', 'hos', 'hod' (R10)."""
         from apps.tickets.models import Ticket
+
         expected = {"technician", "hos", "hod"}
         actual = {v for v, _ in Ticket.LEVEL}
         assert actual == expected
@@ -2153,6 +2270,7 @@ class TestModelInvariantsGapFill:
         """R17: technician RoleAssignment without a section raises ValidationError."""
         from apps.accounts.models import RoleAssignment
         from django.core.exceptions import ValidationError
+
         ra = RoleAssignment(user=requester, role="technician")
         with pytest.raises(ValidationError):
             ra.clean()
@@ -2161,6 +2279,7 @@ class TestModelInvariantsGapFill:
         """R17: hod RoleAssignment without a campus_department raises ValidationError."""
         from apps.accounts.models import RoleAssignment
         from django.core.exceptions import ValidationError
+
         ra = RoleAssignment(user=requester, role="hod")
         with pytest.raises(ValidationError):
             ra.clean()
@@ -2169,6 +2288,7 @@ class TestModelInvariantsGapFill:
         """R17: admin RoleAssignment must have no scope; section present → ValidationError."""
         from apps.accounts.models import RoleAssignment
         from django.core.exceptions import ValidationError
+
         ra = RoleAssignment(user=requester, role="admin", section=section)
         with pytest.raises(ValidationError):
             ra.clean()

@@ -64,8 +64,7 @@ class Ticket(models.Model):
     )
     description = models.TextField(blank=True)
     status = models.CharField(max_length=16, choices=STATUS, default="open")
-    current_level = models.CharField(
-        max_length=12, choices=LEVEL, default="technician")
+    current_level = models.CharField(max_length=12, choices=LEVEL, default="technician")
     response_due_at = models.DateTimeField(null=True, blank=True)
     resolution_due_at = models.DateTimeField(null=True, blank=True)
     paused_at = models.DateTimeField(null=True, blank=True)
@@ -132,8 +131,7 @@ class Ticket(models.Model):
 
         latest_ticket = (
             Ticket.objects.filter(
-                Q(ticket_no__startswith=ticket_prefix) | Q(
-                    ticket_no__startswith=prefix)
+                Q(ticket_no__startswith=ticket_prefix) | Q(ticket_no__startswith=prefix)
             )
             .order_by("-ticket_no")
             .first()
@@ -271,8 +269,7 @@ class TicketComment(models.Model):
         related_name="ticket_comments",
     )
     body = models.TextField()
-    visibility = models.CharField(
-        max_length=10, choices=VISIBILITY, default="public")
+    visibility = models.CharField(max_length=10, choices=VISIBILITY, default="public")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -301,8 +298,7 @@ class TicketFeedback(models.Model):
 
     def clean(self):
         if not (1 <= self.rating <= 5):
-            raise ValidationError(
-                {"rating": "Rating must be between 1 and 5."})
+            raise ValidationError({"rating": "Rating must be between 1 and 5."})
 
     def __str__(self):
         return f"Feedback {self.rating}/5 for {self.ticket_id}"

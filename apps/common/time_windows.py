@@ -14,16 +14,13 @@ def active_window_q(now):
     `valid_from is null` means "effective now"; `valid_until is null` means
     "standing role". A row is active when it has started and not yet expired.
     """
-    return (
-        Q(valid_from__isnull=True) | Q(valid_from__lte=now)
-    ) & (
+    return (Q(valid_from__isnull=True) | Q(valid_from__lte=now)) & (
         Q(valid_until__isnull=True) | Q(valid_until__gt=now)
     )
 
 
 def is_window_active(valid_from, valid_until, now):
     """Instance-level equivalent of `active_window_q` for a single assignment."""
-    return (
-        (valid_from is None or valid_from <= now)
-        and (valid_until is None or valid_until > now)
+    return (valid_from is None or valid_from <= now) and (
+        valid_until is None or valid_until > now
     )

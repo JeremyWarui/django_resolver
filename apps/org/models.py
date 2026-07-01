@@ -42,10 +42,8 @@ class Department(models.Model):
         app_label = "org"
         ordering = ["name"]
         constraints = [
-            models.UniqueConstraint(
-                fields=["name"], name="unique_department_name"),
-            models.UniqueConstraint(
-                fields=["code"], name="unique_department_code"),
+            models.UniqueConstraint(fields=["name"], name="unique_department_name"),
+            models.UniqueConstraint(fields=["code"], name="unique_department_code"),
         ]
 
     def __str__(self):
@@ -158,6 +156,7 @@ class Section(models.Model):
 
     def clean(self):
         from django.core.exceptions import ValidationError
+
         """R2: section_type.department must equal campus_department.department."""
         if (
             self.section_type_id

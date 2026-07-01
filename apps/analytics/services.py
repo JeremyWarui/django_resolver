@@ -10,7 +10,13 @@ from datetime import timedelta, datetime
 from typing import Optional
 
 from django.db.models import (
-    Avg, Count, Exists, F, OuterRef, Q, Subquery,
+    Avg,
+    Count,
+    Exists,
+    F,
+    OuterRef,
+    Q,
+    Subquery,
 )
 from django.db.models.functions import TruncDay, TruncWeek, TruncMonth, TruncQuarter
 from django.utils import timezone
@@ -23,6 +29,7 @@ AT_RISK_WINDOW = timedelta(hours=4)
 
 
 # ── Date range ─────────────────────────────────────────────────────────────────
+
 
 def resolve_date_range(params: dict) -> dict:
     """Parse date_from/date_to/days from query params.
@@ -61,6 +68,7 @@ def resolve_date_range(params: dict) -> dict:
 
 # ── Percentile (Python-side, DB-agnostic) ─────────────────────────────────────
 
+
 def _percentile(values: list, p: float) -> Optional[float]:
     """Linear interpolation p-th percentile. None if list is empty."""
     if not values:
@@ -82,6 +90,7 @@ def _delta(current, prior):
 
 
 # ── Group-by breakdowns ────────────────────────────────────────────────────────
+
 
 def _group_by_section(window_qs):
     return list(
@@ -225,10 +234,16 @@ _GENERIC_GROUP_BY = {
         F("section__campus_department__department__name"),
     ),
     "section_type": (F("section__section_type__id"), F("section__section_type__name")),
-    "service_category": (F("service_item__category__id"), F("service_item__category__name")),
+    "service_category": (
+        F("service_item__category__id"),
+        F("service_item__category__name"),
+    ),
     "service_item": (F("service_item__id"), F("service_item__name")),
     "priority": (F("priority__id"), F("priority__name")),
-    "facility_type": (F("location__facility_type__id"), F("location__facility_type__name")),
+    "facility_type": (
+        F("location__facility_type__id"),
+        F("location__facility_type__name"),
+    ),
     "facility": (F("location__facility__id"), F("location__facility__name")),
     "status": (F("status"), F("status")),
 }
@@ -293,15 +308,27 @@ def breakdown(scoped_qs, date_range: dict, group_by: str) -> list:
     if group_by in _GENERIC_GROUP_BY:
         return _group_by_generic(window_qs, group_by)
     # 'time' (and anything unrecognised) needs the full path; rare for breakdown-only callers.
-    return aggregate(scoped_qs, date_range, group_by=group_by).get("breakdown", []) or []
+    return (
+        aggregate(scoped_qs, date_range, group_by=group_by).get("breakdown", []) or []
+    )
 
 
 # ── Core aggregation ───────────────────────────────────────────────────────────
 
-_TRUNC_FN = {"day": TruncDay, "week": TruncWeek, "month": TruncMonth, "quarter": TruncQuarter}
+_TRUNC_FN = {
+    "day": TruncDay,
+    "week": TruncWeek,
+    "month": TruncMonth,
+    "quarter": TruncQuarter,
+}
 
 
-def aggregate(scoped_qs, date_range: dict, group_by: Optional[str] = None, granularity: str = "day") -> dict:
+def aggregate(
+    scoped_qs,
+    date_range: dict,
+    group_by: Optional[str] = None,
+    granularity: str = "day",
+) -> dict:
     """Core analytics aggregation.
 
     Args:
@@ -349,8 +376,16 @@ def aggregate(scoped_qs, date_range: dict, group_by: Optional[str] = None, granu
     # assigned_to) — no fan-out joins — so the counts are independent and exact.
     _q_window = Q(created_at__gte=date_from, created_at__lte=date_to)
     _q_prior = Q(created_at__gte=prior_from, created_at__lte=prior_to)
-    _q_resolved = Q(resolved_at__gte=date_from, resolved_at__lte=date_to, status__in=TERMINAL_STATUSES)
-    _q_prior_resolved = Q(resolved_at__gte=prior_from, resolved_at__lte=prior_to, status__in=TERMINAL_STATUSES)
+    _q_resolved = Q(
+        resolved_at__gte=date_from,
+        resolved_at__lte=date_to,
+        status__in=TERMINAL_STATUSES,
+    )
+    _q_prior_resolved = Q(
+        resolved_at__gte=prior_from,
+        resolved_at__lte=prior_to,
+        status__in=TERMINAL_STATUSES,
+    )
     _q_active = Q(status__in=ACTIVE_STATUSES)
     _q_resolved_due = _q_resolved & Q(resolution_due_at__isnull=False)
     _q_prior_resolved_due = _q_prior_resolved & Q(resolution_due_at__isnull=False)
@@ -366,26 +401,49 @@ def aggregate(scoped_qs, date_range: dict, group_by: Optional[str] = None, granu
         resolution_sla_met=Count("id", filter=_q_resolved_due & _q_met),
         prior_resolution_sla_total=Count("id", filter=_q_prior_resolved_due),
         prior_resolution_sla_met=Count("id", filter=_q_prior_resolved_due & _q_met),
-        at_risk=Count("id", filter=_q_active & Q(
-            resolution_due_at__isnull=False,
-            resolution_due_at__gt=now,
-            resolution_due_at__lte=now + AT_RISK_WINDOW,
-        )),
-        breached=Count("id", filter=_q_active & Q(
-            resolution_due_at__isnull=False, resolution_due_at__lt=now,
-        )),
+        at_risk=Count(
+            "id",
+            filter=_q_active
+            & Q(
+                resolution_due_at__isnull=False,
+                resolution_due_at__gt=now,
+                resolution_due_at__lte=now + AT_RISK_WINDOW,
+            ),
+        ),
+        breached=Count(
+            "id",
+            filter=_q_active
+            & Q(
+                resolution_due_at__isnull=False,
+                resolution_due_at__lt=now,
+            ),
+        ),
         escalated_window=Count("id", filter=_q_window & _q_escalated),
         escalated_live=Count("id", filter=_q_escalated),
         unassigned=Count("id", filter=_q_active & Q(assigned_to__isnull=True)),
         currently_paused=Count("id", filter=Q(status="pending")),
-        age_lt_1d=Count("id", filter=_q_active & Q(created_at__gt=now - timedelta(days=1))),
-        age_d1_3d=Count("id", filter=_q_active & Q(
-            created_at__lte=now - timedelta(days=1), created_at__gt=now - timedelta(days=3),
-        )),
-        age_d3_7d=Count("id", filter=_q_active & Q(
-            created_at__lte=now - timedelta(days=3), created_at__gt=now - timedelta(days=7),
-        )),
-        age_gt_7d=Count("id", filter=_q_active & Q(created_at__lte=now - timedelta(days=7))),
+        age_lt_1d=Count(
+            "id", filter=_q_active & Q(created_at__gt=now - timedelta(days=1))
+        ),
+        age_d1_3d=Count(
+            "id",
+            filter=_q_active
+            & Q(
+                created_at__lte=now - timedelta(days=1),
+                created_at__gt=now - timedelta(days=3),
+            ),
+        ),
+        age_d3_7d=Count(
+            "id",
+            filter=_q_active
+            & Q(
+                created_at__lte=now - timedelta(days=3),
+                created_at__gt=now - timedelta(days=7),
+            ),
+        ),
+        age_gt_7d=Count(
+            "id", filter=_q_active & Q(created_at__lte=now - timedelta(days=7))
+        ),
     )
 
     # ── Volume/flow ───────────────────────────────────────────────────────────
@@ -426,7 +484,9 @@ def aggregate(scoped_qs, date_range: dict, group_by: Optional[str] = None, granu
         .annotate(count=Count("id"))
         .order_by("period")
     }
-    all_periods = sorted(set(list(created_by_period.keys()) + list(resolved_by_period.keys())))
+    all_periods = sorted(
+        set(list(created_by_period.keys()) + list(resolved_by_period.keys()))
+    )
     flow_trend = [
         {
             "date": d,
@@ -480,7 +540,10 @@ def aggregate(scoped_qs, date_range: dict, group_by: Optional[str] = None, granu
     annotated_window = window_qs.annotate(first_response_at=Subquery(first_response_sq))
     _resp = annotated_window.aggregate(
         total=Count("id", filter=_q_has_response),
-        met=Count("id", filter=_q_has_response & Q(first_response_at__lte=F("response_due_at"))),
+        met=Count(
+            "id",
+            filter=_q_has_response & Q(first_response_at__lte=F("response_due_at")),
+        ),
     )
     response_sla_total = _resp["total"]
     response_sla_met = _resp["met"]
@@ -498,7 +561,10 @@ def aggregate(scoped_qs, date_range: dict, group_by: Optional[str] = None, granu
     )
     _prior_resp = prior_annotated.aggregate(
         total=Count("id", filter=_q_has_response),
-        met=Count("id", filter=_q_has_response & Q(first_response_at__lte=F("response_due_at"))),
+        met=Count(
+            "id",
+            filter=_q_has_response & Q(first_response_at__lte=F("response_due_at")),
+        ),
     )
     prior_response_sla_total = _prior_resp["total"]
     prior_response_sla_met = _prior_resp["met"]
@@ -515,7 +581,9 @@ def aggregate(scoped_qs, date_range: dict, group_by: Optional[str] = None, granu
         )
     )
     resolution_seconds = [
-        ((resolved_at - created_at) - (accumulated_pause or timedelta())).total_seconds()
+        (
+            (resolved_at - created_at) - (accumulated_pause or timedelta())
+        ).total_seconds()
         for resolved_at, created_at, accumulated_pause in resolution_time_rows
         if resolved_at and created_at
     ]
@@ -529,9 +597,7 @@ def aggregate(scoped_qs, date_range: dict, group_by: Optional[str] = None, granu
         )
     )
     first_response_seconds = [
-        (fr - ca).total_seconds()
-        for fr, ca in first_response_pairs
-        if fr and ca
+        (fr - ca).total_seconds() for fr, ca in first_response_pairs if fr and ca
     ]
     first_response_p50 = _percentile(first_response_seconds, 50)
     first_response_p90 = _percentile(first_response_seconds, 90)
@@ -550,7 +616,9 @@ def aggregate(scoped_qs, date_range: dict, group_by: Optional[str] = None, granu
         )
     )
     reassigned_tickets = reassigned_qs.filter(has_reassignment=True).count()
-    reassignment_rate = round(reassigned_tickets / created * 100, 1) if created else None
+    reassignment_rate = (
+        round(reassigned_tickets / created * 100, 1) if created else None
+    )
 
     # Open load per technician (no date filter — live snapshot)
     tech_load = technician_load(scoped_qs)
@@ -764,6 +832,7 @@ def aggregate(scoped_qs, date_range: dict, group_by: Optional[str] = None, granu
 
 # ── Admin config-health signals ───────────────────────────────────────────────
 
+
 def config_health() -> dict:
     """Org-wide config-health signals for the admin overview (SoT §5.4).
 
@@ -776,10 +845,12 @@ def config_health() -> dict:
     from django.db.models import Count
 
     sections_without_hos = list(
-        Section.objects.filter(hos__isnull=True, is_active=True)
-        .values("id", campus_name=F("campus_department__campus__name"),
-                dept_name=F("campus_department__department__name"),
-                section_type_name=F("section_type__name"))
+        Section.objects.filter(hos__isnull=True, is_active=True).values(
+            "id",
+            campus_name=F("campus_department__campus__name"),
+            dept_name=F("campus_department__department__name"),
+            section_type_name=F("section_type__name"),
+        )
     )
 
     priorities_without_rules = list(
@@ -788,7 +859,9 @@ def config_health() -> dict:
         .values("id", "name", "rank")
     )
 
-    used_ft_ids = TicketLocation.objects.values_list("facility_type_id", flat=True).distinct()
+    used_ft_ids = TicketLocation.objects.values_list(
+        "facility_type_id", flat=True
+    ).distinct()
     unused_facility_types = list(
         FacilityType.objects.exclude(id__in=used_ft_ids).values("id", "name", "code")
     )

@@ -47,8 +47,7 @@ class SectionTypeViewSet(viewsets.ModelViewSet):
     department without a second round-trip."""
 
     queryset = (
-        SectionType.objects
-        .select_related("department")
+        SectionType.objects.select_related("department")
         .prefetch_related("service_categories")
         .order_by("department", "name")
     )
@@ -72,15 +71,18 @@ class CampusDepartmentViewSet(viewsets.ModelViewSet):
 
 class SectionViewSet(viewsets.ModelViewSet):
     queryset = (
-        Section.objects
-        .select_related(
+        Section.objects.select_related(
             "campus_department__campus",
             "campus_department__department",
             "section_type",
             "hos",
         )
         .annotate(technician_count=Count("technician_links", distinct=True))
-        .order_by("campus_department__campus__name", "campus_department__department__name", "section_type__name")
+        .order_by(
+            "campus_department__campus__name",
+            "campus_department__department__name",
+            "section_type__name",
+        )
     )
     serializer_class = SectionSerializer
     permission_classes = [IsAdminOrReadOnly]

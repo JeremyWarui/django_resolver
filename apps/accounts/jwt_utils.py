@@ -57,7 +57,9 @@ def build_tokens_for_assignment(user, role_assignment):
     role_assignment should always be non-None after ensure_floor_assignment() runs
     at user creation.  None is still handled defensively for legacy data.
     """
-    refresh = RefreshToken.for_user(user)  # sets token["sub"] = user.pk via USER_ID_CLAIM
+    refresh = RefreshToken.for_user(
+        user
+    )  # sets token["sub"] = user.pk via USER_ID_CLAIM
 
     if role_assignment is not None:
         role = role_assignment.role
@@ -75,7 +77,9 @@ def build_tokens_for_assignment(user, role_assignment):
         "role": role,
         "campus_id": _campus_id_for_user(user),
         "department_id": department_id,
-        "campus_department_id": role_assignment.campus_department_id if role_assignment else None,
+        "campus_department_id": (
+            role_assignment.campus_department_id if role_assignment else None
+        ),
         "section_id": section_id,
         "role_assignment_id": ra_id,
     }
@@ -111,7 +115,9 @@ def serialize_role_assignment(ra):
 def serialize_auth_user(user, active_assignment):
     """Return the AuthUser shape expected by the frontend (SoT §5.1 GET /auth/me/)."""
     available = list(
-        user.role_assignments.select_related("section", "campus_department", "department").all()
+        user.role_assignments.select_related(
+            "section", "campus_department", "department"
+        ).all()
     )
     if not available and active_assignment:
         available = [active_assignment]
@@ -123,6 +129,8 @@ def serialize_auth_user(user, active_assignment):
         "email": user.email,
         "phone": getattr(user, "phone_number", None) or None,
         "is_active": user.is_active,
-        "active_role": serialize_role_assignment(active_assignment) if active_assignment else None,
+        "active_role": (
+            serialize_role_assignment(active_assignment) if active_assignment else None
+        ),
         "available_roles": [serialize_role_assignment(ra) for ra in available],
     }

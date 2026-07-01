@@ -39,35 +39,35 @@ CAMPUSES = [
 ]
 
 DEPARTMENTS = [
-    {"name": "ICT",        "code": "ICT"},
+    {"name": "ICT", "code": "ICT"},
     {"name": "Facilities", "code": "FAC"},
 ]
 
 # (dept_code, name, code)
 SECTION_TYPES = [
     ("ICT", "ICT Support", "ICTSUPP"),
-    ("ICT", "Networks",    "NET"),
+    ("ICT", "Networks", "NET"),
     ("FAC", "Maintenance", "MAINT"),
-    ("FAC", "Grounds",     "GRND"),
+    ("FAC", "Grounds", "GRND"),
 ]
 
 # (username, first_name, last_name, email, campus_code)
 USERS = [
-    ("admin_user",          "System",  "Admin",   "admin@resolver.local",             "NRB"),
-    ("ict_manager",         "James",   "Mwangi",  "ict.manager@resolver.local",        "NRB"),
-    ("fac_manager",         "Grace",   "Otieno",  "fac.manager@resolver.local",        "NRB"),
-    ("nrb_ict_hod",         "Brian",   "Kariuki", "nrb.ict.hod@resolver.local",        "NRB"),
-    ("nrb_fac_hod",         "Sarah",   "Wanjiku", "nrb.fac.hod@resolver.local",        "NRB"),
-    ("msa_ict_hod",         "Ahmed",   "Hassan",  "msa.ict.hod@resolver.local",        "MSA"),
-    ("nrb_ict_supp_hos",    "Achieng", "Otieno",  "nrb.ict.supp.hos@resolver.local",   "NRB"),
-    ("nrb_ict_net_hos",     "Peter",   "Maina",   "nrb.ict.net.hos@resolver.local",    "NRB"),
-    ("nrb_fac_maint_hos",   "Lucy",    "Njeri",   "nrb.fac.maint.hos@resolver.local",  "NRB"),
-    ("tech1",               "John",    "Doe",     "tech1@resolver.local",              "NRB"),
-    ("tech2",               "Jane",    "Smith",   "tech2@resolver.local",              "NRB"),
-    ("senior_tech",         "David",   "Omondi",  "senior.tech@resolver.local",        "NRB"),
-    ("tech3",               "Mary",    "Waweru",  "tech3@resolver.local",              "NRB"),
-    ("requester1",          "Alice",   "Kamau",   "requester1@resolver.local",         "NRB"),
-    ("requester2",          "Bob",     "Mwenda",  "requester2@resolver.local",         "MSA"),
+    ("admin_user", "System", "Admin", "admin@resolver.local", "NRB"),
+    ("ict_manager", "James", "Mwangi", "ict.manager@resolver.local", "NRB"),
+    ("fac_manager", "Grace", "Otieno", "fac.manager@resolver.local", "NRB"),
+    ("nrb_ict_hod", "Brian", "Kariuki", "nrb.ict.hod@resolver.local", "NRB"),
+    ("nrb_fac_hod", "Sarah", "Wanjiku", "nrb.fac.hod@resolver.local", "NRB"),
+    ("msa_ict_hod", "Ahmed", "Hassan", "msa.ict.hod@resolver.local", "MSA"),
+    ("nrb_ict_supp_hos", "Achieng", "Otieno", "nrb.ict.supp.hos@resolver.local", "NRB"),
+    ("nrb_ict_net_hos", "Peter", "Maina", "nrb.ict.net.hos@resolver.local", "NRB"),
+    ("nrb_fac_maint_hos", "Lucy", "Njeri", "nrb.fac.maint.hos@resolver.local", "NRB"),
+    ("tech1", "John", "Doe", "tech1@resolver.local", "NRB"),
+    ("tech2", "Jane", "Smith", "tech2@resolver.local", "NRB"),
+    ("senior_tech", "David", "Omondi", "senior.tech@resolver.local", "NRB"),
+    ("tech3", "Mary", "Waweru", "tech3@resolver.local", "NRB"),
+    ("requester1", "Alice", "Kamau", "requester1@resolver.local", "NRB"),
+    ("requester2", "Bob", "Mwenda", "requester2@resolver.local", "MSA"),
 ]
 
 DEFAULT_PASSWORD = "***REMOVED-DEMO-PASSWORD***"
@@ -82,19 +82,19 @@ CAMPUS_DEPARTMENTS = [
 
 # (campus_code, dept_code, section_type_code, hos_username_or_None, is_active)
 SECTIONS = [
-    ("NRB", "ICT", "ICTSUPP", "nrb_ict_supp_hos",  True),
-    ("NRB", "ICT", "NET",     "nrb_ict_net_hos",    True),
-    ("NRB", "FAC", "MAINT",   "nrb_fac_maint_hos",  True),
-    ("NRB", "FAC", "GRND",    None,                  True),
-    ("MSA", "ICT", "ICTSUPP", None,                  True),
+    ("NRB", "ICT", "ICTSUPP", "nrb_ict_supp_hos", True),
+    ("NRB", "ICT", "NET", "nrb_ict_net_hos", True),
+    ("NRB", "FAC", "MAINT", "nrb_fac_maint_hos", True),
+    ("NRB", "FAC", "GRND", None, True),
+    ("MSA", "ICT", "ICTSUPP", None, True),
 ]
 
 # (username, campus_code, dept_code, section_type_code)
 SECTION_TECHNICIANS = [
-    ("tech1",      "NRB", "ICT", "ICTSUPP"),
-    ("tech2",      "NRB", "ICT", "ICTSUPP"),
-    ("senior_tech","NRB", "ICT", "ICTSUPP"),
-    ("tech3",      "NRB", "FAC", "MAINT"),
+    ("tech1", "NRB", "ICT", "ICTSUPP"),
+    ("tech2", "NRB", "ICT", "ICTSUPP"),
+    ("senior_tech", "NRB", "ICT", "ICTSUPP"),
+    ("tech3", "NRB", "FAC", "MAINT"),
 ]
 
 # (username, role, scope_type, scope_key)
@@ -103,26 +103,28 @@ SECTION_TECHNICIANS = [
 # scope_key for campus_department: (campus_code, dept_code)
 # scope_key for section: (campus_code, dept_code, section_type_code)
 ROLE_ASSIGNMENTS = [
-    ("admin_user",        "admin",      "none",             None),
-    ("requester1",        "user",       "none",             None),
-    ("requester2",        "user",       "none",             None),
-    ("ict_manager",       "manager",    "department",       "ICT"),
-    ("fac_manager",       "manager",    "department",       "FAC"),
-    ("nrb_ict_hod",       "hod",        "campus_department",("NRB", "ICT")),
-    ("nrb_fac_hod",       "hod",        "campus_department",("NRB", "FAC")),
-    ("msa_ict_hod",       "hod",        "campus_department",("MSA", "ICT")),
-    ("nrb_ict_supp_hos",  "hos",        "section",          ("NRB", "ICT", "ICTSUPP")),
-    ("nrb_ict_net_hos",   "hos",        "section",          ("NRB", "ICT", "NET")),
-    ("nrb_fac_maint_hos", "hos",        "section",          ("NRB", "FAC", "MAINT")),
-    ("tech1",             "technician", "section",          ("NRB", "ICT", "ICTSUPP")),
-    ("tech2",             "technician", "section",          ("NRB", "ICT", "ICTSUPP")),
-    ("senior_tech",       "technician", "section",          ("NRB", "ICT", "ICTSUPP")),
-    ("tech3",             "technician", "section",          ("NRB", "FAC", "MAINT")),
+    ("admin_user", "admin", "none", None),
+    ("requester1", "user", "none", None),
+    ("requester2", "user", "none", None),
+    ("ict_manager", "manager", "department", "ICT"),
+    ("fac_manager", "manager", "department", "FAC"),
+    ("nrb_ict_hod", "hod", "campus_department", ("NRB", "ICT")),
+    ("nrb_fac_hod", "hod", "campus_department", ("NRB", "FAC")),
+    ("msa_ict_hod", "hod", "campus_department", ("MSA", "ICT")),
+    ("nrb_ict_supp_hos", "hos", "section", ("NRB", "ICT", "ICTSUPP")),
+    ("nrb_ict_net_hos", "hos", "section", ("NRB", "ICT", "NET")),
+    ("nrb_fac_maint_hos", "hos", "section", ("NRB", "FAC", "MAINT")),
+    ("tech1", "technician", "section", ("NRB", "ICT", "ICTSUPP")),
+    ("tech2", "technician", "section", ("NRB", "ICT", "ICTSUPP")),
+    ("senior_tech", "technician", "section", ("NRB", "ICT", "ICTSUPP")),
+    ("tech3", "technician", "section", ("NRB", "FAC", "MAINT")),
 ]
 
 
 class Command(BaseCommand):
-    help = "Seed org structure: campuses, departments, sections, users, roles (idempotent)"
+    help = (
+        "Seed org structure: campuses, departments, sections, users, roles (idempotent)"
+    )
 
     def handle(self, *args, **options):
         campuses = self._seed_campuses()

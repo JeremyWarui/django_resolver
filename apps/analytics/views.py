@@ -46,6 +46,7 @@ class BaseAnalyticsView(APIView):
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
+
 def _date_range_meta(date_range):
     return {
         "from": date_range["date_from"].isoformat(),
@@ -91,6 +92,7 @@ def _sectional_slice(data: dict) -> dict:
 
 # ── Overview (dashboard preset) ────────────────────────────────────────────────
 
+
 class OverviewView(BaseAnalyticsView):
     """Role-scoped summary — same core as all other endpoints (SoT §5.4)."""
 
@@ -105,11 +107,13 @@ class OverviewView(BaseAnalyticsView):
             sectional_qs = scoped_ticket_qs(user, "technician")
             individual_data = aggregate(individual_qs, date_range)
             sectional_data = aggregate(sectional_qs, date_range)
-            return Response({
-                "date_range": _date_range_meta(date_range),
-                "individual": _overview_slice(individual_data),
-                "sectional": _sectional_slice(sectional_data),
-            })
+            return Response(
+                {
+                    "date_range": _date_range_meta(date_range),
+                    "individual": _overview_slice(individual_data),
+                    "sectional": _sectional_slice(sectional_data),
+                }
+            )
 
         # HOD → group by section; Manager → group by campus; others → no breakdown
         group_by_map = {"hod": "section", "manager": "campus"}
@@ -131,26 +135,30 @@ class OverviewView(BaseAnalyticsView):
 
 # ── SLA compliance ─────────────────────────────────────────────────────────────
 
+
 class SLAComplianceView(BaseAnalyticsView):
     def get(self, request):
         role = self.get_role(request)
         scoped_qs = self.get_scoped_qs(request, role)
         date_range = resolve_date_range(request.query_params)
         data = aggregate(scoped_qs, date_range)
-        return Response({
-            "date_range": _date_range_meta(date_range),
-            "resolution_sla_pct": data["resolution_sla_pct"],
-            "response_sla_pct": data["response_sla_pct"],
-            "at_risk": data["at_risk"],
-            "breached": data["breached"],
-            "delta": {
-                "resolution_sla_pct": data["delta"]["resolution_sla_pct"],
-                "response_sla_pct": data["delta"]["response_sla_pct"],
-            },
-        })
+        return Response(
+            {
+                "date_range": _date_range_meta(date_range),
+                "resolution_sla_pct": data["resolution_sla_pct"],
+                "response_sla_pct": data["response_sla_pct"],
+                "at_risk": data["at_risk"],
+                "breached": data["breached"],
+                "delta": {
+                    "resolution_sla_pct": data["delta"]["resolution_sla_pct"],
+                    "response_sla_pct": data["delta"]["response_sla_pct"],
+                },
+            }
+        )
 
 
 # ── Resolution times (p50/p90) ─────────────────────────────────────────────────
+
 
 class ResolutionTimesView(BaseAnalyticsView):
     def get(self, request):
@@ -158,16 +166,19 @@ class ResolutionTimesView(BaseAnalyticsView):
         scoped_qs = self.get_scoped_qs(request, role)
         date_range = resolve_date_range(request.query_params)
         data = aggregate(scoped_qs, date_range)
-        return Response({
-            "date_range": _date_range_meta(date_range),
-            "resolution_time_p50_seconds": data["resolution_time_p50_seconds"],
-            "resolution_time_p90_seconds": data["resolution_time_p90_seconds"],
-            "first_response_p50_seconds": data["first_response_p50_seconds"],
-            "first_response_p90_seconds": data["first_response_p90_seconds"],
-        })
+        return Response(
+            {
+                "date_range": _date_range_meta(date_range),
+                "resolution_time_p50_seconds": data["resolution_time_p50_seconds"],
+                "resolution_time_p90_seconds": data["resolution_time_p90_seconds"],
+                "first_response_p50_seconds": data["first_response_p50_seconds"],
+                "first_response_p90_seconds": data["first_response_p90_seconds"],
+            }
+        )
 
 
 # ── Flow (created / resolved / net / trend) ───────────────────────────────────
+
 
 class FlowView(BaseAnalyticsView):
     def get(self, request):
@@ -178,23 +189,26 @@ class FlowView(BaseAnalyticsView):
         if granularity not in ("day", "week", "month", "quarter"):
             granularity = "day"
         data = aggregate(scoped_qs, date_range, granularity=granularity)
-        return Response({
-            "date_range": _date_range_meta(date_range),
-            "open_backlog": data["open_backlog"],
-            "created": data["created"],
-            "resolved": data["resolved"],
-            "net_flow": data["net_flow"],
-            "flow_trend": data["flow_trend"],
-            "status_distribution": data["status_distribution"],
-            "priority_distribution": data["priority_distribution"],
-            "delta": {
-                "created": data["delta"]["created"],
-                "resolved": data["delta"]["resolved"],
-            },
-        })
+        return Response(
+            {
+                "date_range": _date_range_meta(date_range),
+                "open_backlog": data["open_backlog"],
+                "created": data["created"],
+                "resolved": data["resolved"],
+                "net_flow": data["net_flow"],
+                "flow_trend": data["flow_trend"],
+                "status_distribution": data["status_distribution"],
+                "priority_distribution": data["priority_distribution"],
+                "delta": {
+                    "created": data["delta"]["created"],
+                    "resolved": data["delta"]["resolved"],
+                },
+            }
+        )
 
 
 # ── Quality (CSAT + reopen) ───────────────────────────────────────────────────
+
 
 class QualityView(BaseAnalyticsView):
     def get(self, request):
@@ -202,19 +216,22 @@ class QualityView(BaseAnalyticsView):
         scoped_qs = self.get_scoped_qs(request, role)
         date_range = resolve_date_range(request.query_params)
         data = aggregate(scoped_qs, date_range)
-        return Response({
-            "date_range": _date_range_meta(date_range),
-            "csat": data["csat"],
-            "feedback_response_rate": data["feedback_response_rate"],
-            "reopen_rate": data["reopen_rate"],
-            "delta": {
-                "csat": data["delta"]["csat"],
-                "reopen_rate": data["delta"]["reopen_rate"],
-            },
-        })
+        return Response(
+            {
+                "date_range": _date_range_meta(date_range),
+                "csat": data["csat"],
+                "feedback_response_rate": data["feedback_response_rate"],
+                "reopen_rate": data["reopen_rate"],
+                "delta": {
+                    "csat": data["delta"]["csat"],
+                    "reopen_rate": data["delta"]["reopen_rate"],
+                },
+            }
+        )
 
 
 # ── Demand shape ──────────────────────────────────────────────────────────────
+
 
 class DemandView(BaseAnalyticsView):
     def get(self, request):
@@ -222,13 +239,16 @@ class DemandView(BaseAnalyticsView):
         scoped_qs = self.get_scoped_qs(request, role)
         date_range = resolve_date_range(request.query_params)
         data = aggregate(scoped_qs, date_range)
-        return Response({
-            "date_range": _date_range_meta(date_range),
-            **data["demand"],
-        })
+        return Response(
+            {
+                "date_range": _date_range_meta(date_range),
+                **data["demand"],
+            }
+        )
 
 
 # ── Performance endpoints ─────────────────────────────────────────────────────
+
 
 class PerformanceTechniciansView(BaseAnalyticsView):
     def get(self, request):
@@ -237,11 +257,13 @@ class PerformanceTechniciansView(BaseAnalyticsView):
         date_range = resolve_date_range(request.query_params)
         # Two cheap queries (live load + windowed breakdown) instead of the
         # ~23-query full aggregate (see services.breakdown / technician_load).
-        return Response({
-            "date_range": _date_range_meta(date_range),
-            "technician_load": technician_load(scoped_qs),
-            "breakdown": breakdown(scoped_qs, date_range, group_by="technician"),
-        })
+        return Response(
+            {
+                "date_range": _date_range_meta(date_range),
+                "technician_load": technician_load(scoped_qs),
+                "breakdown": breakdown(scoped_qs, date_range, group_by="technician"),
+            }
+        )
 
 
 class PerformanceSectionsView(BaseAnalyticsView):
@@ -250,10 +272,12 @@ class PerformanceSectionsView(BaseAnalyticsView):
         scoped_qs = self.get_scoped_qs(request, role)
         date_range = resolve_date_range(request.query_params)
         # breakdown-only: skip the ~40-query headline (see services.breakdown()).
-        return Response({
-            "date_range": _date_range_meta(date_range),
-            "breakdown": breakdown(scoped_qs, date_range, group_by="section"),
-        })
+        return Response(
+            {
+                "date_range": _date_range_meta(date_range),
+                "breakdown": breakdown(scoped_qs, date_range, group_by="section"),
+            }
+        )
 
 
 class PerformanceCampusDepartmentsView(BaseAnalyticsView):
@@ -262,13 +286,18 @@ class PerformanceCampusDepartmentsView(BaseAnalyticsView):
         scoped_qs = self.get_scoped_qs(request, role)
         date_range = resolve_date_range(request.query_params)
         # breakdown-only: skip the ~40-query headline (see services.breakdown()).
-        return Response({
-            "date_range": _date_range_meta(date_range),
-            "breakdown": breakdown(scoped_qs, date_range, group_by="campus_department"),
-        })
+        return Response(
+            {
+                "date_range": _date_range_meta(date_range),
+                "breakdown": breakdown(
+                    scoped_qs, date_range, group_by="campus_department"
+                ),
+            }
+        )
 
 
 # ── Unified analytics endpoint (one view serves every role) ────────────────────
+
 
 def _range_meta(dr):
     return {
@@ -284,15 +313,32 @@ def _headline(data: dict) -> dict:
     picks which of these to surface per the role config (KPIs are scope-invariant,
     so we compute once and let the client slice)."""
     keys = (
-        "open_backlog", "created", "resolved", "net_flow",
-        "resolution_sla_pct", "response_sla_pct",
-        "resolution_time_p50_seconds", "resolution_time_p90_seconds",
-        "first_response_p50_seconds", "first_response_p90_seconds",
-        "at_risk", "breached", "escalation_rate", "escalated_count",
-        "reassignment_rate", "unassigned", "currently_paused",
-        "pause_total_seconds", "pause_avg_seconds", "ever_paused_count",
-        "csat", "csat_satisfied_pct", "feedback_response_rate", "reopen_rate",
-        "aging_buckets", "delta",
+        "open_backlog",
+        "created",
+        "resolved",
+        "net_flow",
+        "resolution_sla_pct",
+        "response_sla_pct",
+        "resolution_time_p50_seconds",
+        "resolution_time_p90_seconds",
+        "first_response_p50_seconds",
+        "first_response_p90_seconds",
+        "at_risk",
+        "breached",
+        "escalation_rate",
+        "escalated_count",
+        "reassignment_rate",
+        "unassigned",
+        "currently_paused",
+        "pause_total_seconds",
+        "pause_avg_seconds",
+        "ever_paused_count",
+        "csat",
+        "csat_satisfied_pct",
+        "feedback_response_rate",
+        "reopen_rate",
+        "aging_buckets",
+        "delta",
     )
     return {k: data.get(k) for k in keys}
 
@@ -318,17 +364,27 @@ class AnalyticsView(BaseAnalyticsView):
 
         # Technician: two scopes in SEPARATE keys, never mixed (SoT §5.4).
         if role == "technician":
-            individual = aggregate(Ticket.objects.filter(assigned_to=user), date_range, granularity=granularity)
-            sectional = aggregate(scoped_ticket_qs(user, "technician"), date_range, granularity=granularity)
-            return Response({
-                "scope": {"role": role},
-                "range": _range_meta(date_range),
-                "individual": _headline(individual),
-                "sectional": _sectional_slice(sectional),
-                "series": {"flow_trend": individual["flow_trend"]},
-                "ticket_flow": sectional["ticket_flow"],
-                "insights": [],
-            })
+            individual = aggregate(
+                Ticket.objects.filter(assigned_to=user),
+                date_range,
+                granularity=granularity,
+            )
+            sectional = aggregate(
+                scoped_ticket_qs(user, "technician"),
+                date_range,
+                granularity=granularity,
+            )
+            return Response(
+                {
+                    "scope": {"role": role},
+                    "range": _range_meta(date_range),
+                    "individual": _headline(individual),
+                    "sectional": _sectional_slice(sectional),
+                    "series": {"flow_trend": individual["flow_trend"]},
+                    "ticket_flow": sectional["ticket_flow"],
+                    "insights": [],
+                }
+            )
 
         if not role:
             scoped_qs = Ticket.objects.filter(raised_by=user)

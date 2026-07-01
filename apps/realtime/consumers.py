@@ -57,7 +57,9 @@ class ServiceDeskConsumer(AsyncWebsocketConsumer):
         for group in list(self.joined_groups):
             await self.channel_layer.group_discard(group, self.channel_name)
         self.joined_groups.clear()
-        logger.debug("WS disconnected: user=%s code=%s", getattr(self, "user", "?"), close_code)
+        logger.debug(
+            "WS disconnected: user=%s code=%s", getattr(self, "user", "?"), close_code
+        )
 
     async def receive(self, text_data):
         try:
@@ -80,7 +82,12 @@ class ServiceDeskConsumer(AsyncWebsocketConsumer):
     async def _handle_join(self, channel: str):
         if not self._is_allowed_channel(channel):
             await self.send(
-                json.dumps({"type": "error", "message": f"Not permitted to join channel: {channel}"})
+                json.dumps(
+                    {
+                        "type": "error",
+                        "message": f"Not permitted to join channel: {channel}",
+                    }
+                )
             )
             return
         await self.channel_layer.group_add(channel, self.channel_name)

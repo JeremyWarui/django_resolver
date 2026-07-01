@@ -9,7 +9,9 @@ class FacilityType(models.Model):
     """
 
     name = models.CharField(max_length=80, unique=True)
-    code = models.CharField(max_length=20, unique=True)   # stable key used to pick the location form
+    code = models.CharField(
+        max_length=20, unique=True
+    )  # stable key used to pick the location form
 
     class Meta:
         app_label = "facilities"

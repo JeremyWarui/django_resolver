@@ -4,12 +4,12 @@ from apps.tickets.models import TicketLog
 from apps.realtime.ws_utils import emit_ticket_status_changed, emit_ticket_resolved
 
 ALLOWED = {
-    "open":        {"assigned"},
-    "assigned":    {"in_progress"},
+    "open": {"assigned"},
+    "assigned": {"in_progress"},
     "in_progress": {"pending", "resolved"},
-    "pending":     {"in_progress"},
-    "resolved":    {"closed", "in_progress"},
-    "closed":      {"in_progress"},
+    "pending": {"in_progress"},
+    "resolved": {"closed", "in_progress"},
+    "closed": {"in_progress"},
 }
 
 
@@ -51,16 +51,18 @@ def transition_status(ticket, new_status, actor, reason=""):
         ticket.closed_at = now
 
     ticket.status = new_status
-    ticket.save(update_fields=[
-        "status",
-        "paused_at",
-        "accumulated_pause",
-        "response_due_at",
-        "resolution_due_at",
-        "resolved_at",
-        "closed_at",
-        "updated_at",
-    ])
+    ticket.save(
+        update_fields=[
+            "status",
+            "paused_at",
+            "accumulated_pause",
+            "response_due_at",
+            "resolution_due_at",
+            "resolved_at",
+            "closed_at",
+            "updated_at",
+        ]
+    )
 
     # Determine event type
     if new_status == "resolved":

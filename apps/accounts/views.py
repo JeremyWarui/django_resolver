@@ -71,7 +71,12 @@ class SwitchRoleView(APIView):
         ra_id = request.data.get("roleAssignmentId")
         if ra_id is None:
             return Response(
-                {"error": {"code": "VALIDATION_ERROR", "message": "roleAssignmentId is required"}},
+                {
+                    "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "roleAssignmentId is required",
+                    }
+                },
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
 
@@ -81,19 +86,34 @@ class SwitchRoleView(APIView):
             ).get(pk=ra_id)
         except RoleAssignment.DoesNotExist:
             return Response(
-                {"error": {"code": "NOT_FOUND", "message": "Role assignment not found"}},
+                {
+                    "error": {
+                        "code": "NOT_FOUND",
+                        "message": "Role assignment not found",
+                    }
+                },
                 status=status.HTTP_404_NOT_FOUND,
             )
 
         if ra.user_id != request.user.pk:
             return Response(
-                {"error": {"code": "FORBIDDEN", "message": "This role assignment does not belong to you"}},
+                {
+                    "error": {
+                        "code": "FORBIDDEN",
+                        "message": "This role assignment does not belong to you",
+                    }
+                },
                 status=status.HTTP_403_FORBIDDEN,
             )
 
         if not ra.is_active():
             return Response(
-                {"error": {"code": "FORBIDDEN", "message": "This role assignment is not currently active"}},
+                {
+                    "error": {
+                        "code": "FORBIDDEN",
+                        "message": "This role assignment is not currently active",
+                    }
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -130,6 +150,7 @@ class UserRoleAssignmentListCreateView(generics.ListCreateAPIView):
     def _get_target_user(self):
         from django.contrib.auth import get_user_model
         from django.shortcuts import get_object_or_404
+
         User = get_user_model()
         return get_object_or_404(User, pk=self.kwargs["user_pk"])
 
@@ -155,9 +176,9 @@ class UserRoleAssignmentListCreateView(generics.ListCreateAPIView):
             caller_ra = getattr(self.request.user, "primary_role_assignment", None)
             if caller_ra and caller_ra.campus_department_id:
                 cd_id = caller_ra.campus_department_id
-                return qs.filter(
-                    section__campus_department_id=cd_id
-                ) | qs.filter(campus_department_id=cd_id)
+                return qs.filter(section__campus_department_id=cd_id) | qs.filter(
+                    campus_department_id=cd_id
+                )
         return RoleAssignment.objects.none()
 
     def create(self, request, *args, **kwargs):
@@ -185,17 +206,25 @@ class UserRoleAssignmentListCreateView(generics.ListCreateAPIView):
                 assignment_cd_id = cd.id if cd else None
                 if section_cd_id != cd_id and assignment_cd_id != cd_id:
                     return Response(
-                        {"detail": "HOD can only create assignments within their campus department."},
+                        {
+                            "detail": "HOD can only create assignments within their campus department."
+                        },
                         status=status.HTTP_403_FORBIDDEN,
                     )
             if vd.get("role") not in ("technician", "hos"):
                 return Response(
-                    {"detail": "HOD can only create technician or HOS cover assignments."},
+                    {
+                        "detail": "HOD can only create technician or HOS cover assignments."
+                    },
                     status=status.HTTP_403_FORBIDDEN,
                 )
             vd["is_primary"] = False  # HOD can only create cover assignments
 
-        is_primary = vd.pop("is_primary", False) if caller_role == "admin" else (vd.pop("is_primary", None) or False)
+        is_primary = (
+            vd.pop("is_primary", False)
+            if caller_role == "admin"
+            else (vd.pop("is_primary", None) or False)
+        )
 
         # Strip the frontend-friendly keys before creating (already resolved to FK objects)
         vd.pop("campus_id", None)
@@ -203,6 +232,7 @@ class UserRoleAssignmentListCreateView(generics.ListCreateAPIView):
         vd.pop("section_id", None)
 
         from django.db import IntegrityError
+
         try:
             ra = RoleAssignment.objects.create(
                 user=target,
@@ -214,7 +244,9 @@ class UserRoleAssignmentListCreateView(generics.ListCreateAPIView):
             msg = str(exc)
             if "one_primary_role_per_user" in msg:
                 return Response(
-                    {"detail": "This user already has a primary role assignment. Delete or demote it first, or set is_primary=false."},
+                    {
+                        "detail": "This user already has a primary role assignment. Delete or demote it first, or set is_primary=false."
+                    },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             raise
@@ -227,7 +259,9 @@ class UserRoleAssignmentListCreateView(generics.ListCreateAPIView):
             "department",
             "assigned_by",
         ).get(pk=ra.pk)
-        return Response(RoleAssignmentSerializer(ra).data, status=status.HTTP_201_CREATED)
+        return Response(
+            RoleAssignmentSerializer(ra).data, status=status.HTTP_201_CREATED
+        )
 
 
 class UserRoleAssignmentDetailView(APIView):
@@ -242,6 +276,7 @@ class UserRoleAssignmentDetailView(APIView):
     def _get_objects(self):
         from django.contrib.auth import get_user_model
         from django.shortcuts import get_object_or_404
+
         User = get_user_model()
         target = get_object_or_404(User, pk=self.kwargs["user_pk"])
         ra = get_object_or_404(RoleAssignment, pk=self.kwargs["ra_pk"], user=target)
@@ -267,7 +302,9 @@ class UserRoleAssignmentDetailView(APIView):
     def patch(self, request, user_pk, ra_pk):
         _, ra = self._get_objects()
         if not self._check_scope(ra):
-            return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN
+            )
         serializer = RoleAssignmentUpdateSerializer(ra, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
@@ -281,7 +318,9 @@ class UserRoleAssignmentDetailView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         if not self._check_scope(ra):
-            return Response({"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "Permission denied."}, status=status.HTTP_403_FORBIDDEN
+            )
         ra.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -294,7 +333,10 @@ from django.contrib.auth import authenticate, get_user_model
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken as _RefreshToken
-from apps.accounts.jwt_utils import get_primary_assignment_or_infer, ensure_floor_assignment
+from apps.accounts.jwt_utils import (
+    get_primary_assignment_or_infer,
+    ensure_floor_assignment,
+)
 
 _logger = logging.getLogger(__name__)
 _User = get_user_model()
@@ -309,7 +351,12 @@ def jwt_login(request):
 
     if not username or not password:
         return Response(
-            {"error": {"code": "VALIDATION_ERROR", "message": "username and password are required"}},
+            {
+                "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "username and password are required",
+                }
+            },
             status=status.HTTP_422_UNPROCESSABLE_ENTITY,
         )
 
@@ -346,7 +393,12 @@ def jwt_register(request):
 
     if not username or not email or not password:
         return Response(
-            {"error": {"code": "VALIDATION_ERROR", "message": "username, email and password are required"}},
+            {
+                "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": "username, email and password are required",
+                }
+            },
             status=status.HTTP_422_UNPROCESSABLE_ENTITY,
         )
     if _User.objects.filter(username=username).exists():
@@ -401,10 +453,15 @@ def jwt_refresh(request):
         # Rotate: blacklist old, issue new pair.
         refresh.blacklist()
         uid_claim = _get_user_id_claim()
-        new_refresh = _RefreshToken.for_user(
-            _User.objects.get(pk=refresh[uid_claim])
-        )
-        for claim in ("email", "role", "campus_id", "department_id", "section_id", "role_assignment_id"):
+        new_refresh = _RefreshToken.for_user(_User.objects.get(pk=refresh[uid_claim]))
+        for claim in (
+            "email",
+            "role",
+            "campus_id",
+            "department_id",
+            "section_id",
+            "role_assignment_id",
+        ):
             if claim in refresh.payload:
                 new_refresh[claim] = refresh.payload[claim]
         new_access = new_refresh.access_token
@@ -412,7 +469,12 @@ def jwt_refresh(request):
     except Exception as exc:
         _logger.debug("jwt_refresh failed: %s", exc)
         return Response(
-            {"error": {"code": "UNAUTHORIZED", "message": "Invalid or expired refresh token"}},
+            {
+                "error": {
+                    "code": "UNAUTHORIZED",
+                    "message": "Invalid or expired refresh token",
+                }
+            },
             status=status.HTTP_401_UNAUTHORIZED,
         )
 
@@ -440,12 +502,14 @@ def jwt_logout(request):
 def _get_user_id_claim():
     try:
         from rest_framework_simplejwt.settings import api_settings
+
         return api_settings.USER_ID_CLAIM
     except Exception:
         return "sub"
 
 
 # ── Admin: user CRUD ──────────────────────────────────────────────────────────
+
 
 class UserListCreateView(APIView):
     """GET + POST /api/v1/users/ — admin-only user management."""
@@ -455,6 +519,7 @@ class UserListCreateView(APIView):
     def _require_admin(self, request):
         if get_request_role(request) != "admin":
             from rest_framework.exceptions import PermissionDenied
+
             raise PermissionDenied("Only admins may manage users.")
 
     def get(self, request):
@@ -479,12 +544,14 @@ class UserListCreateView(APIView):
         ).order_by("last_name", "first_name")
 
         serializer = UserAdminSerializer(qs, many=True)
-        return Response({
-            "count": qs.count(),
-            "next": None,
-            "previous": None,
-            "results": serializer.data,
-        })
+        return Response(
+            {
+                "count": qs.count(),
+                "next": None,
+                "previous": None,
+                "results": serializer.data,
+            }
+        )
 
     def post(self, request):
         self._require_admin(request)
@@ -505,11 +572,13 @@ class UserDetailView(APIView):
     def _require_admin(self, request):
         if get_request_role(request) != "admin":
             from rest_framework.exceptions import PermissionDenied
+
             raise PermissionDenied("Only admins may manage users.")
 
     def _get_user(self, pk):
         from django.contrib.auth import get_user_model
         from django.shortcuts import get_object_or_404
+
         return get_object_or_404(get_user_model(), pk=pk)
 
     def patch(self, request, pk):

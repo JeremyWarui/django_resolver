@@ -10,7 +10,13 @@ import os
 
 from django.core.files.base import ContentFile
 
-from apps.tickets.models import Ticket, TicketAttachment, TicketLog, TicketComment, TicketFeedback
+from apps.tickets.models import (
+    Ticket,
+    TicketAttachment,
+    TicketLog,
+    TicketComment,
+    TicketFeedback,
+)
 from apps.tickets.serializers import (
     TicketCreateSerializer,
     TicketReadSerializer,
@@ -44,8 +50,14 @@ class TicketLogSerializer(drf_serializers.ModelSerializer):
     class Meta:
         model = TicketLog
         fields = [
-            "id", "event_type", "from_value", "to_value",
-            "reason", "actor", "level_user", "created_at",
+            "id",
+            "event_type",
+            "from_value",
+            "to_value",
+            "reason",
+            "actor",
+            "level_user",
+            "created_at",
         ]
         read_only_fields = fields
 
@@ -53,6 +65,7 @@ class TicketLogSerializer(drf_serializers.ModelSerializer):
 # ---------------------------------------------------------------------------
 # Phase 3 — kept intact
 # ---------------------------------------------------------------------------
+
 
 class TicketCreateView(CreateAPIView):
     permission_classes = [IsAuthenticated]
@@ -73,6 +86,7 @@ class TicketCreateView(CreateAPIView):
 # Phase 4 — lifecycle & interaction views
 # ---------------------------------------------------------------------------
 
+
 class TicketStatusView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -89,19 +103,27 @@ class TicketStatusView(APIView):
             )
         except TransitionError as e:
             return Response({"detail": str(e)}, status=400)
-        return Response({"ticket_no": ticket.ticket_no, "status": ticket.status}, status=200)
+        return Response(
+            {"ticket_no": ticket.ticket_no, "status": ticket.status}, status=200
+        )
 
 
 class TicketAssignView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
-        ticket = get_object_or_404(Ticket.objects.select_related("service_item", "assigned_to"), pk=pk)
-        serializer = TicketAssignSerializer(data=request.data, context={"ticket": ticket})
+        ticket = get_object_or_404(
+            Ticket.objects.select_related("service_item", "assigned_to"), pk=pk
+        )
+        serializer = TicketAssignSerializer(
+            data=request.data, context={"ticket": ticket}
+        )
         serializer.is_valid(raise_exception=True)
         assignee = serializer.validated_data["assigned_to"]
 
-        previous_assignee = ticket.assigned_to  # loaded via select_related before overwrite
+        previous_assignee = (
+            ticket.assigned_to
+        )  # loaded via select_related before overwrite
         old_status = ticket.status
 
         ticket.assigned_to = assignee
@@ -123,7 +145,9 @@ class TicketAssignView(APIView):
         )
         emit_ticket_assigned(ticket, previous_assignee=previous_assignee)
 
-        return Response({"assigned_to": assignee.pk, "status": ticket.status}, status=200)
+        return Response(
+            {"assigned_to": assignee.pk, "status": ticket.status}, status=200
+        )
 
 
 class TicketCommentListCreateView(generics.ListCreateAPIView):
@@ -161,7 +185,9 @@ class TicketFeedbackView(APIView):
 
         if ticket.status not in ("resolved", "closed"):
             return Response(
-                {"detail": "Feedback can only be submitted once the ticket is resolved."},
+                {
+                    "detail": "Feedback can only be submitted once the ticket is resolved."
+                },
                 status=400,
             )
 
@@ -192,8 +218,7 @@ class TicketLogListView(generics.ListAPIView):
 
     def get_queryset(self):
         return (
-            TicketLog.objects
-            .filter(ticket_id=self.kwargs["pk"])
+            TicketLog.objects.filter(ticket_id=self.kwargs["pk"])
             .select_related("actor", "level_user")
             .order_by("-created_at")
         )
@@ -202,6 +227,7 @@ class TicketLogListView(generics.ListAPIView):
 # ---------------------------------------------------------------------------
 # Phase 6 — scoped list + detail (§3.5, R15)
 # ---------------------------------------------------------------------------
+
 
 class TicketListCreateView(generics.ListCreateAPIView):
     """Role-scoped ticket list.
@@ -312,7 +338,10 @@ class TicketFilterOptionsView(APIView):
                     "name": (
                         r["section__campus_department__campus__code"]
                         + " - "
-                        + (r["section__section_type__name"] or f"Section {r['section_id']}")
+                        + (
+                            r["section__section_type__name"]
+                            or f"Section {r['section_id']}"
+                        )
                     ),
                 }
                 for r in section_rows
@@ -346,12 +375,16 @@ class TicketFilterOptionsView(APIView):
             key=lambda t: t["name"].lower(),
         )
 
-        req_rows = scoped.values(
-            "raised_by_id",
-            "raised_by__first_name",
-            "raised_by__last_name",
-            "raised_by__username",
-        ).order_by().distinct()
+        req_rows = (
+            scoped.values(
+                "raised_by_id",
+                "raised_by__first_name",
+                "raised_by__last_name",
+                "raised_by__username",
+            )
+            .order_by()
+            .distinct()
+        )
         requesters = sorted(
             (
                 {
@@ -486,7 +519,9 @@ class TicketAttachmentView(APIView):
         current_count = ticket.attachments.count()
         if current_count >= MAX_ATTACHMENTS_PER_TICKET:
             return Response(
-                {"detail": f"Maximum {MAX_ATTACHMENTS_PER_TICKET} attachments per ticket."},
+                {
+                    "detail": f"Maximum {MAX_ATTACHMENTS_PER_TICKET} attachments per ticket."
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -546,7 +581,10 @@ class TicketAttachmentView(APIView):
 
         is_uploader = attachment.uploaded_by_id == request.user.pk
         is_privileged = request.user.is_staff or get_request_role(request) in (
-            "admin", "manager", "hod", "hos"
+            "admin",
+            "manager",
+            "hod",
+            "hos",
         )
         if not (is_uploader or is_privileged):
             raise PermissionDenied("You can only delete your own attachments.")
@@ -572,17 +610,14 @@ class AdminAuditLogView(generics.ListAPIView):
         if not user.is_staff:
             return TicketLog.objects.none()
 
-        qs = (
-            TicketLog.objects.select_related(
-                "actor",
-                "ticket",
-                "ticket__priority",
-                "ticket__section",
-                "ticket__section__campus_department",
-                "ticket__section__campus_department__department",
-            )
-            .order_by("-created_at")
-        )
+        qs = TicketLog.objects.select_related(
+            "actor",
+            "ticket",
+            "ticket__priority",
+            "ticket__section",
+            "ticket__section__campus_department",
+            "ticket__section__campus_department__department",
+        ).order_by("-created_at")
 
         params = self.request.query_params
         if actor := params.get("actor"):

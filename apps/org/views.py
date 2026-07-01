@@ -1,4 +1,5 @@
-from rest_framework import viewsets
+from rest_framework import serializers as drf_serializers, viewsets
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -70,6 +71,49 @@ class CampusDepartmentViewSet(viewsets.ModelViewSet):
     serializer_class = CampusDepartmentSerializer
     permission_classes = [IsAdminGroup]
     pagination_class = ConfigListPagination
+
+    @action(detail=True, methods=["get"], url_path="hod-candidates")
+    def hod_candidates(self, request, pk=None):
+        """Users who have an active HOD role assignment for this campus-department."""
+        from django.contrib.auth import get_user_model
+        from apps.accounts.models import RoleAssignment
+
+        cd = self.get_object()
+        User = get_user_model()
+        users = User.objects.filter(
+            role_assignments__role="hod",
+            role_assignments__campus_department=cd,
+        ).distinct().order_by("last_name", "first_name")
+
+        data = [
+            {
+                "id": u.id,
+                "name": f"{u.first_name} {u.last_name}".strip() or u.username,
+                "username": u.username,
+            }
+            for u in users
+        ]
+        return Response(data)
+
+    @action(detail=True, methods=["patch"], url_path="assign-hod")
+    def assign_hod(self, request, pk=None):
+        """Set or clear the head_of_department for this campus-department."""
+        from django.contrib.auth import get_user_model
+
+        cd = self.get_object()
+        hod_id = request.data.get("hod_id")
+
+        if hod_id is None:
+            cd.head_of_department = None
+        else:
+            User = get_user_model()
+            try:
+                cd.head_of_department = User.objects.get(pk=hod_id)
+            except User.DoesNotExist:
+                raise drf_serializers.ValidationError({"hod_id": "User not found."})
+
+        cd.save(update_fields=["head_of_department"])
+        return Response(CampusDepartmentSerializer(cd).data)
 
 
 class SectionViewSet(viewsets.ModelViewSet):

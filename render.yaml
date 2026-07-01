@@ -15,10 +15,24 @@ services:
         generateValue: true
       - key: DEBUG
         value: False
-      - key: ALLOWED_HOSTS
-        sync: false
       - key: DJANGO_SETTINGS_MODULE
         value: resolver.settings
+      # Comma-separated list of allowed hostnames — add your Render URL and any custom domain
+      - key: ALLOWED_HOSTS
+        value: django-resolver.onrender.com
+      # Comma-separated list of allowed CORS origins (frontend URLs)
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      # Redis URL — required for Channels/WebSocket support
+      - key: REDIS_URL
+        sync: false
+      # VAPID keys for PWA push notifications — generate with py-vapid
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_ADMIN_EMAIL
+        sync: false
 
 databases:
   - name: resolver_db

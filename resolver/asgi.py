@@ -18,7 +18,6 @@ from django.core.asgi import get_asgi_application
 django_asgi_app = get_asgi_application()
 
 from channels.routing import ProtocolTypeRouter, URLRouter
-from channels.security.websocket import AllowedHostsOriginValidator
 from django.urls import path
 
 from apps.realtime.middleware import JWTWebSocketMiddleware
@@ -27,13 +26,11 @@ from apps.realtime.consumers import ServiceDeskConsumer
 application = ProtocolTypeRouter(
     {
         "http": django_asgi_app,
-        "websocket": AllowedHostsOriginValidator(
-            JWTWebSocketMiddleware(
-                URLRouter(
-                    [
-                        path("ws/", ServiceDeskConsumer.as_asgi()),
-                    ]
-                )
+        "websocket": JWTWebSocketMiddleware(
+            URLRouter(
+                [
+                    path("ws/", ServiceDeskConsumer.as_asgi()),
+                ]
             )
         ),
     }

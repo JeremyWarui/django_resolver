@@ -77,14 +77,21 @@ try:
 
     INSTALLED_APPS = ["daphne"] + INSTALLED_APPS + ["channels"]
     ASGI_APPLICATION = "resolver.asgi.application"
-    CHANNEL_LAYERS = {
-        "default": {
-            "BACKEND": "channels_redis.core.RedisChannelLayer",
-            "CONFIG": {
-                "hosts": [os.getenv("REDIS_URL", "redis://localhost:6379")],
-            },
+    _redis_url = os.getenv("REDIS_URL")
+    if _redis_url:
+        CHANNEL_LAYERS = {
+            "default": {
+                "BACKEND": "channels_redis.core.RedisChannelLayer",
+                "CONFIG": {"hosts": [_redis_url]},
+            }
         }
-    }
+    else:
+        # No Redis configured — use in-memory layer (single-process only, fine for demo)
+        CHANNEL_LAYERS = {
+            "default": {
+                "BACKEND": "channels.layers.InMemoryChannelLayer",
+            }
+        }
 except ImportError:
     pass
 

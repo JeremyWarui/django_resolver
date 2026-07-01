@@ -9,6 +9,7 @@ from .views import (
     TicketCommentListCreateView,
     TicketFeedbackView,
     TicketLogListView,
+    TicketAttachmentView,
     AdminAuditLogView,
 )
 
@@ -21,5 +22,7 @@ urlpatterns = [
     path("tickets/<int:pk>/comments/", TicketCommentListCreateView.as_view(), name="ticket-comments"),
     path("tickets/<int:pk>/feedback/", TicketFeedbackView.as_view(), name="ticket-feedback"),
     path("tickets/<int:pk>/logs/", TicketLogListView.as_view(), name="ticket-logs"),
+    path("tickets/<int:pk>/attachments/", TicketAttachmentView.as_view(), name="ticket-attachments"),
+    path("tickets/<int:pk>/attachments/<int:att_id>/", TicketAttachmentView.as_view(), name="ticket-attachment-detail"),
     path("admin/audit-log/", AdminAuditLogView.as_view(), name="admin-audit-log"),
 ]

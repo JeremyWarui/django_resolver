@@ -6,7 +6,11 @@ from rest_framework.views import APIView
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import get_object_or_404
 
-from apps.tickets.models import Ticket, TicketLog, TicketComment, TicketFeedback
+import os
+
+from django.core.files.base import ContentFile
+
+from apps.tickets.models import Ticket, TicketAttachment, TicketLog, TicketComment, TicketFeedback
 from apps.tickets.serializers import (
     TicketCreateSerializer,
     TicketReadSerializer,
@@ -14,7 +18,13 @@ from apps.tickets.serializers import (
     TicketAssignSerializer,
     TicketCommentSerializer,
     TicketFeedbackSerializer,
+    TicketAttachmentSerializer,
     _UserMinSerializer,
+)
+from apps.tickets.services.attachments import (
+    process_upload,
+    MAX_ATTACHMENTS_PER_TICKET,
+    MIME_TO_EXT,
 )
 from apps.tickets.services.lifecycle import transition_status, TransitionError
 from apps.tickets.services.scope import scoped_ticket_qs
@@ -446,6 +456,104 @@ class AuditLogSerializer(drf_serializers.Serializer):
 
     def get_reason(self, obj):
         return obj.reason or ""
+
+
+class TicketAttachmentView(APIView):
+    """Upload, list, and delete attachments on a ticket.
+
+    GET  /api/v1/tickets/<pk>/attachments/          — list attachments
+    POST /api/v1/tickets/<pk>/attachments/          — upload file(s) (multipart)
+    DELETE /api/v1/tickets/<pk>/attachments/<att>/  — delete one attachment
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def _get_ticket(self, request, pk):
+        role = get_request_role(request)
+        return get_object_or_404(scoped_ticket_qs(request.user, role), pk=pk)
+
+    def get(self, request, pk):
+        ticket = self._get_ticket(request, pk)
+        qs = ticket.attachments.select_related("uploaded_by")
+        serializer = TicketAttachmentSerializer(
+            qs, many=True, context={"request": request}
+        )
+        return Response(serializer.data)
+
+    def post(self, request, pk):
+        ticket = self._get_ticket(request, pk)
+
+        current_count = ticket.attachments.count()
+        if current_count >= MAX_ATTACHMENTS_PER_TICKET:
+            return Response(
+                {"detail": f"Maximum {MAX_ATTACHMENTS_PER_TICKET} attachments per ticket."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        files = request.FILES.getlist("files") or (
+            [request.FILES["file"]] if "file" in request.FILES else []
+        )
+        if not files:
+            return Response(
+                {"detail": "No file(s) provided. Use 'files' or 'file' field."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        slots_left = MAX_ATTACHMENTS_PER_TICKET - current_count
+        if len(files) > slots_left:
+            return Response(
+                {"detail": f"Only {slots_left} attachment slot(s) remaining."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from django.core.exceptions import ValidationError as DjangoValidationError
+
+        created = []
+        for f in files:
+            content_type = f.content_type or "application/octet-stream"
+            try:
+                processed_bytes, final_mime = process_upload(f, content_type)
+            except DjangoValidationError as exc:
+                return Response(
+                    {"detail": str(exc.message)},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            ext = MIME_TO_EXT.get(final_mime, os.path.splitext(f.name)[1].lower())
+            base_name = os.path.splitext(f.name)[0]
+            stored_name = f"{base_name}{ext}"
+
+            attachment = TicketAttachment(
+                ticket=ticket,
+                original_name=f.name,
+                mime_type=final_mime,
+                original_size=f.size,
+                stored_size=len(processed_bytes),
+                uploaded_by=request.user,
+            )
+            attachment.file.save(stored_name, ContentFile(processed_bytes), save=False)
+            attachment.save()
+            created.append(attachment)
+
+        serializer = TicketAttachmentSerializer(
+            created, many=True, context={"request": request}
+        )
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def delete(self, request, pk, att_id):
+        ticket = self._get_ticket(request, pk)
+        attachment = get_object_or_404(TicketAttachment, pk=att_id, ticket=ticket)
+
+        is_uploader = attachment.uploaded_by_id == request.user.pk
+        is_privileged = request.user.is_staff or get_request_role(request) in (
+            "admin", "manager", "hod", "hos"
+        )
+        if not (is_uploader or is_privileged):
+            raise PermissionDenied("You can only delete your own attachments.")
+
+        attachment.file.delete(save=False)
+        attachment.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class AdminAuditLogView(generics.ListAPIView):

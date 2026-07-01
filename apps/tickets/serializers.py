@@ -8,7 +8,7 @@ from apps.catalog.models import ServiceItem
 from apps.facilities.models import Facility, FacilityType
 from apps.facilities.validators import validate_location
 from apps.org.models import SectionTechnician
-from apps.tickets.models import Ticket, TicketComment, TicketFeedback, TicketLocation, TicketLog
+from apps.tickets.models import Ticket, TicketAttachment, TicketComment, TicketFeedback, TicketLocation, TicketLog
 from apps.tickets.services.routing import ServiceNotAvailableError, resolve_routing
 
 User = get_user_model()
@@ -285,3 +285,29 @@ class TicketFeedbackSerializer(serializers.ModelSerializer):
         if not (1 <= value <= 5):
             raise serializers.ValidationError("Rating must be between 1 and 5.")
         return value
+
+
+class TicketAttachmentSerializer(serializers.ModelSerializer):
+    uploaded_by = _UserMinSerializer(read_only=True)
+    url = serializers.SerializerMethodField()
+    size_saved_pct = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TicketAttachment
+        fields = [
+            "id", "original_name", "mime_type",
+            "original_size", "stored_size", "size_saved_pct",
+            "url", "uploaded_by", "created_at",
+        ]
+        read_only_fields = fields
+
+    def get_url(self, obj):
+        request = self.context.get("request")
+        if request:
+            return request.build_absolute_uri(obj.file.url)
+        return obj.file.url
+
+    def get_size_saved_pct(self, obj):
+        if not obj.original_size:
+            return 0
+        return round((1 - obj.stored_size / obj.original_size) * 100, 1)

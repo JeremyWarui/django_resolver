@@ -12,6 +12,9 @@ from apps.accounts.serializers import (
     RoleAssignmentSerializer,
     RoleAssignmentCreateSerializer,
     RoleAssignmentUpdateSerializer,
+    UserAdminSerializer,
+    UserCreateSerializer,
+    UserUpdateSerializer,
 )
 from apps.accounts.jwt_utils import build_tokens_for_assignment, serialize_auth_user
 from apps.common.permissions import get_request_role
@@ -137,7 +140,13 @@ class UserRoleAssignmentListCreateView(generics.ListCreateAPIView):
         target = self._get_target_user()
         caller_role = self._get_caller_role()
         qs = RoleAssignment.objects.filter(user=target).select_related(
-            "section", "campus_department", "department", "assigned_by"
+            "section__campus_department__campus",
+            "section__campus_department__department",
+            "section__section_type",
+            "campus_department__campus",
+            "campus_department__department",
+            "department",
+            "assigned_by",
         )
         if caller_role == "admin":
             return qs
@@ -179,19 +188,45 @@ class UserRoleAssignmentListCreateView(generics.ListCreateAPIView):
                         {"detail": "HOD can only create assignments within their campus department."},
                         status=status.HTTP_403_FORBIDDEN,
                     )
-            # HOD can only create technician or hos cover roles.
             if vd.get("role") not in ("technician", "hos"):
                 return Response(
                     {"detail": "HOD can only create technician or HOS cover assignments."},
                     status=status.HTTP_403_FORBIDDEN,
                 )
+            vd["is_primary"] = False  # HOD can only create cover assignments
 
-        ra = RoleAssignment.objects.create(
-            user=target,
-            is_primary=False,
-            assigned_by=request.user,
-            **vd,
-        )
+        is_primary = vd.pop("is_primary", False) if caller_role == "admin" else (vd.pop("is_primary", None) or False)
+
+        # Strip the frontend-friendly keys before creating (already resolved to FK objects)
+        vd.pop("campus_id", None)
+        vd.pop("department_id", None)
+        vd.pop("section_id", None)
+
+        from django.db import IntegrityError
+        try:
+            ra = RoleAssignment.objects.create(
+                user=target,
+                is_primary=is_primary,
+                assigned_by=request.user,
+                **vd,
+            )
+        except IntegrityError as exc:
+            msg = str(exc)
+            if "one_primary_role_per_user" in msg:
+                return Response(
+                    {"detail": "This user already has a primary role assignment. Delete or demote it first, or set is_primary=false."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            raise
+        ra = RoleAssignment.objects.select_related(
+            "section__campus_department__campus",
+            "section__campus_department__department",
+            "section__section_type",
+            "campus_department__campus",
+            "campus_department__department",
+            "department",
+            "assigned_by",
+        ).get(pk=ra.pk)
         return Response(RoleAssignmentSerializer(ra).data, status=status.HTTP_201_CREATED)
 
 
@@ -408,3 +443,90 @@ def _get_user_id_claim():
         return api_settings.USER_ID_CLAIM
     except Exception:
         return "sub"
+
+
+# ── Admin: user CRUD ──────────────────────────────────────────────────────────
+
+class UserListCreateView(APIView):
+    """GET + POST /api/v1/users/ — admin-only user management."""
+
+    permission_classes = [IsAuthenticated]
+
+    def _require_admin(self, request):
+        if get_request_role(request) != "admin":
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Only admins may manage users.")
+
+    def get(self, request):
+        self._require_admin(request)
+        from django.contrib.auth import get_user_model
+        from django.db.models import Prefetch
+
+        User = get_user_model()
+        qs = User.objects.prefetch_related(
+            Prefetch(
+                "role_assignments",
+                queryset=RoleAssignment.objects.filter(is_primary=True).select_related(
+                    "section__campus_department__campus",
+                    "section__campus_department__department",
+                    "section__section_type",
+                    "campus_department__campus",
+                    "campus_department__department",
+                    "department",
+                ),
+                to_attr="primary_ra_list",
+            )
+        ).order_by("last_name", "first_name")
+
+        serializer = UserAdminSerializer(qs, many=True)
+        return Response({
+            "count": qs.count(),
+            "next": None,
+            "previous": None,
+            "results": serializer.data,
+        })
+
+    def post(self, request):
+        self._require_admin(request)
+        serializer = UserCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response(
+            UserAdminSerializer(user).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class UserDetailView(APIView):
+    """PATCH + DELETE /api/v1/users/<pk>/ — admin-only."""
+
+    permission_classes = [IsAuthenticated]
+
+    def _require_admin(self, request):
+        if get_request_role(request) != "admin":
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Only admins may manage users.")
+
+    def _get_user(self, pk):
+        from django.contrib.auth import get_user_model
+        from django.shortcuts import get_object_or_404
+        return get_object_or_404(get_user_model(), pk=pk)
+
+    def patch(self, request, pk):
+        self._require_admin(request)
+        user = self._get_user(pk)
+        serializer = UserUpdateSerializer(user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response(UserAdminSerializer(user).data)
+
+    def delete(self, request, pk):
+        self._require_admin(request)
+        user = self._get_user(pk)
+        if user == request.user:
+            return Response(
+                {"detail": "You cannot delete your own account."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        user.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

@@ -1,3 +1,5 @@
+import os
+import uuid
 from datetime import timedelta
 
 from django.conf import settings
@@ -304,3 +306,38 @@ class TicketFeedback(models.Model):
 
     def __str__(self):
         return f"Feedback {self.rating}/5 for {self.ticket_id}"
+
+
+def _attachment_upload_to(instance, filename):
+    ext = os.path.splitext(filename)[1].lower()
+    return f"tickets/{instance.ticket_id}/attachments/{uuid.uuid4().hex}{ext}"
+
+
+class TicketAttachment(models.Model):
+    """File or image attached to a ticket. Stored after server-side compression."""
+
+    ticket = models.ForeignKey(
+        Ticket,
+        on_delete=models.CASCADE,
+        related_name="attachments",
+    )
+    file = models.FileField(upload_to=_attachment_upload_to)
+    original_name = models.CharField(max_length=255)
+    mime_type = models.CharField(max_length=128)
+    original_size = models.PositiveIntegerField()
+    stored_size = models.PositiveIntegerField()
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="ticket_attachments",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        app_label = "tickets"
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"Attachment '{self.original_name}' on ticket {self.ticket_id}"

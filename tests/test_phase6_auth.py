@@ -211,7 +211,7 @@ class TestRoleAssignmentCRUD:
             f"/api/v1/users/{target.id}/role-assignments/",
             {
                 "role": "technician",
-                "section": section.id,
+                "section_id": section.id,
                 "valid_until": (timezone.now() + timedelta(days=7)).isoformat(),
             },
         )
@@ -230,7 +230,7 @@ class TestRoleAssignmentCRUD:
             f"/api/v1/users/{target.id}/role-assignments/",
             {
                 "role": "technician",
-                "section": section.id,
+                "section_id": section.id,
                 "valid_until": (timezone.now() + timedelta(days=7)).isoformat(),
             },
         )
@@ -256,7 +256,7 @@ class TestRoleAssignmentCRUD:
             f"/api/v1/users/{target.id}/role-assignments/",
             {
                 "role": "technician",
-                "section": section_other.id,
+                "section_id": section_other.id,
                 "valid_until": (timezone.now() + timedelta(days=7)).isoformat(),
             },
         )
@@ -270,7 +270,7 @@ class TestRoleAssignmentCRUD:
         api_client.force_authenticate(user=user)
         response = api_client.post(
             f"/api/v1/users/{target.id}/role-assignments/",
-            {"role": "technician", "section": section.id},
+            {"role": "technician", "section_id": section.id},
         )
         assert response.status_code == 403
 
@@ -282,7 +282,7 @@ class TestRoleAssignmentCRUD:
         api_client.force_authenticate(user=tech)
         response = api_client.post(
             f"/api/v1/users/{target.id}/role-assignments/",
-            {"role": "technician", "section": section.id},
+            {"role": "technician", "section_id": section.id},
         )
         assert response.status_code == 403
 

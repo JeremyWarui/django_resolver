@@ -32,7 +32,11 @@ if not SECRET_KEY:
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
 # Allow all hosts in production for now (more secure to specify exact domains)
-ALLOWED_HOSTS = ["127.0.0.1", "localhost", "192.168.100.31", "django-resolver.onrender.com"]
+ALLOWED_HOSTS = [
+    h.strip()
+    for h in os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
+    if h.strip()
+]
 # Application definition
 
 INSTALLED_APPS = [
@@ -299,6 +303,9 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
 # Explicitly define static files finders
 STATICFILES_FINDERS = [
     "django.contrib.staticfiles.finders.FileSystemFinder",
@@ -360,7 +367,7 @@ CORS_ALLOWED_ORIGINS = [
     for o in os.getenv(
         "ALLOWED_ORIGINS",
         # 5173 = vite dev, 4173 = vite preview (PWA/phone testing)
-        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173,http://192.168.100.31:4173",
+        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173",
     ).split(",")
     if o.strip()
 ]

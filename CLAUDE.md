@@ -314,6 +314,8 @@ Each takes `role: 'admin' | 'manager' | 'hod' | 'hos'`; the role surface is only
 
 **Replacing a primary `RoleAssignment` demotes, never errors (C16):** `UserRoleAssignmentListCreateView` (`apps/accounts/views.py`) demotes the user's existing primary assignment (`is_primary=False`, kept for audit) before creating a new primary one, inside `transaction.atomic()`. Do not "fix" a `one_primary_role_per_user` `IntegrityError` here by deleting the old row — the old assignment must survive, just demoted.
 
+**`ServiceItem.default_priority` is a nullable per-item override, not a required field:** `ServiceItemSerializer` writes it via `default_priority_id` (nullable — same pattern as `ServiceCategorySerializer`). `TicketCreateSerializer.validate()` resolves `item.default_priority or category.default_priority`, so leaving it unset (the common case) inherits the category's priority. Use this only for genuine outliers within a category (e.g. "Burst Pipe" inside "Plumbing Services") — retagging the whole category is the wrong tool when just one item is the exception.
+
 ---
 
 ## Development checklist

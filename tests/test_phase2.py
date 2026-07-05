@@ -549,6 +549,53 @@ def test_create_service_item(api_client, admin_user, service_category):
     )
     assert resp.status_code == 201
     assert resp.data["name"] == "Paper Jam"
+    assert resp.data["default_priority"] is None
+
+
+@pytest.mark.django_db
+def test_create_service_item_with_priority_override(api_client, admin_user, service_category):
+    """Admin can set a per-item priority override distinct from the category default
+    (e.g. 'Electrical' within 'Maintenance Services' needing a higher urgency than
+    its category's default)."""
+    from apps.sla.models import Priority
+
+    override = Priority.objects.create(
+        name="Critical", rank=99, response_minutes=15, resolution_minutes=60
+    )
+    api_client.force_authenticate(user=admin_user)
+    resp = api_client.post(
+        "/api/v1/service-items/",
+        {
+            "category": service_category.id,
+            "name": "Exposed Wiring",
+            "default_priority_id": override.id,
+        },
+        format="json",
+    )
+    assert resp.status_code == 201
+    assert resp.data["default_priority"]["id"] == override.id
+    assert resp.data["default_priority"]["name"] == "Critical"
+
+
+@pytest.mark.django_db
+def test_service_item_priority_override_can_be_cleared(api_client, admin_user, service_category, priority):
+    """Setting default_priority_id back to null reverts the item to inheriting the
+    category's default_priority."""
+    from apps.catalog.models import ServiceItem
+
+    item = ServiceItem.objects.create(
+        category=service_category, name="Loose Cable", default_priority=priority
+    )
+    api_client.force_authenticate(user=admin_user)
+    resp = api_client.patch(
+        f"/api/v1/service-items/{item.id}/",
+        {"default_priority_id": None},
+        format="json",
+    )
+    assert resp.status_code == 200
+    assert resp.data["default_priority"] is None
+    item.refresh_from_db()
+    assert item.default_priority_id is None
 
 
 # ── Nested section technicians ────────────────────────────────────────────────

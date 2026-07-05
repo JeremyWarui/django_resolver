@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from apps.catalog.models import ServiceCategory, ServiceItem
+from apps.sla.models import Priority
 
 
 class PriorityInlineSerializer(serializers.Serializer):
@@ -12,7 +13,20 @@ class PriorityInlineSerializer(serializers.Serializer):
 
 
 class ServiceItemSerializer(serializers.ModelSerializer):
+    """default_priority is a nullable override of the parent category's priority —
+    read as a nested object, written via default_priority_id. Null means "inherit
+    the category's default_priority" (see TicketCreateSerializer.validate)."""
+
+    # Read: full nested object with minutes
     default_priority = PriorityInlineSerializer(read_only=True)
+    # Write: accept the FK as an integer PK; null clears the override (inherit category)
+    default_priority_id = serializers.PrimaryKeyRelatedField(
+        source="default_priority",
+        queryset=Priority.objects.all(),
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
 
     class Meta:
         model = ServiceItem
@@ -23,6 +37,7 @@ class ServiceItemSerializer(serializers.ModelSerializer):
             "description",
             "is_active",
             "default_priority",
+            "default_priority_id",
         ]
 
 
@@ -40,9 +55,7 @@ class ServiceCategorySerializer(serializers.ModelSerializer):
     # Write: accept the FK as an integer PK
     default_priority_id = serializers.PrimaryKeyRelatedField(
         source="default_priority",
-        queryset=__import__(
-            "apps.sla.models", fromlist=["Priority"]
-        ).Priority.objects.all(),
+        queryset=Priority.objects.all(),
         write_only=True,
         required=False,
         allow_null=True,

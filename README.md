@@ -159,6 +159,8 @@ Campus
 
 **Escalation:** Technician → HOS → HOD — structural, time-based, cron-driven.
 
+**Priority resolution:** `ServiceItem.default_priority` (optional per-item override) → falls back to `ServiceCategory.default_priority`. Lets one urgent item (e.g. "Burst Pipe") outrank its otherwise-routine category (e.g. "Plumbing Services") without moving it or changing the category for everyone else.
+
 ---
 
 ## License

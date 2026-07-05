@@ -2,7 +2,7 @@
 
 Backend for the Kenya School of Government service desk system. A multi-campus ticket lifecycle API with role-scoped analytics, Excel report generation, and real-time event streaming.
 
-**Stack:** Django 6.0 · DRF 3.16 · PostgreSQL (Neon) · JWT · Django Channels · pytest (317 tests)
+**Stack:** Django 6.0 · DRF 3.16 · PostgreSQL (Neon) · JWT · Django Channels · pytest (343 tests, 1 xfail)
 
 ---
 
@@ -34,16 +34,16 @@ python manage.py runserver          # http://localhost:8000
 
 ## Seed Accounts
 
-`seed_full` creates demo users across all roles. All share the password defined in the seed command (see `apps/common/management/commands/seed_full.py`).
+`seed_full` creates demo users across all roles, all sharing the `DEFAULT_PASSWORD` constant defined in `apps/common/management/commands/seed_full.py` (not reproduced here — read it from the source file).
 
 | Role | Username example |
 |------|-----------------|
-| Admin | admin_nrb |
-| Manager | mgr_nrb |
-| HOD | hod_nrb_ict |
-| HOS | hos_nrb_ict_networks |
-| Technician | tech_nrb_networks_1 |
-| Requester | any staff user |
+| Admin | admin |
+| Manager | admin_mgr |
+| HOD | nrb_admin_hod |
+| HOS | nrb_networks_hos |
+| Technician | nrb_networks_tech1 |
+| Requester | any user with no `RoleAssignment` |
 
 ---
 
@@ -105,7 +105,7 @@ Analytics:      GET   /analytics/overview/   GET /analytics/performance/technici
                 GET   /analytics/performance/sections/
 Reports:        GET   /reports/types/        GET /reports/generate/?report_type=...&timeframe=...
 Audit log:      GET   /admin/audit-log/      (admin only)
-Org:            GET   /campuses/  /departments/  /sections/  /technicians/
+Org:            GET   /campuses/  /departments/?campus=  /sections/?department=  /technicians/
 Facilities:     GET   /facilities/
 Catalogue:      GET   /catalogue/categories/  /catalogue/items/
 ```
@@ -125,7 +125,7 @@ Reports stream `.xlsx` files with a Summary sheet + data sheets (Ticket Lifecycl
 ## Testing
 
 ```bash
-pytest                                      # all tests (317 passed, 1 xfail)
+pytest                                      # all tests (343 passed, 1 xfail)
 pytest apps/tickets/tests/ -v              # specific app
 pytest --create-db                         # rebuild test DB after model changes
 pytest --cov-report=html                   # HTML coverage report

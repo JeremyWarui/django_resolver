@@ -310,6 +310,10 @@ Each takes `role: 'admin' | 'manager' | 'hod' | 'hos'`; the role surface is only
 
 **Facility seeding:** `seed_full.py` seeds 18 `Facility` objects across 3 campuses (8 NRB, 5 MSA, 5 KSM) via `_seed_facilities()`. Re-running is safe (get_or_create keyed on `campus + code`). `FacilityType` reference data (5 types) is seeded by `_seed_facility_types()`.
 
+**Reference-data query params must actually filter (C15):** `/departments/?campus=` and `/sections/?department=` are implemented via `get_queryset()` overrides on `DepartmentViewSet`/`SectionViewSet` (`apps/org/views.py`) — filtering `campus_departments__campus_id` / `campus_department__department_id`. If you add a new scoping query param to a reference-data endpoint, wire the filter in `get_queryset()` in the same commit; an accepted-but-ignored param is worse than none; add a negative test like `test_departments_filtered_by_campus` / `test_sections_filtered_by_department` in `tests/test_phase2.py`.
+
+**Replacing a primary `RoleAssignment` demotes, never errors (C16):** `UserRoleAssignmentListCreateView` (`apps/accounts/views.py`) demotes the user's existing primary assignment (`is_primary=False`, kept for audit) before creating a new primary one, inside `transaction.atomic()`. Do not "fix" a `one_primary_role_per_user` `IntegrityError` here by deleting the old row — the old assignment must survive, just demoted.
+
 ---
 
 ## Development checklist

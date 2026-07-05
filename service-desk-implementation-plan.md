@@ -504,8 +504,9 @@ active role, §3.8). Admin role-cover CRUD: `POST /users/{id}/role-assignments/`
 /users/{id}/role-assignments/{ra}/` (HOD/admin within scope).
 
 ### 5.2 Configuration / admin (admin role)
-CRUD: `/campuses/`, `/departments/`, `/section-types/`, `/campus-departments/`, `/sections/`,
-`/sections/{id}/technicians/`, `/priorities/` & `/priorities/{id}/escalation-rules/`,
+CRUD: `/campuses/`, `/departments/` (`?campus=` scopes to departments present at that campus — C15),
+`/section-types/`, `/campus-departments/`, `/sections/` (`?department=` scopes to that department's
+sections — C15), `/sections/{id}/technicians/`, `/priorities/` & `/priorities/{id}/escalation-rules/`,
 `/facility-types/` (read-mostly; fixed set), `/facilities/`, `/service-categories/`, `/service-items/`.
 
 ### 5.3 Ticketing
@@ -1032,3 +1033,22 @@ reuse the connection and respond in milliseconds. Rule: both database branches i
 must have `CONN_MAX_AGE` set (≥ 60 s for dev, ≥ 300 s for prod). The `DATABASE_URL` branch already
 had it via `dj_database_url.config(conn_max_age=600)`. Omitting it on the direct-env-var branch
 causes NeonDB cold-start latency that is indistinguishable from application errors.
+
+**C15 — `/departments/?campus=` and `/sections/?department=` accepted their query params but
+never applied them.** `DepartmentViewSet` and `SectionViewSet` had no `get_queryset()` override, so
+every Campus→Department→Section cascading select in the admin UI (Users page role-assignment form,
+Technician form) silently showed every department/section regardless of the selected scope — the
+param was accepted, just ignored. Fix: `DepartmentViewSet.get_queryset()` filters by
+`campus_departments__campus_id` when `?campus=` is present; `SectionViewSet.get_queryset()` filters
+by `campus_department__department_id` when `?department=` is present. Rule: a reference-data
+endpoint that documents a scoping query param must apply it in `get_queryset()` — an accepted-but-
+ignored param is worse than a missing one, because the URL looks correct while the response isn't.
+
+**C16 — Replacing a user's primary `RoleAssignment` via POST must demote the existing one, not
+error.** `UserRoleAssignmentListCreateView` only handled the delete-old-then-create-new path;
+posting a new `is_primary=True` assignment directly (the Users admin page's promote/demote flow)
+hit the `one_primary_role_per_user` `IntegrityError` instead of replacing it. Fix: when
+`is_primary=True`, the view first runs `target.role_assignments.filter(is_primary=True).update(is_primary=False)`
+inside `transaction.atomic()`, then creates the new assignment. Rule: replacing a primary role is
+demote-then-create, not delete-then-create — the old `RoleAssignment` row must remain (audit trail,
+R17 attribution), just no longer primary.

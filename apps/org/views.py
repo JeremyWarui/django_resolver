@@ -43,6 +43,13 @@ class DepartmentViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrReadOnly]
     pagination_class = ConfigListPagination
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        campus_id = self.request.query_params.get("campus")
+        if campus_id:
+            qs = qs.filter(campus_departments__campus_id=campus_id)
+        return qs
+
 
 class SectionTypeViewSet(viewsets.ModelViewSet):
     """Admin CRUD for section types.
@@ -134,6 +141,13 @@ class SectionViewSet(viewsets.ModelViewSet):
     serializer_class = SectionSerializer
     permission_classes = [IsAdminOrReadOnly]
     pagination_class = ConfigListPagination
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        department_id = self.request.query_params.get("department")
+        if department_id:
+            qs = qs.filter(campus_department__department_id=department_id)
+        return qs
 
 
 class SectionTechnicianViewSet(viewsets.ModelViewSet):

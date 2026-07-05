@@ -350,6 +350,51 @@ def test_create_department(api_client, admin_user):
 
 
 @pytest.mark.django_db
+def test_departments_filtered_by_campus(api_client, regular_user, campus, campus_b, dept):
+    """GET /departments/?campus=X returns only departments present at campus X."""
+    from apps.org.models import CampusDepartment, Department
+
+    dept_b = Department.objects.create(name="Human Resources", code="HR")
+    CampusDepartment.objects.create(campus=campus, department=dept)
+    CampusDepartment.objects.create(campus=campus_b, department=dept_b)
+
+    api_client.force_authenticate(user=regular_user)
+    resp = api_client.get("/api/v1/departments/", {"campus": campus.id})
+    assert resp.status_code == 200
+    ids = [d["id"] for d in resp.data["results"]]
+    assert dept.id in ids
+    assert dept_b.id not in ids
+
+
+@pytest.mark.django_db
+def test_sections_filtered_by_department(api_client, regular_user, campus_dept):
+    """GET /sections/?department=X returns only sections under department X."""
+    from apps.org.models import CampusDepartment, Department, Section, SectionType
+
+    dept_b = Department.objects.create(name="Human Resources", code="HR")
+    campus_dept_b = CampusDepartment.objects.create(
+        campus=campus_dept.campus, department=dept_b
+    )
+    section_type_b = SectionType.objects.create(department=dept_b, name="Payroll", code="PAY")
+    section_type_a = SectionType.objects.create(
+        department=campus_dept.department, name="Support", code="SUP2"
+    )
+    section_a = Section.objects.create(
+        campus_department=campus_dept, section_type=section_type_a, is_active=True
+    )
+    section_b = Section.objects.create(
+        campus_department=campus_dept_b, section_type=section_type_b, is_active=True
+    )
+
+    api_client.force_authenticate(user=regular_user)
+    resp = api_client.get("/api/v1/sections/", {"department": campus_dept.department_id})
+    assert resp.status_code == 200
+    ids = [s["id"] for s in resp.data["results"]]
+    assert section_a.id in ids
+    assert section_b.id not in ids
+
+
+@pytest.mark.django_db
 def test_create_section_type(api_client, admin_user, dept):
     """Admin can create a section type."""
     api_client.force_authenticate(user=admin_user)

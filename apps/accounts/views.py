@@ -231,15 +231,23 @@ class UserRoleAssignmentListCreateView(generics.ListCreateAPIView):
         vd.pop("department_id", None)
         vd.pop("section_id", None)
 
-        from django.db import IntegrityError
+        from django.db import IntegrityError, transaction
 
         try:
-            ra = RoleAssignment.objects.create(
-                user=target,
-                is_primary=is_primary,
-                assigned_by=request.user,
-                **vd,
-            )
+            with transaction.atomic():
+                if is_primary:
+                    # Replacing the primary role (e.g. promoting/demoting a user from
+                    # the Users admin page) — demote the existing primary instead of
+                    # erroring, since only one primary assignment is allowed per user.
+                    target.role_assignments.filter(is_primary=True).update(
+                        is_primary=False
+                    )
+                ra = RoleAssignment.objects.create(
+                    user=target,
+                    is_primary=is_primary,
+                    assigned_by=request.user,
+                    **vd,
+                )
         except IntegrityError as exc:
             msg = str(exc)
             if "one_primary_role_per_user" in msg:

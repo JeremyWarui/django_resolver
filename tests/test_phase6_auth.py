@@ -364,6 +364,37 @@ class TestRoleAssignmentCRUD:
         assert response.status_code == 204
         assert not RoleAssignment.objects.filter(pk=ra.id).exists()
 
+    def test_admin_replacing_primary_role_demotes_old_one(
+        self, api_client, campus, section, campus_dept
+    ):
+        """Promoting/demoting a user from the Users admin page: posting a new
+        is_primary=True assignment must demote the existing primary rather than
+        error, and the demoted assignment must remain (not be deleted)."""
+        admin = make_user("ra_replace_admin", campus=campus, role="admin")
+        target = make_user(
+            "ra_replace_target", campus=campus, role="technician", section=section
+        )
+        old_primary = target.role_assignments.get(is_primary=True)
+
+        api_client.force_authenticate(user=admin)
+        response = api_client.post(
+            f"/api/v1/users/{target.id}/role-assignments/",
+            {
+                "role": "hod",
+                "campus_id": campus.id,
+                "department_id": campus_dept.department_id,
+                "is_primary": True,
+            },
+        )
+        assert response.status_code == 201
+        assert response.data["role"] == "hod"
+        assert response.data["is_primary"] is True
+
+        old_primary.refresh_from_db()
+        assert old_primary.is_primary is False
+        assert target.role_assignments.filter(is_primary=True).count() == 1
+        assert target.role_assignments.get(is_primary=True).role == "hod"
+
     def test_cannot_delete_primary_assignment(self, api_client, campus, section):
         admin = make_user("ra_del_primary_admin", campus=campus, role="admin")
         target = make_user(

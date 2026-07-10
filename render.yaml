@@ -28,6 +28,14 @@ services:
       # /admin/login/ fail with "Origin checking failed".
       - key: CSRF_TRUSTED_ORIGINS
         value: https://django-resolver.onrender.com,https://resolver-zeta.vercel.app
+      # Bootstrap Django admin superuser — build.sh runs `createsuperuser --no-input`,
+      # which silently fails (swallowed by `|| echo`) if these three aren't all set.
+      - key: DJANGO_SUPERUSER_USERNAME
+        sync: false
+      - key: DJANGO_SUPERUSER_EMAIL
+        sync: false
+      - key: DJANGO_SUPERUSER_PASSWORD
+        sync: false
       # Redis URL — required for Channels/WebSocket support
       - key: REDIS_URL
         sync: false

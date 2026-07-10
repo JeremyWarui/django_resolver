@@ -145,8 +145,11 @@ class SectionViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
         department_id = self.request.query_params.get("department")
+        campus_id = self.request.query_params.get("campus")
         if department_id:
             qs = qs.filter(campus_department__department_id=department_id)
+        if campus_id:
+            qs = qs.filter(campus_department__campus_id=campus_id)
         return qs
 
 

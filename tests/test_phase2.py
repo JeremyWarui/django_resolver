@@ -395,6 +395,33 @@ def test_sections_filtered_by_department(api_client, regular_user, campus_dept):
 
 
 @pytest.mark.django_db
+def test_sections_filtered_by_campus_and_department(
+    api_client, regular_user, campus, campus_b, dept, section_type
+):
+    """GET /sections/?campus=X&department=Y returns only sections at that
+    campus — the same department present at another campus must not leak in."""
+    from apps.org.models import CampusDepartment, Section
+
+    campus_dept_a = CampusDepartment.objects.create(campus=campus, department=dept)
+    campus_dept_b = CampusDepartment.objects.create(campus=campus_b, department=dept)
+    section_a = Section.objects.create(
+        campus_department=campus_dept_a, section_type=section_type, is_active=True
+    )
+    section_b = Section.objects.create(
+        campus_department=campus_dept_b, section_type=section_type, is_active=True
+    )
+
+    api_client.force_authenticate(user=regular_user)
+    resp = api_client.get(
+        "/api/v1/sections/", {"campus": campus.id, "department": dept.id}
+    )
+    assert resp.status_code == 200
+    ids = [s["id"] for s in resp.data["results"]]
+    assert section_a.id in ids
+    assert section_b.id not in ids
+
+
+@pytest.mark.django_db
 def test_create_section_type(api_client, admin_user, dept):
     """Admin can create a section type."""
     api_client.force_authenticate(user=admin_user)

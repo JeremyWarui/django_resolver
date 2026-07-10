@@ -62,6 +62,7 @@ class RoleAssignmentSerializer(serializers.ModelSerializer):
             "section_name",
             "assigned_by_username",
             "assigned_at",
+            "valid_until",
         ]
         read_only_fields = fields
 
@@ -160,6 +161,11 @@ class RoleAssignmentCreateSerializer(serializers.Serializer):
 
         elif role in ("admin", "user"):
             pass  # no scope required
+
+        if not attrs.get("is_primary") and not attrs.get("valid_until"):
+            raise serializers.ValidationError(
+                {"valid_until": "A cover (non-primary) assignment requires an end date."}
+            )
 
         return attrs
 

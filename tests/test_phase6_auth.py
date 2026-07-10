@@ -395,6 +395,32 @@ class TestRoleAssignmentCRUD:
         assert target.role_assignments.filter(is_primary=True).count() == 1
         assert target.role_assignments.get(is_primary=True).role == "hod"
 
+    def test_cover_assignment_requires_valid_until(self, api_client, campus, section):
+        """A non-primary (cover) assignment must always carry an end date —
+        otherwise it's indistinguishable from a second standing role."""
+        admin = make_user("ra_no_expiry_admin", campus=campus, role="admin")
+        target = make_user("ra_no_expiry_target", campus=campus)
+        api_client.force_authenticate(user=admin)
+        response = api_client.post(
+            f"/api/v1/users/{target.id}/role-assignments/",
+            {"role": "technician", "section_id": section.id},
+        )
+        assert response.status_code == 400
+        assert "valid_until" in response.data
+
+    def test_list_role_assignments_returns_bare_list(self, api_client, campus, section):
+        """GET /users/{id}/role-assignments/ must return a bare JSON array, not a
+        paginated envelope — the frontend calls .map() directly on the response
+        and a user only ever has a handful of assignments."""
+        admin = make_user("ra_list_admin", campus=campus, role="admin")
+        target = make_user(
+            "ra_list_target", campus=campus, role="technician", section=section
+        )
+        api_client.force_authenticate(user=admin)
+        response = api_client.get(f"/api/v1/users/{target.id}/role-assignments/")
+        assert response.status_code == 200
+        assert isinstance(response.data, list)
+
     def test_cannot_delete_primary_assignment(self, api_client, campus, section):
         admin = make_user("ra_del_primary_admin", campus=campus, role="admin")
         target = make_user(

@@ -146,6 +146,7 @@ class UserRoleAssignmentListCreateView(generics.ListCreateAPIView):
 
     permission_classes = [IsAuthenticated]
     serializer_class = RoleAssignmentSerializer
+    pagination_class = None  # a user has only a handful of assignments; frontend expects a bare list
 
     def _get_target_user(self):
         from django.contrib.auth import get_user_model

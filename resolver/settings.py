@@ -150,12 +150,12 @@ UNFOLD = {
                     {
                         "title": "Comments",
                         "icon": "comment",
-                        "link": "/admin/tickets/comment/",
+                        "link": "/admin/tickets/ticketcomment/",
                     },
                     {
                         "title": "Feedback",
                         "icon": "star_rate",
-                        "link": "/admin/tickets/feedback/",
+                        "link": "/admin/tickets/ticketfeedback/",
                     },
                 ],
             },
@@ -166,18 +166,33 @@ UNFOLD = {
                     {
                         "title": "Users",
                         "icon": "people",
-                        "link": "/admin/tickets/customuser/",
+                        "link": "/admin/accounts/customuser/",
                         "badge": "apps.common.admin.user_count_badge",
+                    },
+                    {
+                        "title": "Role Assignments",
+                        "icon": "assignment_ind",
+                        "link": "/admin/accounts/roleassignment/",
+                    },
+                    {
+                        "title": "Campuses",
+                        "icon": "location_city",
+                        "link": "/admin/org/campus/",
+                    },
+                    {
+                        "title": "Departments",
+                        "icon": "apartment",
+                        "link": "/admin/org/department/",
                     },
                     {
                         "title": "Sections",
                         "icon": "category",
-                        "link": "/admin/tickets/section/",
+                        "link": "/admin/org/section/",
                     },
                     {
                         "title": "Facilities",
                         "icon": "business",
-                        "link": "/admin/tickets/facility/",
+                        "link": "/admin/facilities/facility/",
                         "badge": "apps.common.admin.facility_count_badge",
                     },
                 ],

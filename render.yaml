@@ -23,6 +23,11 @@ services:
       # Comma-separated list of allowed CORS origins (frontend URLs)
       - key: CORS_ALLOWED_ORIGINS
         value: https://resolver-zeta.vercel.app
+      # Comma-separated list of trusted origins for Django's CSRF Origin check —
+      # must include the scheme (https://) and this Render URL, or POSTs to
+      # /admin/login/ fail with "Origin checking failed".
+      - key: CSRF_TRUSTED_ORIGINS
+        value: https://django-resolver.onrender.com,https://resolver-zeta.vercel.app
       # Redis URL — required for Channels/WebSocket support
       - key: REDIS_URL
         sync: false

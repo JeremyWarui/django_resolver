@@ -36,6 +36,23 @@ ALLOWED_HOSTS = [
     for h in os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
     if h.strip()
 ]
+
+# Django's CSRF Origin check compares against this explicitly (not ALLOWED_HOSTS) —
+# without it, POSTs to /admin/login/ fail with "Origin checking failed" once the
+# site is served over HTTPS behind a proxy (Render/Cloudflare).
+CSRF_TRUSTED_ORIGINS = [
+    o.strip()
+    for o in os.getenv(
+        "CSRF_TRUSTED_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173",
+    ).split(",")
+    if o.strip()
+]
+
+# Render terminates TLS at its proxy and forwards plain HTTP with this header —
+# without it, request.is_secure() is False and secure cookies/CSRF checks misbehave.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -372,7 +389,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 CORS_ALLOWED_ORIGINS = [
     o.strip()
     for o in os.getenv(
-        "ALLOWED_ORIGINS",
+        "CORS_ALLOWED_ORIGINS",
         # 5173 = vite dev, 4173 = vite preview (PWA/phone testing)
         "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173",
     ).split(",")

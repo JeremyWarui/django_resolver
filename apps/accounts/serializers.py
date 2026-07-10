@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework import serializers
 
-from apps.accounts.models import RoleAssignment
+from apps.accounts.models import RoleAssignment, UserProfile
 
 User = get_user_model()
 
@@ -217,6 +217,8 @@ class UserAdminSerializer(serializers.ModelSerializer):
     primary_department_id = serializers.SerializerMethodField()
     primary_department_display = serializers.SerializerMethodField()
     primary_department_name = serializers.SerializerMethodField()
+    home_campus_id = serializers.SerializerMethodField()
+    home_campus_name = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -235,11 +237,25 @@ class UserAdminSerializer(serializers.ModelSerializer):
             "primary_department_id",
             "primary_department_display",
             "primary_department_name",
+            "home_campus_id",
+            "home_campus_name",
         ]
 
     def get_role(self, obj):
         ra = _primary_ra(obj)
         return ra.role if ra else "user"
+
+    def _home_campus(self, obj):
+        profile = getattr(obj, "profile", None)
+        return profile.campus if profile and profile.campus_id else None
+
+    def get_home_campus_id(self, obj):
+        campus = self._home_campus(obj)
+        return campus.pk if campus else None
+
+    def get_home_campus_name(self, obj):
+        campus = self._home_campus(obj)
+        return campus.name if campus else None
 
     def get_campus_name(self, obj):
         ra = _primary_ra(obj)
@@ -290,6 +306,7 @@ class UserCreateSerializer(serializers.Serializer):
     email = serializers.EmailField()
     username = serializers.CharField(required=False, allow_blank=True)
     password = serializers.CharField(write_only=True)
+    campus_id = serializers.IntegerField()
 
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
@@ -301,6 +318,13 @@ class UserCreateSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 "A user with this username already exists."
             )
+        return value
+
+    def validate_campus_id(self, value):
+        from apps.org.models import Campus
+
+        if not Campus.objects.filter(pk=value).exists():
+            raise serializers.ValidationError("Campus not found.")
         return value
 
     def create(self, validated_data):
@@ -323,6 +347,7 @@ class UserCreateSerializer(serializers.Serializer):
             last_name=last,
         )
         RoleAssignment.objects.create(user=user, role="user", is_primary=True)
+        UserProfile.objects.create(user=user, campus_id=validated_data["campus_id"])
         return user
 
 
@@ -332,6 +357,7 @@ class UserUpdateSerializer(serializers.Serializer):
     first_name = serializers.CharField(required=False)
     last_name = serializers.CharField(required=False)
     email = serializers.EmailField(required=False)
+    campus_id = serializers.IntegerField(required=False, allow_null=True)
 
     def validate_email(self, value):
         qs = User.objects.filter(email=value)
@@ -341,8 +367,21 @@ class UserUpdateSerializer(serializers.Serializer):
             raise serializers.ValidationError("A user with this email already exists.")
         return value
 
+    def validate_campus_id(self, value):
+        from apps.org.models import Campus
+
+        if value is not None and not Campus.objects.filter(pk=value).exists():
+            raise serializers.ValidationError("Campus not found.")
+        return value
+
     def update(self, instance, validated_data):
+        campus_id = validated_data.pop("campus_id", serializers.empty)
         for attr, val in validated_data.items():
             setattr(instance, attr, val)
-        instance.save(update_fields=list(validated_data.keys()))
+        if validated_data:
+            instance.save(update_fields=list(validated_data.keys()))
+        if campus_id is not serializers.empty:
+            UserProfile.objects.update_or_create(
+                user=instance, defaults={"campus_id": campus_id}
+            )
         return instance

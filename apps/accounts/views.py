@@ -7,7 +7,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from apps.accounts.models import RoleAssignment
+from apps.accounts.models import RoleAssignment, UserProfile
 from apps.accounts.serializers import (
     RoleAssignmentSerializer,
     RoleAssignmentCreateSerializer,
@@ -390,6 +390,18 @@ def jwt_login(request):
     return response
 
 
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def public_campus_list(request):
+    """GET /auth/campuses/ — minimal campus list for the public registration form.
+    Unlike /api/v1/campuses/ (admin-only), this is intentionally public: a new
+    registrant has no JWT yet and must pick their campus before an account exists."""
+    from apps.org.models import Campus
+
+    data = list(Campus.objects.order_by("name").values("id", "name", "code"))
+    return Response(data)
+
+
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def jwt_register(request):
@@ -399,13 +411,14 @@ def jwt_register(request):
     password = request.data.get("password", "")
     first_name = request.data.get("first_name", "").strip()
     last_name = request.data.get("last_name", "").strip()
+    campus_id = request.data.get("campus_id")
 
-    if not username or not email or not password:
+    if not username or not email or not password or not campus_id:
         return Response(
             {
                 "error": {
                     "code": "VALIDATION_ERROR",
-                    "message": "username, email and password are required",
+                    "message": "username, email, password and campus_id are required",
                 }
             },
             status=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -421,6 +434,14 @@ def jwt_register(request):
             status=status.HTTP_409_CONFLICT,
         )
 
+    from apps.org.models import Campus
+
+    if not Campus.objects.filter(pk=campus_id).exists():
+        return Response(
+            {"error": {"code": "VALIDATION_ERROR", "message": "Campus not found"}},
+            status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        )
+
     user = _User.objects.create_user(
         username=username,
         email=email,
@@ -429,6 +450,7 @@ def jwt_register(request):
         last_name=last_name,
     )
     ensure_floor_assignment(user)
+    UserProfile.objects.create(user=user, campus_id=campus_id)
 
     assignment = get_primary_assignment_or_infer(user)
     refresh, access = build_tokens_for_assignment(user, assignment)
@@ -537,7 +559,7 @@ class UserListCreateView(APIView):
         from django.db.models import Prefetch
 
         User = get_user_model()
-        qs = User.objects.prefetch_related(
+        qs = User.objects.select_related("profile__campus").prefetch_related(
             Prefetch(
                 "role_assignments",
                 queryset=RoleAssignment.objects.filter(is_primary=True).select_related(

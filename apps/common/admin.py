@@ -65,8 +65,8 @@ def facility_count_badge(request):
 
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin, ModelAdmin):
-    list_display = ("username", "email", "is_staff", "is_active")
-    search_fields = ("username", "email")
+    list_display = ("username", "first_name", "last_name", "email", "is_staff", "is_active")
+    search_fields = ("username", "first_name", "last_name", "email")
 
 
 @admin.register(UserProfile)

@@ -429,23 +429,13 @@ EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True") == "True"
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@example.com")
-# Bounds the SMTP socket connect/read so a slow or unreachable mail server
-# fails fast instead of hanging the request indefinitely (Django's SMTP
-# backend reads this directly). Without it, a blocked/black-holed network
-# path can hang well past the frontend's own request timeout.
-EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "10"))
-# Send invite/reset emails on a background thread so a slow mail server never
-# blocks the request/response cycle (see apps/accounts/emails.py). Forced off
-# in resolver/test_settings.py: tests use an in-memory SQLite DB, which is
-# connection-local, so a background thread would see an empty database.
-EMAIL_SEND_ASYNC = os.getenv("EMAIL_SEND_ASYNC", "True") == "True"
 
 # For development - emails will be printed to console
 if DEBUG:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 # Authentication Settings
-COMPANY_NAME = os.getenv("COMPANY_NAME", "Resolver")
+COMPANY_NAME = os.getenv("COMPANY_NAME", "Django Resolver")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 # Session and Token Configuration
@@ -455,9 +445,8 @@ TOKEN_EXPIRY_HOURS = {
     "remember_me": 24 * 30,  # 30 days when remember me is checked
 }
 
-# Invite / password-reset link expiry (django.contrib.auth.tokens.default_token_generator
-# reads this standard setting; used for both new-account invites and forgot-password links).
-PASSWORD_RESET_TIMEOUT = 60 * 60 * 24 * 3  # 3 days
+# Magic Link Configuration
+MAGIC_LINK_EXPIRY_MINUTES = 15
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),

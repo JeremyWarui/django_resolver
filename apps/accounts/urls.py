@@ -7,13 +7,11 @@ from .views import (
     UserRoleAssignmentDetailView,
     UserListCreateView,
     UserDetailView,
-    forgot_password,
     jwt_login,
     jwt_register,
     jwt_refresh,
     jwt_logout,
     public_campus_list,
-    set_password,
 )
 
 urlpatterns = [
@@ -25,8 +23,6 @@ urlpatterns = [
     path("auth/logout/", jwt_logout, name="auth-logout"),
     path("auth/me/", MeView.as_view(), name="auth-me"),
     path("auth/switch-role/", SwitchRoleView.as_view(), name="auth-switch-role"),
-    path("auth/forgot-password/", forgot_password, name="auth-forgot-password"),
-    path("auth/set-password/", set_password, name="auth-set-password"),
     # User management (admin only)
     path("users/", UserListCreateView.as_view(), name="user-list"),
     path("users/<int:pk>/", UserDetailView.as_view(), name="user-detail"),

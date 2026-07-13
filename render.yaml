@@ -28,6 +28,11 @@ services:
       # /admin/login/ fail with "Origin checking failed".
       - key: CSRF_TRUSTED_ORIGINS
         value: https://django-resolver.onrender.com,https://resolver-zeta.vercel.app
+      # Base URL used to build invite/password-reset links in emails (apps/accounts/emails.py).
+      # Without this, it falls back to the http://localhost:3000 dev default and emailed
+      # links point at the wrong place in production.
+      - key: FRONTEND_URL
+        value: https://resolver-zeta.vercel.app
       # Gmail SMTP — sends account-invite and password-reset emails (apps/accounts/emails.py).
       # EMAIL_HOST_USER must be a Gmail address with 2FA enabled; EMAIL_HOST_PASSWORD is an
       # App Password (myaccount.google.com/apppasswords), NOT the account's login password.

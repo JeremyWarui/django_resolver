@@ -38,8 +38,12 @@ services:
       # App Password (myaccount.google.com/apppasswords), NOT the account's login password.
       # DEFAULT_FROM_EMAIL should match EMAIL_HOST_USER — Gmail rejects sending "from" a
       # different address than the authenticated account.
+      # Uses the IPv4-only backend (apps/accounts/mail_backend.py), not Django's stock SMTP
+      # backend — Render has no outbound IPv6 route to Gmail, and smtp.gmail.com resolves to
+      # both an A and AAAA record, so the stock backend fails with
+      # "OSError: [Errno 101] Network is unreachable" when it tries the IPv6 address.
       - key: EMAIL_BACKEND
-        value: django.core.mail.backends.smtp.EmailBackend
+        value: apps.accounts.mail_backend.EmailBackend
       - key: EMAIL_HOST
         value: smtp.gmail.com
       - key: EMAIL_PORT

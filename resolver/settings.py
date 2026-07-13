@@ -435,7 +435,7 @@ if DEBUG:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 # Authentication Settings
-COMPANY_NAME = os.getenv("COMPANY_NAME", "Django Resolver")
+COMPANY_NAME = os.getenv("COMPANY_NAME", "Resolver")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 # Session and Token Configuration

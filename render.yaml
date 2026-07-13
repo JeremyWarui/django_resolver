@@ -28,6 +28,25 @@ services:
       # /admin/login/ fail with "Origin checking failed".
       - key: CSRF_TRUSTED_ORIGINS
         value: https://django-resolver.onrender.com,https://resolver-zeta.vercel.app
+      # Gmail SMTP — sends account-invite and password-reset emails (apps/accounts/emails.py).
+      # EMAIL_HOST_USER must be a Gmail address with 2FA enabled; EMAIL_HOST_PASSWORD is an
+      # App Password (myaccount.google.com/apppasswords), NOT the account's login password.
+      # DEFAULT_FROM_EMAIL should match EMAIL_HOST_USER — Gmail rejects sending "from" a
+      # different address than the authenticated account.
+      - key: EMAIL_BACKEND
+        value: django.core.mail.backends.smtp.EmailBackend
+      - key: EMAIL_HOST
+        value: smtp.gmail.com
+      - key: EMAIL_PORT
+        value: 587
+      - key: EMAIL_USE_TLS
+        value: True
+      - key: EMAIL_HOST_USER
+        sync: false
+      - key: EMAIL_HOST_PASSWORD
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
       # Bootstrap Django admin superuser — build.sh runs `createsuperuser --no-input`,
       # which silently fails (swallowed by `|| echo`) if these three aren't all set.
       - key: DJANGO_SUPERUSER_USERNAME

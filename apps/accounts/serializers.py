@@ -290,7 +290,8 @@ class UserCreateSerializer(serializers.Serializer):
     campus_id = serializers.IntegerField()
 
     def validate_email(self, value):
-        if User.objects.filter(email=value).exists():
+        existing = User.objects.filter(email=value).first()
+        if existing and existing.is_active:
             raise serializers.ValidationError("A user with this email already exists.")
         return value
 
@@ -304,13 +305,23 @@ class UserCreateSerializer(serializers.Serializer):
     def create(self, validated_data):
         from apps.accounts.emails import send_invite_email
 
+        email = validated_data["email"]
+        # Account exists but was never activated -- most likely the original
+        # invite email failed to send. Resend instead of creating a
+        # duplicate row (would violate the UserProfile/RoleAssignment
+        # one-per-user constraints anyway).
+        existing = User.objects.filter(email=email, is_active=False).first()
+        if existing:
+            send_invite_email(existing)
+            return existing
+
         first = validated_data["first_name"].strip()
         last = validated_data["last_name"].strip()
         username = generate_unique_username(first, last)
 
         user = User.objects.create_user(
             username=username,
-            email=validated_data["email"],
+            email=email,
             password=None,
             first_name=first,
             last_name=last,

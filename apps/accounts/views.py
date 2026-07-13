@@ -430,10 +430,24 @@ def jwt_register(request):
             },
             status=status.HTTP_422_UNPROCESSABLE_ENTITY,
         )
-    if _User.objects.filter(email=email).exists():
+    existing = _User.objects.filter(email=email).first()
+    if existing:
+        if existing.is_active:
+            return Response(
+                {"error": {"code": "CONFLICT", "message": "Email already registered"}},
+                status=status.HTTP_409_CONFLICT,
+            )
+        # Account exists but was never activated -- most likely the original
+        # invite email failed to send (e.g. a mail-server timeout). Resend
+        # rather than 409-ing forever with no way for the user to recover.
+        send_invite_email(existing)
         return Response(
-            {"error": {"code": "CONFLICT", "message": "Email already registered"}},
-            status=status.HTTP_409_CONFLICT,
+            {
+                "username": existing.username,
+                "message": "An account for this email already exists but hasn't "
+                "been activated yet. We've resent the invite email.",
+            },
+            status=status.HTTP_200_OK,
         )
 
     from apps.org.models import Campus

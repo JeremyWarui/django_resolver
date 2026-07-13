@@ -429,6 +429,16 @@ EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True") == "True"
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@example.com")
+# Bounds the SMTP socket connect/read so a slow or unreachable mail server
+# fails fast instead of hanging the request indefinitely (Django's SMTP
+# backend reads this directly). Without it, a blocked/black-holed network
+# path can hang well past the frontend's own request timeout.
+EMAIL_TIMEOUT = int(os.getenv("EMAIL_TIMEOUT", "10"))
+# Send invite/reset emails on a background thread so a slow mail server never
+# blocks the request/response cycle (see apps/accounts/emails.py). Forced off
+# in resolver/test_settings.py: tests use an in-memory SQLite DB, which is
+# connection-local, so a background thread would see an empty database.
+EMAIL_SEND_ASYNC = os.getenv("EMAIL_SEND_ASYNC", "True") == "True"
 
 # For development - emails will be printed to console
 if DEBUG:

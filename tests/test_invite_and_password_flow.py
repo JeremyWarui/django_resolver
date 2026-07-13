@@ -114,6 +114,89 @@ class TestInviteOnRegistration:
         assert not user.has_usable_password()
         assert len(mail.outbox) == 1
 
+    def test_register_with_existing_inactive_email_resends_invite(
+        self, api_client, campus
+    ):
+        """A prior invite email that failed to send (e.g. a mail-server
+        timeout) must not permanently lock the registrant out with a 409 —
+        re-registering the same email should resend the invite instead."""
+        from django.contrib.auth import get_user_model
+        from apps.accounts.models import RoleAssignment, UserProfile
+
+        User = get_user_model()
+        stuck = User.objects.create_user(
+            username="hank.mutua", email="hank@x.com", password=None, is_active=False
+        )
+        RoleAssignment.objects.create(user=stuck, role="user", is_primary=True)
+        UserProfile.objects.create(user=stuck, campus=campus)
+
+        resp = api_client.post(
+            "/api/v1/auth/register/",
+            {
+                "email": "hank@x.com",
+                "first_name": "Hank",
+                "last_name": "Mutua",
+                "campus_id": campus.id,
+            },
+            format="json",
+        )
+        assert resp.status_code == 200
+        assert resp.data["username"] == "hank.mutua"
+        assert len(mail.outbox) == 1
+        assert "hank.mutua" in mail.outbox[0].body
+
+    def test_register_with_existing_active_email_still_conflicts(
+        self, api_client, campus
+    ):
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        User.objects.create_user(
+            username="ivy.kamau", email="ivy@x.com", password="pw12345678"
+        )
+
+        resp = api_client.post(
+            "/api/v1/auth/register/",
+            {
+                "email": "ivy@x.com",
+                "first_name": "Ivy",
+                "last_name": "Kamau",
+                "campus_id": campus.id,
+            },
+            format="json",
+        )
+        assert resp.status_code == 409
+        assert len(mail.outbox) == 0
+
+    def test_admin_create_user_with_existing_inactive_email_resends_invite(
+        self, api_client, admin_user, campus
+    ):
+        from django.contrib.auth import get_user_model
+        from apps.accounts.models import RoleAssignment, UserProfile
+
+        User = get_user_model()
+        stuck = User.objects.create_user(
+            username="ken.otieno", email="ken@x.com", password=None, is_active=False
+        )
+        RoleAssignment.objects.create(user=stuck, role="user", is_primary=True)
+        UserProfile.objects.create(user=stuck, campus=campus)
+
+        api_client.force_authenticate(user=admin_user)
+        resp = api_client.post(
+            "/api/v1/users/",
+            {
+                "first_name": "Ken",
+                "last_name": "Otieno",
+                "email": "ken@x.com",
+                "campus_id": campus.id,
+            },
+            format="json",
+        )
+        assert resp.status_code == 201
+        assert resp.data["username"] == "ken.otieno"
+        assert len(mail.outbox) == 1
+        assert User.objects.filter(email="ken@x.com").count() == 1
+
 
 @pytest.mark.django_db
 class TestLoginGatedUntilActivated:

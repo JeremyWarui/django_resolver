@@ -1,0 +1,1 @@
+{{ company_name }} — set your password to activate your account

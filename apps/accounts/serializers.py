@@ -3,35 +3,14 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from apps.accounts.models import RoleAssignment, UserProfile
+from apps.accounts.services import (
+    campus_from_role_assignment as _campus_from_ra,
+    department_from_role_assignment as _department_from_ra,
+    generate_unique_username,
+    home_campus_from_user,
+)
 
 User = get_user_model()
-
-
-# ── Helpers ───────────────────────────────────────────────────────────────────
-
-
-def _campus_from_ra(ra):
-    """Resolve the campus object from any role assignment variant."""
-    if ra is None:
-        return None
-    if ra.section_id and ra.section and ra.section.campus_department:
-        return ra.section.campus_department.campus
-    if ra.campus_department_id and ra.campus_department:
-        return ra.campus_department.campus
-    return None
-
-
-def _department_from_ra(ra):
-    """Resolve the department object from any role assignment variant."""
-    if ra is None:
-        return None
-    if ra.department_id and ra.department:
-        return ra.department
-    if ra.section_id and ra.section and ra.section.campus_department:
-        return ra.section.campus_department.department
-    if ra.campus_department_id and ra.campus_department:
-        return ra.campus_department.department
-    return None
 
 
 # ── RoleAssignment serializers ────────────────────────────────────────────────
@@ -246,8 +225,7 @@ class UserAdminSerializer(serializers.ModelSerializer):
         return ra.role if ra else "user"
 
     def _home_campus(self, obj):
-        profile = getattr(obj, "profile", None)
-        return profile.campus if profile and profile.campus_id else None
+        return home_campus_from_user(obj)
 
     def get_home_campus_id(self, obj):
         campus = self._home_campus(obj)
@@ -299,25 +277,21 @@ class UserAdminSerializer(serializers.ModelSerializer):
 
 
 class UserCreateSerializer(serializers.Serializer):
-    """Write serializer for admin user creation."""
+    """Write serializer for admin user creation.
+
+    No password field: the account is created inactive with an unusable
+    password, and an invite email is sent so the user sets their own
+    password (see apps/accounts/emails.py::send_invite_email).
+    """
 
     first_name = serializers.CharField()
     last_name = serializers.CharField()
     email = serializers.EmailField()
-    username = serializers.CharField(required=False, allow_blank=True)
-    password = serializers.CharField(write_only=True)
     campus_id = serializers.IntegerField()
 
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
             raise serializers.ValidationError("A user with this email already exists.")
-        return value
-
-    def validate_username(self, value):
-        if value and User.objects.filter(username=value).exists():
-            raise serializers.ValidationError(
-                "A user with this username already exists."
-            )
         return value
 
     def validate_campus_id(self, value):
@@ -328,26 +302,23 @@ class UserCreateSerializer(serializers.Serializer):
         return value
 
     def create(self, validated_data):
+        from apps.accounts.emails import send_invite_email
+
         first = validated_data["first_name"].strip()
         last = validated_data["last_name"].strip()
-        username = (validated_data.get("username") or "").strip()
-        if not username:
-            base = f"{first.lower()}.{last.lower()}"
-            username = base
-            n = 1
-            while User.objects.filter(username=username).exists():
-                username = f"{base}{n}"
-                n += 1
+        username = generate_unique_username(first, last)
 
         user = User.objects.create_user(
             username=username,
             email=validated_data["email"],
-            password=validated_data["password"],
+            password=None,
             first_name=first,
             last_name=last,
+            is_active=False,
         )
         RoleAssignment.objects.create(user=user, role="user", is_primary=True)
         UserProfile.objects.create(user=user, campus_id=validated_data["campus_id"])
+        send_invite_email(user)
         return user
 
 

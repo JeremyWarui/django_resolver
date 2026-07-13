@@ -1,0 +1,13 @@
+Hello {{ first_name }},
+
+An account has been created for you on {{ company_name }}.
+
+Your username is: {{ username }}
+
+To activate your account, set your password using the link below:
+
+{{ link }}
+
+This link expires in {{ expiry_days }} day(s). If you did not expect this email, you can safely ignore it.
+
+— {{ company_name }} Service Desk

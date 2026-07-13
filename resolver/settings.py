@@ -445,8 +445,9 @@ TOKEN_EXPIRY_HOURS = {
     "remember_me": 24 * 30,  # 30 days when remember me is checked
 }
 
-# Magic Link Configuration
-MAGIC_LINK_EXPIRY_MINUTES = 15
+# Invite / password-reset link expiry (django.contrib.auth.tokens.default_token_generator
+# reads this standard setting; used for both new-account invites and forgot-password links).
+PASSWORD_RESET_TIMEOUT = 60 * 60 * 24 * 3  # 3 days
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),

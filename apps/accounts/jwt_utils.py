@@ -10,6 +10,7 @@ Claims on every token (beyond SimpleJWT defaults):
 """
 
 from apps.accounts.models import RoleAssignment
+from apps.accounts.services import resolve_campus_and_department_names
 from rest_framework_simplejwt.tokens import RefreshToken
 
 
@@ -121,6 +122,7 @@ def serialize_auth_user(user, active_assignment):
     )
     if not available and active_assignment:
         available = [active_assignment]
+    names = resolve_campus_and_department_names(user, active_assignment)
     return {
         "id": user.pk,
         "username": user.username,
@@ -129,6 +131,8 @@ def serialize_auth_user(user, active_assignment):
         "email": user.email,
         "phone": getattr(user, "phone_number", None) or None,
         "is_active": user.is_active,
+        "home_campus_name": names["home_campus_name"],
+        "primary_department_name": names["primary_department_name"],
         "active_role": (
             serialize_role_assignment(active_assignment) if active_assignment else None
         ),

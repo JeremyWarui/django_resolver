@@ -339,9 +339,13 @@ class UserRoleAssignmentDetailView(APIView):
 
 import logging
 from django.contrib.auth import authenticate, get_user_model
+from django.contrib.auth.forms import SetPasswordForm
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_decode
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken as _RefreshToken
+from apps.accounts.emails import send_invite_email, send_password_reset_email
 from apps.accounts.jwt_utils import (
     get_primary_assignment_or_infer,
     ensure_floor_assignment,
@@ -405,28 +409,26 @@ def public_campus_list(request):
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def jwt_register(request):
-    """POST /auth/register/ — create account, auto-assign user floor role, return JWT."""
-    username = request.data.get("username", "").strip()
+    """POST /auth/register/ — create an inactive account with an auto-generated
+    'firstname.lastname' username and send an email invite link to set a
+    password and activate. No JWT is issued here since the account isn't
+    usable yet (see apps/accounts/emails.py::send_invite_email)."""
+    from apps.accounts.services import generate_unique_username
+
     email = request.data.get("email", "").strip()
-    password = request.data.get("password", "")
     first_name = request.data.get("first_name", "").strip()
     last_name = request.data.get("last_name", "").strip()
     campus_id = request.data.get("campus_id")
 
-    if not username or not email or not password or not campus_id:
+    if not email or not first_name or not last_name or not campus_id:
         return Response(
             {
                 "error": {
                     "code": "VALIDATION_ERROR",
-                    "message": "username, email, password and campus_id are required",
+                    "message": "first_name, last_name, email and campus_id are required",
                 }
             },
             status=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        )
-    if _User.objects.filter(username=username).exists():
-        return Response(
-            {"error": {"code": "CONFLICT", "message": "Username already taken"}},
-            status=status.HTTP_409_CONFLICT,
         )
     if _User.objects.filter(email=email).exists():
         return Response(
@@ -442,25 +444,97 @@ def jwt_register(request):
             status=status.HTTP_422_UNPROCESSABLE_ENTITY,
         )
 
+    username = generate_unique_username(first_name, last_name)
     user = _User.objects.create_user(
         username=username,
         email=email,
-        password=password,
+        password=None,
         first_name=first_name,
         last_name=last_name,
+        is_active=False,
     )
     ensure_floor_assignment(user)
     UserProfile.objects.create(user=user, campus_id=campus_id)
+    send_invite_email(user)
+
+    return Response(
+        {
+            "username": username,
+            "message": "Account created. Check your email to set your password.",
+        },
+        status=status.HTTP_201_CREATED,
+    )
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def forgot_password(request):
+    """POST /auth/forgot-password/ — email a reset link if the address matches
+    an active account. Always returns 200 regardless, to avoid leaking which
+    emails are registered."""
+    email = request.data.get("email", "").strip()
+    if not email:
+        return Response(
+            {"error": {"code": "VALIDATION_ERROR", "message": "email is required"}},
+            status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        )
+    send_password_reset_email(email)
+    return Response(
+        {"message": "If that email is registered, a reset link has been sent."},
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def set_password(request):
+    """POST /auth/set-password/ — consume an invite/reset link's uid+token,
+    set a new password (running the project's AUTH_PASSWORD_VALIDATORS via
+    Django's SetPasswordForm), activate the account, and log the user in."""
+    uidb64 = request.data.get("uid", "")
+    token = request.data.get("token", "")
+    new_password = request.data.get("new_password", "")
+    confirm_password = request.data.get("confirm_password", "")
+
+    try:
+        uid = urlsafe_base64_decode(uidb64).decode()
+        user = _User.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, _User.DoesNotExist):
+        user = None
+
+    if user is None or not default_token_generator.check_token(user, token):
+        return Response(
+            {
+                "error": {
+                    "code": "INVALID_TOKEN",
+                    "message": "This link is invalid or has expired.",
+                }
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    form = SetPasswordForm(
+        user,
+        data={"new_password1": new_password, "new_password2": confirm_password},
+    )
+    if not form.is_valid():
+        return Response(
+            {"error": {"code": "VALIDATION_ERROR", "message": form.errors}},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    form.save()
+    if not user.is_active:
+        user.is_active = True
+        user.save(update_fields=["is_active"])
 
     assignment = get_primary_assignment_or_infer(user)
     refresh, access = build_tokens_for_assignment(user, assignment)
-
     response = Response(
         {
             "user": serialize_auth_user(user, assignment),
             "accessToken": str(access),
         },
-        status=status.HTTP_201_CREATED,
+        status=status.HTTP_200_OK,
     )
     _set_refresh_cookie(response, refresh)
     return response

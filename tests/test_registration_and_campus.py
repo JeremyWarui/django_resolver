@@ -60,9 +60,7 @@ class TestRegistrationRequiresCampus:
         resp = api_client.post(
             "/api/v1/auth/register/",
             {
-                "username": "newbie",
                 "email": "newbie@x.com",
-                "password": "pw12345678",
                 "first_name": "New",
                 "last_name": "Bie",
             },
@@ -76,9 +74,7 @@ class TestRegistrationRequiresCampus:
         resp = api_client.post(
             "/api/v1/auth/register/",
             {
-                "username": "newbie2",
                 "email": "newbie2@x.com",
-                "password": "pw12345678",
                 "first_name": "New",
                 "last_name": "Bie",
                 "campus_id": campus.id,
@@ -86,17 +82,19 @@ class TestRegistrationRequiresCampus:
             format="json",
         )
         assert resp.status_code == 201
+        assert resp.data["username"] == "new.bie"
+        assert "accessToken" not in resp.data
         User = get_user_model()
-        user = User.objects.get(username="newbie2")
+        user = User.objects.get(username="new.bie")
         assert user.profile.campus_id == campus.id
+        assert user.is_active is False
+        assert not user.has_usable_password()
 
     def test_register_with_unknown_campus_id_fails(self, api_client):
         resp = api_client.post(
             "/api/v1/auth/register/",
             {
-                "username": "newbie3",
                 "email": "newbie3@x.com",
-                "password": "pw12345678",
                 "first_name": "New",
                 "last_name": "Bie",
                 "campus_id": 999999,
@@ -116,7 +114,6 @@ class TestAdminManagesHomeCampus:
                 "first_name": "Jane",
                 "last_name": "Doe",
                 "email": "jane@x.com",
-                "password": "pw12345678",
                 "campus_id": campus.id,
             },
             format="json",
@@ -124,6 +121,13 @@ class TestAdminManagesHomeCampus:
         assert resp.status_code == 201
         assert resp.data["home_campus_id"] == campus.id
         assert resp.data["home_campus_name"] == campus.name
+        assert resp.data["username"] == "jane.doe"
+
+        from django.contrib.auth import get_user_model
+
+        user = get_user_model().objects.get(username="jane.doe")
+        assert user.is_active is False
+        assert not user.has_usable_password()
 
     def test_admin_create_user_without_campus_fails(self, api_client, admin_user):
         api_client.force_authenticate(user=admin_user)
@@ -133,7 +137,6 @@ class TestAdminManagesHomeCampus:
                 "first_name": "Jane",
                 "last_name": "Doe",
                 "email": "jane2@x.com",
-                "password": "pw12345678",
             },
             format="json",
         )

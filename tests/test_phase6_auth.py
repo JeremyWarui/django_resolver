@@ -395,6 +395,116 @@ class TestRoleAssignmentCRUD:
         assert target.role_assignments.filter(is_primary=True).count() == 1
         assert target.role_assignments.get(is_primary=True).role == "hod"
 
+    def test_promoting_to_technician_creates_section_technician_link(
+        self, api_client, campus, section
+    ):
+        from apps.org.models import SectionTechnician
+
+        admin = make_user("ra_promote_tech_admin", campus=campus, role="admin")
+        target = make_user("ra_promote_tech_target", campus=campus)
+        api_client.force_authenticate(user=admin)
+        response = api_client.post(
+            f"/api/v1/users/{target.id}/role-assignments/",
+            {
+                "role": "technician",
+                "section_id": section.id,
+                "is_primary": True,
+            },
+        )
+        assert response.status_code == 201
+        assert SectionTechnician.objects.filter(user=target, section=section).exists()
+
+    def test_promoting_to_primary_hos_sets_section_hos(self, api_client, campus, section):
+        admin = make_user("ra_promote_hos_admin", campus=campus, role="admin")
+        target = make_user("ra_promote_hos_target", campus=campus)
+        api_client.force_authenticate(user=admin)
+        response = api_client.post(
+            f"/api/v1/users/{target.id}/role-assignments/",
+            {
+                "role": "hos",
+                "section_id": section.id,
+                "is_primary": True,
+            },
+        )
+        assert response.status_code == 201
+        section.refresh_from_db()
+        assert section.hos_id == target.id
+
+    def test_promoting_to_primary_hod_sets_campus_department_head(
+        self, api_client, campus, section, campus_dept
+    ):
+        admin = make_user("ra_promote_hod_admin", campus=campus, role="admin")
+        target = make_user("ra_promote_hod_target", campus=campus)
+        api_client.force_authenticate(user=admin)
+        response = api_client.post(
+            f"/api/v1/users/{target.id}/role-assignments/",
+            {
+                "role": "hod",
+                "campus_id": campus.id,
+                "department_id": campus_dept.department_id,
+                "is_primary": True,
+            },
+        )
+        assert response.status_code == 201
+        campus_dept.refresh_from_db()
+        assert campus_dept.head_of_department_id == target.id
+
+    def test_promoting_to_primary_manager_sets_department_manager(
+        self, api_client, campus, section, dept
+    ):
+        admin = make_user("ra_promote_manager_admin", campus=campus, role="admin")
+        target = make_user("ra_promote_manager_target", campus=campus)
+        api_client.force_authenticate(user=admin)
+        response = api_client.post(
+            f"/api/v1/users/{target.id}/role-assignments/",
+            {
+                "role": "manager",
+                "department_id": dept.id,
+                "is_primary": True,
+            },
+        )
+        assert response.status_code == 201
+        dept.refresh_from_db()
+        assert dept.manager_user_id == target.id
+
+    def test_replacing_primary_hos_clears_old_sections_hos_fk(
+        self, api_client, campus, section
+    ):
+        admin = make_user("ra_clear_hos_admin", campus=campus, role="admin")
+        target = make_user(
+            "ra_clear_hos_target", campus=campus, role="hos", section=section
+        )
+        section.hos = target
+        section.save()
+        api_client.force_authenticate(user=admin)
+        response = api_client.post(
+            f"/api/v1/users/{target.id}/role-assignments/",
+            {"role": "user", "is_primary": True},
+        )
+        assert response.status_code == 201
+        section.refresh_from_db()
+        assert section.hos_id is None
+
+    def test_cover_technician_assignment_also_creates_section_technician_link(
+        self, api_client, campus, section
+    ):
+        from apps.org.models import SectionTechnician
+
+        admin = make_user("ra_cover_tech_admin", campus=campus, role="admin")
+        target = make_user("ra_cover_tech_target", campus=campus)
+        api_client.force_authenticate(user=admin)
+        response = api_client.post(
+            f"/api/v1/users/{target.id}/role-assignments/",
+            {
+                "role": "technician",
+                "section_id": section.id,
+                "valid_until": (timezone.now() + timedelta(days=7)).isoformat(),
+            },
+        )
+        assert response.status_code == 201
+        assert response.data["is_primary"] is False
+        assert SectionTechnician.objects.filter(user=target, section=section).exists()
+
     def test_cover_assignment_requires_valid_until(self, api_client, campus, section):
         """A non-primary (cover) assignment must always carry an end date —
         otherwise it's indistinguishable from a second standing role."""

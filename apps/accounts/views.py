@@ -137,6 +137,55 @@ class SwitchRoleView(APIView):
         return response
 
 
+def _sync_org_scope(target, ra, old_primary):
+    """Keep org-structural FKs (Section.hos, CampusDepartment.head_of_department,
+    Department.manager_user) and the SectionTechnician link table in sync with
+    RoleAssignment. scope.py's scoped_ticket_qs/scoped_section_qs read those
+    directly for primary manager/hod/hos scope (and always for technician,
+    primary or cover) -- NOT RoleAssignment -- so a promotion that only
+    creates a RoleAssignment row is a silent no-op for the promoted user's
+    actual access.
+    """
+    from apps.org.models import Section, CampusDepartment, Department, SectionTechnician
+
+    # Forward: grant scope for the new assignment.
+    if ra.role == "technician" and ra.section_id:
+        # No primary/cover distinction for technician scope -- always sync.
+        SectionTechnician.objects.get_or_create(user=target, section_id=ra.section_id)
+    elif ra.role == "hos" and ra.is_primary and ra.section_id:
+        Section.objects.filter(pk=ra.section_id).update(hos=target)
+    elif ra.role == "hod" and ra.is_primary and ra.campus_department_id:
+        CampusDepartment.objects.filter(pk=ra.campus_department_id).update(
+            head_of_department=target
+        )
+    elif ra.role == "manager" and ra.is_primary and ra.department_id:
+        Department.objects.filter(pk=ra.department_id).update(manager_user=target)
+
+    # Backward: revoke stale scope left over from the just-demoted primary,
+    # unless the new assignment already covers the identical scope (then
+    # it's a harmless no-op -- the forward sync above already reset it).
+    if old_primary is None:
+        return
+    if old_primary.role == "hos" and old_primary.section_id:
+        if not (ra.role == "hos" and ra.section_id == old_primary.section_id):
+            Section.objects.filter(pk=old_primary.section_id, hos=target).update(hos=None)
+    elif old_primary.role == "hod" and old_primary.campus_department_id:
+        if not (ra.role == "hod" and ra.campus_department_id == old_primary.campus_department_id):
+            CampusDepartment.objects.filter(
+                pk=old_primary.campus_department_id, head_of_department=target
+            ).update(head_of_department=None)
+    elif old_primary.role == "manager" and old_primary.department_id:
+        if not (ra.role == "manager" and ra.department_id == old_primary.department_id):
+            Department.objects.filter(
+                pk=old_primary.department_id, manager_user=target
+            ).update(manager_user=None)
+    elif old_primary.role == "technician" and old_primary.section_id:
+        if not (ra.role == "technician" and ra.section_id == old_primary.section_id):
+            SectionTechnician.objects.filter(
+                user=target, section_id=old_primary.section_id
+            ).delete()
+
+
 class UserRoleAssignmentListCreateView(generics.ListCreateAPIView):
     """GET + POST /users/{user_pk}/role-assignments/
 
@@ -236,10 +285,14 @@ class UserRoleAssignmentListCreateView(generics.ListCreateAPIView):
 
         try:
             with transaction.atomic():
+                old_primary = None
                 if is_primary:
                     # Replacing the primary role (e.g. promoting/demoting a user from
                     # the Users admin page) — demote the existing primary instead of
                     # erroring, since only one primary assignment is allowed per user.
+                    old_primary = target.role_assignments.filter(
+                        is_primary=True
+                    ).select_related("section", "campus_department", "department").first()
                     target.role_assignments.filter(is_primary=True).update(
                         is_primary=False
                     )
@@ -249,6 +302,7 @@ class UserRoleAssignmentListCreateView(generics.ListCreateAPIView):
                     assigned_by=request.user,
                     **vd,
                 )
+                _sync_org_scope(target, ra, old_primary)
         except IntegrityError as exc:
             msg = str(exc)
             if "one_primary_role_per_user" in msg:

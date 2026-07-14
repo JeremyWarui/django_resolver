@@ -413,17 +413,17 @@ def jwt_register(request):
     last_name = request.data.get("last_name", "").strip()
     campus_id = request.data.get("campus_id")
 
-    if not username or not email or not password or not campus_id:
+    if not first_name or not last_name or not email or not password or not campus_id:
         return Response(
             {
                 "error": {
                     "code": "VALIDATION_ERROR",
-                    "message": "username, email, password and campus_id are required",
+                    "message": "first_name, last_name, email, password and campus_id are required",
                 }
             },
             status=status.HTTP_422_UNPROCESSABLE_ENTITY,
         )
-    if _User.objects.filter(username=username).exists():
+    if username and _User.objects.filter(username=username).exists():
         return Response(
             {"error": {"code": "CONFLICT", "message": "Username already taken"}},
             status=status.HTTP_409_CONFLICT,
@@ -441,6 +441,14 @@ def jwt_register(request):
             {"error": {"code": "VALIDATION_ERROR", "message": "Campus not found"}},
             status=status.HTTP_422_UNPROCESSABLE_ENTITY,
         )
+
+    if not username:
+        base = f"{first_name.lower()}.{last_name.lower()}"
+        username = base
+        n = 1
+        while _User.objects.filter(username=username).exists():
+            username = f"{base}{n}"
+            n += 1
 
     user = _User.objects.create_user(
         username=username,

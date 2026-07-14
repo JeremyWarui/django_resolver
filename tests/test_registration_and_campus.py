@@ -90,6 +90,69 @@ class TestRegistrationRequiresCampus:
         user = User.objects.get(username="newbie2")
         assert user.profile.campus_id == campus.id
 
+    def test_register_without_username_auto_generates_from_name(self, api_client, campus):
+        """No username field on the public form — backend derives it (SoT: mirrors
+        UserCreateSerializer.create())."""
+        from django.contrib.auth import get_user_model
+
+        resp = api_client.post(
+            "/api/v1/auth/register/",
+            {
+                "email": "auto.gen@x.com",
+                "password": "pw12345678",
+                "first_name": "Auto",
+                "last_name": "Gen",
+                "campus_id": campus.id,
+            },
+            format="json",
+        )
+        assert resp.status_code == 201
+        assert resp.data["user"]["username"] == "auto.gen"
+        User = get_user_model()
+        assert User.objects.filter(username="auto.gen").exists()
+
+    def test_register_without_username_dedupes_on_collision(self, api_client, campus):
+        resp1 = api_client.post(
+            "/api/v1/auth/register/",
+            {
+                "email": "dup1@x.com",
+                "password": "pw12345678",
+                "first_name": "Dup",
+                "last_name": "Licate",
+                "campus_id": campus.id,
+            },
+            format="json",
+        )
+        resp2 = api_client.post(
+            "/api/v1/auth/register/",
+            {
+                "email": "dup2@x.com",
+                "password": "pw12345678",
+                "first_name": "Dup",
+                "last_name": "Licate",
+                "campus_id": campus.id,
+            },
+            format="json",
+        )
+        assert resp1.status_code == 201
+        assert resp2.status_code == 201
+        assert resp1.data["user"]["username"] == "dup.licate"
+        assert resp2.data["user"]["username"] == "dup.licate1"
+
+    def test_register_without_first_or_last_name_fails(self, api_client, campus):
+        resp = api_client.post(
+            "/api/v1/auth/register/",
+            {
+                "email": "noname@x.com",
+                "password": "pw12345678",
+                "first_name": "",
+                "last_name": "",
+                "campus_id": campus.id,
+            },
+            format="json",
+        )
+        assert resp.status_code == 422
+
     def test_register_with_unknown_campus_id_fails(self, api_client):
         resp = api_client.post(
             "/api/v1/auth/register/",

@@ -38,9 +38,6 @@ black apps/
 python manage.py makemigrations
 python manage.py migrate
 
-# Load fixtures
-python manage.py loaddata initial_data
-
 # Fresh schema (no legacy backfill — full reset per SoT §8)
 find . -path "*/migrations/*.py" -not -name "__init__.py" -delete
 python manage.py makemigrations

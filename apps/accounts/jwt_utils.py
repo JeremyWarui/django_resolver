@@ -133,6 +133,7 @@ def serialize_auth_user(user, active_assignment):
         "is_active": user.is_active,
         "home_campus_name": names["home_campus_name"],
         "primary_department_name": names["primary_department_name"],
+        "section_name": names["section_name"],
         "active_role": (
             serialize_role_assignment(active_assignment) if active_assignment else None
         ),

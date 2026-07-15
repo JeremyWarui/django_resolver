@@ -4,8 +4,7 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.db import models
-from django.db.models import Q
+from django.db import models, transaction
 
 
 class Ticket(models.Model):
@@ -124,32 +123,66 @@ class Ticket(models.Model):
             seq = (last.id + 1) if last else 1
             return f"TKT-{seq:06d}"
 
-        campus_code = self.section.campus_department.campus.code.upper()
-        department_code = self.section.campus_department.department.code.upper()
-        prefix = f"{campus_code}-{department_code}-"
-        ticket_prefix = f"TKT-{prefix}"
-
-        latest_ticket = (
-            Ticket.objects.filter(
-                Q(ticket_no__startswith=ticket_prefix) | Q(ticket_no__startswith=prefix)
-            )
-            .order_by("-ticket_no")
-            .first()
-        )
-        latest_ticket_no = latest_ticket.ticket_no if latest_ticket else None
-
-        if latest_ticket_no:
-            try:
-                seq = int(latest_ticket_no.rsplit("-", 1)[-1]) + 1
-            except (TypeError, ValueError):
-                seq = 1
-        else:
-            seq = 1
-
-        return f"{ticket_prefix}{seq:04d}"
+        campus_department = self.section.campus_department
+        campus_code = campus_department.campus.code.upper()
+        department_code = campus_department.department.code.upper()
+        seq = TicketSequence.allocate(campus_department)
+        return f"TKT-{campus_code}-{department_code}-{seq:04d}"
 
     def __str__(self):
         return f"{self.ticket_no} ({self.status})"
+
+
+class TicketSequence(models.Model):
+    """Per campus-department counter backing ticket_no allocation.
+
+    Numbers are handed out under a row lock (``select_for_update``) so
+    concurrent creates in the same campus department cannot collide — they
+    queue for the lock instead. Different campus departments never block each
+    other. A gap can occur if the ticket insert fails after allocation; the
+    counter only ever moves forward.
+    """
+
+    campus_department = models.OneToOneField(
+        "org.CampusDepartment",
+        on_delete=models.CASCADE,
+        related_name="ticket_sequence",
+    )
+    last_number = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        app_label = "tickets"
+
+    @classmethod
+    def allocate(cls, campus_department):
+        """Return the next ticket number for this campus department (atomic)."""
+        with transaction.atomic():
+            row, created = cls.objects.select_for_update().get_or_create(
+                campus_department=campus_department
+            )
+            if created:
+                # First allocation for this campus department — seed the
+                # counter from tickets that predate the sequence table.
+                row.last_number = cls._max_existing_number(campus_department)
+            row.last_number += 1
+            row.save(update_fields=["last_number"])
+            return row.last_number
+
+    @staticmethod
+    def _max_existing_number(campus_department):
+        ticket_nos = Ticket.objects.filter(
+            section__campus_department=campus_department
+        ).values_list("ticket_no", flat=True)
+        numbers = [0]
+        for ticket_no in ticket_nos:
+            try:
+                numbers.append(int(ticket_no.rsplit("-", 1)[-1]))
+            except (TypeError, ValueError):
+                pass
+        return max(numbers)
+
+    def __str__(self):
+        return f"Sequence {self.campus_department_id} at {self.last_number}"
 
 
 class TicketLocation(models.Model):

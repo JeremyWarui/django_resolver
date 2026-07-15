@@ -293,6 +293,10 @@ Each takes `role: 'admin' | 'manager' | 'hod' | 'hos'`; the role surface is only
 
 ## Common gotchas
 
+**Ticket numbers come from `TicketSequence`, never from parsing `ticket_no`:** `Ticket._generate_ticket_no()` allocates via `TicketSequence.allocate(campus_department)` — a per campus-department counter row incremented under `select_for_update` (concurrent creates queue instead of colliding; verified with threads against Postgres). A fresh sequence row seeds itself from the max numeric suffix of existing tickets, so no backfill migration is needed. Do not reintroduce read-max-and-parse generation: it raced under concurrency AND went backwards past 9999 (string ordering). Gaps after failed inserts are expected and fine. Tests: `tests/test_ticket_sequence.py`.
+
+**Ticket action endpoints must use the IDOR guard:** Every `/tickets/{pk}/...` action view (status, assign, comments, logs, attachments, detail) fetches the ticket via `get_ticket_for_request_or_403()` in `apps/tickets/views.py` — never a bare `get_object_or_404(Ticket, pk=pk)`. The guard allows the ticket's own requester (R15) unless `allow_requester=False`, and otherwise requires the ticket to be inside the caller's role scope (fail-closed 403). Staff-only actions (assign) also pass `staff_only=True` so a plain `user` role can't perform them on their own ticket. Negative tests live in `tests/test_ticket_action_scope.py` — a new ticket sub-endpoint isn't done until it has an out-of-scope 403 test there.
+
 **Scope bypass via `?technician_id=`:** A technician could request their own performance report with `technician_id=123` (someone else). The backend endpoint **always applies `scoped_ticket_qs()`** first, so it only sees their own tickets anyway. But the frontend `GenerateReports` auto-injects `technician_id=self` to make this explicit.
 
 **Paused SLA:** When a ticket goes `pending`, the timer is frozen. Don't count paused tickets toward `breached` or `at_risk` metrics. (Handled by `aggregate()` in analytics/services.py.)

@@ -106,11 +106,14 @@ def requester(campus):
 
 @pytest.fixture
 def technician(section):
-    from apps.accounts.models import CustomUser
+    from apps.accounts.models import CustomUser, RoleAssignment
     from apps.org.models import SectionTechnician
 
     user = CustomUser.objects.create_user(username="technician", password="pass")
     SectionTechnician.objects.create(user=user, section=section)
+    RoleAssignment.objects.create(
+        user=user, role="technician", section=section, is_primary=True
+    )
     return user
 
 

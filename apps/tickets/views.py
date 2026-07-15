@@ -42,6 +42,35 @@ from apps.realtime.ws_utils import (
     emit_comment_added,
 )
 
+# Roles that may perform staff actions (assign, etc.) on in-scope tickets.
+STAFF_ROLES = ("admin", "manager", "hod", "hos", "technician")
+
+
+def get_ticket_for_request_or_403(
+    request, pk, *, allow_requester=True, staff_only=False, qs=None
+):
+    """Fetch a ticket and verify the caller may act on it (IDOR guard).
+
+    Mirrors TicketDetailView semantics: the requester's own ticket is always
+    accessible when ``allow_requester`` (R15 universal requester); otherwise the
+    ticket must fall inside the caller's role scope — fail closed with 403.
+
+    ``staff_only`` additionally rejects non-staff roles even for in-scope
+    tickets: a requester's own ticket is inside the ``user`` role scope, but
+    actions like assignment are staff-only.
+    """
+    ticket = get_object_or_404(qs if qs is not None else Ticket, pk=pk)
+
+    if allow_requester and ticket.raised_by_id == request.user.pk:
+        return ticket
+
+    role = get_request_role(request)
+    if staff_only and role not in STAFF_ROLES:
+        raise PermissionDenied("You do not have permission to perform this action.")
+    if not scoped_ticket_qs(request.user, role).filter(pk=ticket.pk).exists():
+        raise PermissionDenied("You do not have access to this ticket.")
+    return ticket
+
 
 class TicketLogSerializer(drf_serializers.ModelSerializer):
     actor = _UserMinSerializer(read_only=True, allow_null=True)
@@ -91,7 +120,7 @@ class TicketStatusView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
-        ticket = get_object_or_404(Ticket, pk=pk)
+        ticket = get_ticket_for_request_or_403(request, pk)
         serializer = TicketStatusUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         try:
@@ -112,8 +141,12 @@ class TicketAssignView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
-        ticket = get_object_or_404(
-            Ticket.objects.select_related("service_item", "assigned_to"), pk=pk
+        ticket = get_ticket_for_request_or_403(
+            request,
+            pk,
+            allow_requester=False,
+            staff_only=True,
+            qs=Ticket.objects.select_related("service_item", "assigned_to"),
         )
         serializer = TicketAssignSerializer(
             data=request.data, context={"ticket": ticket}
@@ -156,14 +189,14 @@ class TicketCommentListCreateView(generics.ListCreateAPIView):
     pagination_class = AppendOnlyFeedPagination
 
     def get_queryset(self):
-        ticket = get_object_or_404(Ticket, pk=self.kwargs["pk"])
+        ticket = get_ticket_for_request_or_403(self.request, self.kwargs["pk"])
         qs = TicketComment.objects.filter(ticket=ticket).order_by("-created_at")
         if ticket.raised_by == self.request.user:
             qs = qs.filter(visibility="public")
         return qs
 
     def perform_create(self, serializer):
-        ticket = get_object_or_404(Ticket, pk=self.kwargs["pk"])
+        ticket = get_ticket_for_request_or_403(self.request, self.kwargs["pk"])
         serializer.save(ticket=ticket, author=self.request.user)
         TicketLog.objects.create(
             ticket=ticket,
@@ -217,8 +250,9 @@ class TicketLogListView(generics.ListAPIView):
     pagination_class = AppendOnlyFeedPagination
 
     def get_queryset(self):
+        ticket = get_ticket_for_request_or_403(self.request, self.kwargs["pk"])
         return (
-            TicketLog.objects.filter(ticket_id=self.kwargs["pk"])
+            TicketLog.objects.filter(ticket=ticket)
             .select_related("actor", "level_user")
             .order_by("-created_at")
         )
@@ -417,8 +451,10 @@ class TicketDetailView(generics.RetrieveAPIView):
     serializer_class = TicketReadSerializer
 
     def get_object(self):
-        ticket = get_object_or_404(
-            Ticket.objects.select_related(
+        return get_ticket_for_request_or_403(
+            self.request,
+            self.kwargs["pk"],
+            qs=Ticket.objects.select_related(
                 "section__campus_department__department",
                 "section__campus_department__campus",
                 "section__section_type",
@@ -430,21 +466,7 @@ class TicketDetailView(generics.RetrieveAPIView):
                 "location__facility_type",
                 "location__facility",
             ),
-            pk=self.kwargs["pk"],
         )
-        user = self.request.user
-
-        # Universal requester — own ticket always visible (R15).
-        if ticket.raised_by_id == user.pk:
-            return ticket
-
-        # Staff — verify ticket is within their role scope.
-        role = get_request_role(self.request)
-        scoped = scoped_ticket_qs(user, role)
-        if not scoped.filter(pk=ticket.pk).exists():
-            raise PermissionDenied("You do not have access to this ticket.")
-
-        return ticket
 
 
 class AuditLogSerializer(drf_serializers.Serializer):
@@ -502,8 +524,7 @@ class TicketAttachmentView(APIView):
     permission_classes = [IsAuthenticated]
 
     def _get_ticket(self, request, pk):
-        role = get_request_role(request)
-        return get_object_or_404(scoped_ticket_qs(request.user, role), pk=pk)
+        return get_ticket_for_request_or_403(request, pk)
 
     def get(self, request, pk):
         ticket = self._get_ticket(request, pk)

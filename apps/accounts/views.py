@@ -46,9 +46,7 @@ def _get_active_assignment_from_request(request):
             ra_id = request.auth.get("role_assignment_id")
     except Exception:
         pass
-    if ra_id:
-        return RoleAssignment.objects.filter(pk=ra_id).first()
-    return request.user.primary_role_assignment
+    return resolve_active_assignment(request.user, ra_id)
 
 
 class MeView(APIView):
@@ -399,6 +397,7 @@ from rest_framework_simplejwt.tokens import RefreshToken as _RefreshToken
 from apps.accounts.jwt_utils import (
     get_primary_assignment_or_infer,
     ensure_floor_assignment,
+    resolve_active_assignment,
 )
 
 _logger = logging.getLogger(__name__)
@@ -543,21 +542,17 @@ def jwt_refresh(request):
         refresh = _RefreshToken(raw_refresh)
         refresh.verify()
 
-        # Rotate: blacklist old, issue new pair.
+        # Rotate: blacklist old, issue new pair scoped to the user's *current*
+        # role assignment — not a copy of the old token's claims — so a
+        # promotion/demotion is picked up on the very next silent refresh
+        # instead of persisting stale scope for up to REFRESH_TOKEN_LIFETIME.
         refresh.blacklist()
         uid_claim = _get_user_id_claim()
-        new_refresh = _RefreshToken.for_user(_User.objects.get(pk=refresh[uid_claim]))
-        for claim in (
-            "email",
-            "role",
-            "campus_id",
-            "department_id",
-            "section_id",
-            "role_assignment_id",
-        ):
-            if claim in refresh.payload:
-                new_refresh[claim] = refresh.payload[claim]
-        new_access = new_refresh.access_token
+        user = _User.objects.get(pk=refresh[uid_claim])
+        active_assignment = resolve_active_assignment(
+            user, refresh.payload.get("role_assignment_id")
+        )
+        new_refresh, new_access = build_tokens_for_assignment(user, active_assignment)
 
     except Exception as exc:
         _logger.debug("jwt_refresh failed: %s", exc)

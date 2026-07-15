@@ -449,7 +449,11 @@ TOKEN_EXPIRY_HOURS = {
 MAGIC_LINK_EXPIRY_MINUTES = 15
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    # Short-lived on purpose: jwt_refresh() re-derives role/scope claims from
+    # the DB on every rotation, so this window bounds how long a promoted/
+    # demoted user can keep acting on a stale role before their next silent
+    # refresh picks up the change.
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,

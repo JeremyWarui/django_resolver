@@ -100,6 +100,31 @@ def get_primary_assignment_or_infer(user):
     )
 
 
+def resolve_active_assignment(user, claimed_ra_id):
+    """Re-derive the RoleAssignment that should back a session, given the
+    role_assignment_id claim carried by an existing token.
+
+    Honors an explicit, still-open cover assignment: non-primary rows always
+    carry a valid_until (enforced in RoleAssignmentCreateSerializer.validate),
+    so a covering HOS/HOD isn't silently reverted to their primary role mid-
+    window. Otherwise this always resolves to the user's *current* primary
+    assignment — promoting/demoting a user demotes their old primary rather
+    than deleting it (see UserRoleAssignmentListCreateView), so a stale
+    claimed_ra_id naturally fails the "still primary" check here and falls
+    through to the live one. Used by both jwt_refresh (token rotation) and
+    /auth/me/, so neither can keep reporting a role that's been replaced.
+    """
+    if claimed_ra_id:
+        claimed = (
+            RoleAssignment.objects.filter(pk=claimed_ra_id)
+            .select_related("section", "campus_department", "department")
+            .first()
+        )
+        if claimed and not claimed.is_primary and claimed.valid_until and claimed.is_active():
+            return claimed
+    return get_primary_assignment_or_infer(user)
+
+
 def serialize_role_assignment(ra):
     """Return a dict representation of a RoleAssignment."""
     return {

@@ -634,7 +634,7 @@ class UserListCreateView(APIView):
                 ),
                 to_attr="primary_ra_list",
             )
-        ).order_by("last_name", "first_name")
+        ).order_by("-date_joined")
 
         serializer = UserAdminSerializer(qs, many=True)
         return Response(

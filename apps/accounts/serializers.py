@@ -228,6 +228,7 @@ class UserAdminSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "email",
+            "date_joined",
             "role",
             "campus_name",
             "sections",

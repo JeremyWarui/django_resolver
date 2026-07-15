@@ -304,6 +304,23 @@ def emit_comment_added(ticket, comment) -> None:
         logger.warning("Push notify_comment_added failed: %s", exc)
 
 
+def emit_role_changed(user_id: int, old_role: str | None, new_role: str | None) -> None:
+    """Push a live signal to a user whose effective role changed via a
+    RoleAssignment create/update/delete, so the frontend can force a clean
+    re-login immediately instead of waiting for the next silent token refresh
+    to notice (jwt_refresh's own roleChanged check remains the fallback if
+    this socket is disconnected or the tab is backgrounded).
+
+    WS-only — no Notification DB row. This isn't a ticket-oriented item for
+    a user to review later; it's a transient control-plane signal.
+    """
+    emit_ws_event(
+        f"user_{user_id}",
+        "role_changed",
+        {"oldRole": old_role, "newRole": new_role},
+    )
+
+
 def emit_ticket_escalated(ticket) -> None:
     payload = {
         "ticketId": ticket.id,

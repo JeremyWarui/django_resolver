@@ -12,6 +12,7 @@ Acceptance criteria:
 
 import pytest
 from datetime import timedelta
+from unittest.mock import patch
 
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -542,6 +543,85 @@ class TestRoleAssignmentCRUD:
             f"/api/v1/users/{target.id}/role-assignments/{ra.id}/"
         )
         assert response.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# TestRoleChangedWSPush — live role_changed event on RoleAssignment edits
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+class TestRoleChangedWSPush:
+
+    def test_primary_swap_pushes_to_promoted_user_not_admin(
+        self, api_client, django_capture_on_commit_callbacks, campus, section, campus_dept
+    ):
+        admin = make_user("wsrole_admin", campus=campus, role="admin")
+        target = make_user(
+            "wsrole_target", campus=campus, role="technician", section=section
+        )
+        old_primary = target.role_assignments.get(is_primary=True)
+
+        api_client.force_authenticate(user=admin)
+        with patch("apps.accounts.views.emit_role_changed") as mock_emit:
+            with django_capture_on_commit_callbacks(execute=True):
+                response = api_client.post(
+                    f"/api/v1/users/{target.id}/role-assignments/",
+                    {
+                        "role": "hod",
+                        "campus_id": campus.id,
+                        "department_id": campus_dept.department_id,
+                        "is_primary": True,
+                    },
+                )
+        assert response.status_code == 201
+        mock_emit.assert_called_once_with(target.id, old_primary.role, "hod")
+
+    def test_cover_creation_does_not_push(self, api_client, campus, section):
+        """A cover assignment doesn't take effect until the user explicitly
+        switches into it, so creating one must not force a relogin."""
+        admin = make_user("wsrole_cover_admin", campus=campus, role="admin")
+        target = make_user("wsrole_cover_target", campus=campus)
+        api_client.force_authenticate(user=admin)
+        with patch("apps.accounts.views.emit_role_changed") as mock_emit:
+            response = api_client.post(
+                f"/api/v1/users/{target.id}/role-assignments/",
+                {
+                    "role": "technician",
+                    "section_id": section.id,
+                    "valid_until": (timezone.now() + timedelta(days=7)).isoformat(),
+                },
+            )
+        assert response.status_code == 201
+        mock_emit.assert_not_called()
+
+    def test_patch_valid_until_pushes_to_target(
+        self, api_client, campus, section, campus_dept
+    ):
+        from apps.accounts.models import RoleAssignment
+
+        hod = make_user(
+            "wsrole_hod_patch", campus=campus, role="hod", campus_department=campus_dept
+        )
+        campus_dept.head_of_department = hod
+        campus_dept.save()
+        target = make_user("wsrole_patch_target", campus=campus)
+        ra = RoleAssignment.objects.create(
+            user=target,
+            role="technician",
+            section=section,
+            is_primary=False,
+            valid_until=timezone.now() + timedelta(days=3),
+            assigned_by=hod,
+        )
+        api_client.force_authenticate(user=hod)
+        with patch("apps.accounts.views.emit_role_changed") as mock_emit:
+            response = api_client.patch(
+                f"/api/v1/users/{target.id}/role-assignments/{ra.id}/",
+                {"valid_until": (timezone.now() + timedelta(days=14)).isoformat()},
+            )
+        assert response.status_code == 200
+        mock_emit.assert_called_once_with(target.id, "technician", "technician")
 
 
 # ---------------------------------------------------------------------------

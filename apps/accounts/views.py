@@ -18,6 +18,7 @@ from apps.accounts.serializers import (
 )
 from apps.accounts.jwt_utils import build_tokens_for_assignment, serialize_auth_user
 from apps.common.permissions import get_request_role
+from apps.realtime.ws_utils import emit_role_changed
 
 REFRESH_COOKIE = "resolver_refresh"
 COOKIE_MAX_AGE = 7 * 24 * 60 * 60  # 7 days
@@ -301,6 +302,18 @@ class UserRoleAssignmentListCreateView(generics.ListCreateAPIView):
                     **vd,
                 )
                 _sync_org_scope(target, ra, old_primary)
+                if is_primary:
+                    # A primary swap is the one case that changes what the
+                    # target's *current* session is authorized to do — cover
+                    # (is_primary=False) assignments don't take effect until
+                    # the user explicitly switches into them, so no push there.
+                    transaction.on_commit(
+                        lambda: emit_role_changed(
+                            target.id,
+                            old_primary.role if old_primary else None,
+                            ra.role,
+                        )
+                    )
         except IntegrityError as exc:
             msg = str(exc)
             if "one_primary_role_per_user" in msg:
@@ -369,6 +382,11 @@ class UserRoleAssignmentDetailView(APIView):
         serializer = RoleAssignmentUpdateSerializer(ra, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
+        # valid_until edits can end an actively-used cover assignment early —
+        # push a signal so a session currently riding this assignment forces
+        # a clean re-login instead of silently falling back to primary scope
+        # with a UI still showing the (now invalid) cover role.
+        emit_role_changed(ra.user_id, ra.role, ra.role)
         return Response(RoleAssignmentSerializer(ra).data)
 
     def delete(self, request, user_pk, ra_pk):

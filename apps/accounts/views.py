@@ -549,10 +549,12 @@ def jwt_refresh(request):
         refresh.blacklist()
         uid_claim = _get_user_id_claim()
         user = _User.objects.get(pk=refresh[uid_claim])
+        old_role = refresh.payload.get("role")
         active_assignment = resolve_active_assignment(
             user, refresh.payload.get("role_assignment_id")
         )
         new_refresh, new_access = build_tokens_for_assignment(user, active_assignment)
+        new_role = active_assignment.role if active_assignment else None
 
     except Exception as exc:
         _logger.debug("jwt_refresh failed: %s", exc)
@@ -566,7 +568,14 @@ def jwt_refresh(request):
             status=status.HTTP_401_UNAUTHORIZED,
         )
 
-    response = Response({"accessToken": str(new_access)}, status=status.HTTP_200_OK)
+    # roleChanged tells the frontend its cached user object (role, sidebar,
+    # dashboard choice — all set at login/switch-role time, never touched by
+    # a silent refresh) is now stale, so it should force a clean re-login
+    # rather than keep serving a UI built for the old role.
+    response = Response(
+        {"accessToken": str(new_access), "roleChanged": old_role != new_role},
+        status=status.HTTP_200_OK,
+    )
     _set_refresh_cookie(response, new_refresh)
     return response
 

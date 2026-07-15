@@ -611,3 +611,80 @@ class TestScopeClaimsCasing:
         assert (
             token.get("roleAssignmentId") is None
         ), "camelCase roleAssignmentId found in token"
+
+
+@pytest.mark.django_db
+class TestRoleChangeOnRefresh:
+    """jwt_refresh() must re-derive role/scope from the DB, not copy the old
+    token's claims — otherwise a promoted/demoted user keeps acting on stale
+    scope for up to REFRESH_TOKEN_LIFETIME. See resolve_active_assignment()."""
+
+    def test_no_change_reports_role_changed_false(self, api_client, campus, section):
+        from apps.accounts.jwt_utils import build_tokens_for_assignment
+
+        user = make_user("stable_role_user", campus=campus, role="hos", section=section)
+        ra = user.role_assignments.first()
+        refresh, _access = build_tokens_for_assignment(user, ra)
+
+        api_client.cookies["resolver_refresh"] = str(refresh)
+        response = api_client.post("/api/auth/refresh/")
+        assert response.status_code == 200, response.data
+        assert response.data["roleChanged"] is False
+
+    def test_promotion_detected_and_new_role_applied(self, api_client, campus, section):
+        """Mirrors UserRoleAssignmentListCreateView: demote the old primary,
+        create a new one — the exact shape a real admin promotion leaves behind."""
+        from rest_framework_simplejwt.tokens import AccessToken
+        from apps.accounts.jwt_utils import build_tokens_for_assignment
+        from apps.accounts.models import RoleAssignment
+
+        user = make_user("promoted_user", campus=campus, role="user")
+        old_ra = user.role_assignments.first()
+        refresh, _access = build_tokens_for_assignment(user, old_ra)
+
+        # Simulate the admin promoting this user to technician.
+        old_ra.is_primary = False
+        old_ra.save()
+        new_ra = RoleAssignment.objects.create(
+            user=user, role="technician", section=section, is_primary=True
+        )
+
+        api_client.cookies["resolver_refresh"] = str(refresh)
+        response = api_client.post("/api/auth/refresh/")
+        assert response.status_code == 200, response.data
+        assert response.data["roleChanged"] is True
+
+        new_access = AccessToken(response.data["accessToken"])
+        assert new_access.get("role") == "technician"
+        assert new_access.get("role_assignment_id") == new_ra.pk
+
+    def test_active_cover_assignment_preserved_on_refresh(
+        self, api_client, campus, section
+    ):
+        """An explicit, still-open cover (non-primary + valid_until in the
+        future) must survive a refresh — the user shouldn't be silently
+        bounced back to their primary role mid-cover-window."""
+        from django.utils import timezone
+        from datetime import timedelta
+        from rest_framework_simplejwt.tokens import AccessToken
+        from apps.accounts.jwt_utils import build_tokens_for_assignment
+        from apps.accounts.models import RoleAssignment
+
+        user = make_user("covering_user", campus=campus, role="user")
+        cover_ra = RoleAssignment.objects.create(
+            user=user,
+            role="hos",
+            section=section,
+            is_primary=False,
+            valid_until=timezone.now() + timedelta(days=3),
+        )
+        refresh, _access = build_tokens_for_assignment(user, cover_ra)
+
+        api_client.cookies["resolver_refresh"] = str(refresh)
+        response = api_client.post("/api/auth/refresh/")
+        assert response.status_code == 200, response.data
+        assert response.data["roleChanged"] is False
+
+        new_access = AccessToken(response.data["accessToken"])
+        assert new_access.get("role") == "hos"
+        assert new_access.get("role_assignment_id") == cover_ra.pk

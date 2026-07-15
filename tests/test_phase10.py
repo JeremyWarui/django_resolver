@@ -1956,9 +1956,6 @@ class TestLeaveCoverFlow:
         )
         assert expired_ra.is_active() is False
 
-    @pytest.mark.xfail(
-        reason="POST /auth/switch-role/ endpoint may not be implemented yet"
-    )
     def test_cover_user_can_switch_role(self, api_client, campus, section, requester):
         """
         A user with an active cover RoleAssignment can call POST /auth/switch-role/
@@ -1984,7 +1981,7 @@ class TestLeaveCoverFlow:
 
         resp = api_client.post(
             "/api/auth/switch-role/",
-            {"role_assignment_id": cover_ra.id},
+            {"roleAssignmentId": cover_ra.id},
             format="json",
         )
         assert resp.status_code == 200

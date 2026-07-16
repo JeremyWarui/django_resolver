@@ -34,7 +34,11 @@ python manage.py runserver          # http://localhost:8000
 
 ## Seed Accounts
 
-`seed_full` creates demo users across all roles, all sharing the `DEFAULT_PASSWORD` constant defined in `apps/common/management/commands/seed_full.py` (not reproduced here — read it from the source file).
+`seed_full` creates demo users across all roles, all sharing the password supplied via the `SEED_DEFAULT_PASSWORD` environment variable (required — the command aborts if it is unset, and the password is never committed):
+
+```bash
+SEED_DEFAULT_PASSWORD='<demo password>' python manage.py seed_full
+```
 
 | Role | Username example |
 |------|-----------------|

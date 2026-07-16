@@ -12,10 +12,11 @@ Run after:  python manage.py migrate
 Re-runnable: org/catalogue are get_or_create; tickets are skipped if any exist.
 """
 
+import os
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
 from apps.accounts.models import RoleAssignment, UserProfile
@@ -34,7 +35,17 @@ from apps.tickets.models import Ticket, TicketFeedback, TicketLocation, TicketLo
 
 User = get_user_model()
 
-DEFAULT_PASSWORD = "***REMOVED-DEMO-PASSWORD***"
+
+def _default_password():
+    # Demo password for seeded users — supplied via env, never committed.
+    password = os.environ.get("SEED_DEFAULT_PASSWORD")
+    if not password:
+        raise CommandError(
+            "SEED_DEFAULT_PASSWORD is not set. Export the demo password for "
+            "seeded users, e.g. SEED_DEFAULT_PASSWORD=... python manage.py seed_full"
+        )
+    return password
+
 
 # ---------------------------------------------------------------------------
 # Reference data
@@ -454,6 +465,7 @@ class Command(BaseCommand):
         return section_types
 
     def _seed_users(self, campuses):
+        default_password = _default_password()
         users = {}
         created = 0
         for username, first_name, last_name, email, campus_code in USERS:
@@ -466,7 +478,7 @@ class Command(BaseCommand):
                 },
             )
             if is_new:
-                user.set_password(DEFAULT_PASSWORD)
+                user.set_password(default_password)
                 user.save()
                 created += 1
             UserProfile.objects.get_or_create(

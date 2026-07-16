@@ -1,12 +1,8 @@
 version: 2
 
-# Exclude dev seed data — DEFAULT_PASSWORD is a demo credential for local
-# seeding only, not a real secret. No production credentials live here.
+# Seed commands read the demo password from SEED_DEFAULT_PASSWORD (env) — no
+# credentials live in source anymore.
 paths-ignore:
-  - "apps/common/management/commands/seed_full.py"
-  - "apps/common/management/commands/seed_demo.py"
-  - "apps/common/management/commands/seed_org.py"
-  - "apps/common/management/commands/seed_reference.py"
   # Test files use throwaway credentials (testpass, jwtpass, etc.) — not real secrets
   - "tests/**"
   - "**/tests/**"

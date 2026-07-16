@@ -42,8 +42,10 @@ python manage.py migrate
 find . -path "*/migrations/*.py" -not -name "__init__.py" -delete
 python manage.py makemigrations
 python manage.py migrate
-python manage.py seed_full
+SEED_DEFAULT_PASSWORD='<demo password>' python manage.py seed_full
 
+# seed_full requires SEED_DEFAULT_PASSWORD in the environment (the shared demo
+# password for seeded users — never hardcoded/committed; the command aborts if unset).
 # seed_full replaces the three old seeds (seed_reference, seed_org, seed_demo).
 # It is idempotent (get_or_create throughout) and seeds:
 #   - Priorities, EscalationRules, FacilityTypes, Facilities (18 buildings across 3 campuses)

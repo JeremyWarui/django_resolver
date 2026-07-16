@@ -4,10 +4,9 @@
 > invariants the system must enforce, the Django/DRF backend, the ticket lifecycle / SLA /
 > escalation engine, the REST + realtime API per role, and a phased build plan.
 >
-> **How to use with a coding agent.** Execute phases in order; don't start a phase until the
-> previous one's acceptance criteria pass. Phase 0 audits the actual repository and records the app
-> layout; later phases reconcile the code to this target. The companion `ALIGNMENT.md` maps any
-> older planning vocabulary onto the terms used here; `CLAUDE.md` is the frontend contract.
+> **Status:** the phased build (§7) is complete — this document now serves as the **domain and API
+> reference** the code must stay aligned with. `CLAUDE.md` is the build companion (commands, layout,
+> gotchas, frontend contract). Where §11's corrections conflict with anything else here, §11 wins.
 
 ---
 
@@ -61,7 +60,7 @@ A separate mechanism, **role cover** (§3.8), lets a user temporarily hold a *se
 role* — e.g. a senior technician acting as HOS while the HOS is on leave. That is a time-boxed
 `RoleAssignment`, distinct from the requester context above.
 
-### Roles and what each sees
+### 1.3 Roles and what each sees
 
 | Role | Scope | Core actions |
 |------|-------|--------------|
@@ -117,6 +116,10 @@ Every staff role above is **also** a requester via the context switch (§1.2).
   section → Section, priority → Priority, assigned_to → User [nullable], status, current_level,
   response_due_at, resolution_due_at, paused_at [nullable], accumulated_pause, created_at,
   updated_at, resolved_at, closed_at)`
+- `TicketSequence(campus_department 1-1, last_number)` — per campus-department counter behind
+  `ticket_no` generation; allocated under `select_for_update` so concurrent creates queue instead of
+  colliding. Never derive the next number by parsing existing `ticket_no` strings.
+- `TicketAttachment(ticket → Ticket, uploaded_by → User, file, original_name, size, created_at)`
 - `TicketLocation(ticket 1-1, facility_type → FacilityType, facility → Facility [nullable],
   values: JSON)` — present iff `category.location_details`; `facility` set for types whose form has
   a building dropdown (office_block, building); `values` holds the remaining per-type fields
@@ -208,11 +211,8 @@ Ticket ──1-1──>               TicketFeedback
 
 ### 3.1 App layout
 
-The reference layout below separates the independently-configured concerns; the eight folders map
-onto the existing model files, so the split is cheap. (A lighter 6- or 3-app grouping is acceptable
-if the team prefers — the model boundaries and invariants in §2 are fixed regardless. The layout is
-chosen and recorded in Phase 0, before models are written, because the fresh migration reset makes
-it free to pick then.)
+One Django app per independently-configured concern (this is the implemented layout; the model
+boundaries and invariants in §2 are fixed regardless):
 
 ```
 apps/
@@ -223,8 +223,9 @@ apps/
   facilities/  # FacilityType (fixed enum), Facility registry, per-type location validators
   tickets/     # Ticket, TicketLocation, TicketLog, TicketComment, TicketFeedback,
                # routing resolver, status service, SLA service
-  analytics/   # read-only aggregation endpoints
-  realtime/    # Django Channels consumers + event emitters
+  analytics/   # read-only aggregation endpoints + Excel report views
+  realtime/    # Channels consumers, Notification + PushSubscription models, WS/push emitters
+  common/      # shared pagination, time windows, admin config, seed commands (seed_full)
 ```
 
 Dependency direction (no cycles): `accounts → org → catalog → sla → facilities → tickets →
@@ -484,10 +485,11 @@ cover `RoleAssignment` for that scope if one exists (§3.8), else the standing `
 escalations and the log's `level_user` point to the **covering technician**. A seat with neither a
 standing holder nor active cover is "vacant" and the engine skips it.
 
-> **Reference implementations provided:** `apps/sla/services/escalation.py` (engine),
-> `apps/sla/management/commands/run_escalations.py`, `apps/tickets/services/lifecycle.py` (status +
-> pause accounting), `apps/facilities/validators.py` (per-type location validation), with tests —
-> they encode paused time, vacant rungs, immutable log snapshots, and per-type location validation.
+> **Reference implementations:** `apps/sla/services/escalation.py` (engine),
+> `apps/sla/management/commands/process_auto_escalations.py` (the cron sweep; supports `--dry-run
+> --verbose`), `apps/tickets/services/lifecycle.py` (status + pause accounting),
+> `apps/facilities/validators.py` (per-type location validation), with tests — they encode paused
+> time, vacant rungs, immutable log snapshots, and per-type location validation.
 
 ---
 
@@ -500,14 +502,20 @@ lists are role-scoped server-side (§3.5).
 ### 5.1 Auth
 `POST /auth/login/` · `POST /auth/refresh/` · `POST /auth/logout/` · `GET /auth/me/` (profile + role
 + scope + active role assignments) · `POST /auth/switch-role/` (re-issue access token for another
-active role, §3.8). Admin role-cover CRUD: `POST /users/{id}/role-assignments/`, `PATCH`/`DELETE
-/users/{id}/role-assignments/{ra}/` (HOD/admin within scope).
+active role, §3.8) · `POST /auth/register/` (self-registration: campus required, username
+auto-generated, password set at creation). **Refresh re-derives** role/scope claims from the current
+active `RoleAssignment` (never copies stale claims) and reports `roleChanged` so the client can force
+a clean relogin; a `role_changed` WS event triggers the same instantly. Admin role-cover CRUD:
+`POST /users/{id}/role-assignments/`, `PATCH`/`DELETE /users/{id}/role-assignments/{ra}/` (HOD/admin
+within scope).
 
 ### 5.2 Configuration / admin (admin role)
 CRUD: `/campuses/`, `/departments/` (`?campus=` scopes to departments present at that campus — C15),
-`/section-types/`, `/campus-departments/`, `/sections/` (`?department=` scopes to that department's
-sections — C15), `/sections/{id}/technicians/`, `/priorities/` & `/priorities/{id}/escalation-rules/`,
-`/facility-types/` (read-mostly; fixed set), `/facilities/`, `/service-categories/`, `/service-items/`.
+`/section-types/`, `/campus-departments/` (+ `GET {id}/hod-candidates/`, `PATCH {id}/assign-hod/`),
+`/sections/` (`?department=` scopes to that department's sections — C15),
+`/sections/{id}/technicians/`, `GET /sections/{id}/assignable-technicians/`, `/priorities/` &
+`/priorities/{id}/escalation-rules/`, `/facility-types/` (read-mostly; fixed set), `/facilities/`,
+`/service-categories/`, `/service-items/`.
 
 ### 5.3 Ticketing
 
@@ -525,6 +533,15 @@ sections — C15), `/sections/{id}/technicians/`, `/priorities/` & `/priorities/
 | GET/POST | `/tickets/{id}/comments/` | scoped | Comments (internal hidden from requester; cursor, `-created_at`) |
 | POST | `/tickets/{id}/feedback/` | requester | Rate (once, at/after resolved) |
 | GET | `/tickets/{id}/logs/` | staff | Immutable audit (cursor, `-created_at`) |
+| GET/POST | `/tickets/{id}/attachments/` (+ `DELETE …/{att_id}/`) | scoped | File attachments |
+| GET | `/tickets/filter-options/` | scoped | Sections/technicians/users present in the caller's scoped queryset (feeds table filter dropdowns) |
+| GET | `/admin/audit-log/` | admin (`is_staff`) | System-wide TicketLog audit (paginated; filters: actor, action, dates) |
+
+**Every `/tickets/{pk}/...` action view fetches via `get_ticket_for_request_or_403()`** (the IDOR
+guard) — never a bare `get_object_or_404`. It allows the ticket's own requester (R15) unless
+`allow_requester=False`, otherwise requires the ticket inside the caller's role scope (fail-closed
+403); staff-only actions pass `staff_only=True`. A new ticket sub-endpoint isn't done until it has an
+out-of-scope 403 test in `tests/test_ticket_action_scope.py`.
 
 ### 5.4 Analytics (read-only, role-scoped) — Phase 7
 
@@ -617,95 +634,40 @@ overview; the rest are diagnostic drill-ins.
 
 ### 5.5 Reports (read-only, role-scoped, Excel export) — Phase 9
 
-Role-scoped Excel workbook export. Every report includes a **Summary sheet** that mirrors the analytics
-overview (same metrics: open backlog, SLA %, CSAT, resolution p50/p90) so the downloaded file is always
-consistent with what the dashboard shows. Rows are sorted/pivot-ready.
+Implemented in `apps/analytics/report_views.py`.
 
-**Endpoints:**
-```
-GET /reports/types/
-  Returns: {
-    report_types: [
-      {id, name, description, filters: [date_range, ...], columns: [...]},
-      ...
-    ],
-    timeframe_options: [
-      {value, label},  # "all", "day", "week", "month", "quarter", "year"
-    ]
-  }
-  Auth: authenticated (technician+)
+- `GET /reports/types/` → available report types + `timeframe_options`
+  (`all | day | week | month | quarter | year` = all time / 24h / 7d / 30d / 90d / 1y).
+- `GET /reports/generate/?report_type=…&timeframe=…&[start_date=&end_date=]&[section_id=]&[technician_id=]`
+  → streams a styled, pivot-ready `.xlsx` (frozen headers, no merged cells in data ranges).
 
-GET /reports/generate/?report_type=X&timeframe=Y&[start_date=]&[end_date=]&[section_id=]&[technician_id=]
-  Query params:
-    report_type (required): "ticket-lifecycle" | "technician-performance" | "facility-health" |
-                           "pending-analysis" | "comprehensive"
-    timeframe: "all" (default 30d) | "day" | "week" | "month" | "quarter" | "year"
-    start_date, end_date (optional, format YYYY-MM-DD): custom range (overrides timeframe)
-    section_id (optional): filter to one section
-    technician_id (optional): filter to one technician's assigned tickets
-  Returns: Excel workbook (application/vnd.openxmlformats-officedocument.spreadsheetml.sheet)
-           Content-Disposition: attachment; filename="[type]_report.xlsx"
-  Auth: authenticated; scope enforced server-side via scoped_ticket_qs()
-```
+**Report types** (all visible to Admin/Manager/HOD/HOS; Technician sees lifecycle, own performance,
+pending): `ticket-lifecycle` (full audit trail), `technician-performance` (per-tech load/resolved/
+CSAT/resolution time), `facility-health` (volume by category × facility type), `pending-analysis`
+(pending tickets + pause durations), `comprehensive` (all four sheets).
 
-**Available report types:**
+**Rules:**
+- Every workbook's Sheet 1 is a **Summary** mirroring the analytics overview (open backlog, created/
+  resolved/net flow, response+resolution SLA %, at-risk, breached, CSAT, reopen/escalation rate,
+  resolution p50/p90 — Python-side percentiles). If `timeframe=all`, the Summary still uses the 30d
+  window (matching the dashboard preset); data sheets include everything.
+- Scope enforced server-side via `scoped_ticket_qs()` — a technician's `technician_id` param is
+  ignored (self only). Frontend `GenerateReports.tsx` mirrors this: role-filtered type list, scope
+  badge, and auto-injected `technician_id=self` for technicians.
+- Window filters on `created_at`; resolved counts use `resolved_at`; prior-window delta auto-derived.
 
-| ID | Name | Summary + Sheets | Visible to | Notes |
-|----|------|------------------|-----------|-------|
-| ticket-lifecycle | Ticket Lifecycle Report | Summary (30d) + Ticket Audit Trail | Admin, Manager, HOD, HOS | All tickets + full lifecycle (created, status, assigned, resolved, closed, paused duration) |
-| technician-performance | Technician Performance Report | Summary (30d) + Technician Metrics | Admin, Manager, HOD, HOS; Technician sees self only | Per-technician: total assigned, open, resolved, escalated, avg resolution time |
-| facility-health | Facility Health Report | Summary (30d) + Facility Breakdown | Admin, Manager, HOD, HOS | Volume grouped by service category × facility type |
-| pending-analysis | Pending Tickets Analysis | Summary (30d) + Pending Tickets | Admin, Manager, HOD, HOS | All pending tickets + pause durations + priorities |
-| comprehensive | Comprehensive Report | Summary (30d) + all 4 sheets above | Admin, Manager, HOD, HOS | Full workbook — Lifecycle, Technician, Facility, Pending in one download |
+### 5.6 Notifications & push (realtime REST)
 
-**Scope enforcement:**
-
-- **Backend:** `scoped_ticket_qs(user, role)` filters all report data to the caller's scope (same as analytics)
-  - Admin sees org-wide
-  - Manager sees their department (all campuses)
-  - HOD sees their campus department
-  - HOS sees their section(s)
-  - Technician sees own assigned tickets; if `technician_id` param is passed, it's ignored (tech only sees self)
-
-- **Frontend:** `GenerateReports.tsx` reads role from auth store and shows only relevant types per role
-  - Technician: 3 types (lifecycle, "My Performance Report", pending)
-  - HOS: 5 types (with "Technician Performance" → "My Team Performance Report")
-  - HOD, Manager, Admin: all 5 types
-  - Scope badge at top of form says "Your Department — all campuses" (manager) or "Your Section(s)" (HOS), etc.
-  - Technician's performance report auto-injects `technician_id=self` in the request
-
-**Summary sheet metrics** (same as analytics overview):
-- Open backlog (live count, not windowed)
-- Created in window
-- Resolved in window
-- Net flow (created − resolved)
-- Resolution SLA % (met / with due)
-- Response SLA % (met / with due)
-- At-risk tickets
-- Breached tickets
-- CSAT (if feedback exists)
-- Reopen rate
-- Escalation rate
-- Resolution p50 and p90 (not means; Python-side percentile to support any DB)
-
-**Time defaults:**
-- User selects `timeframe` or custom `start_date` / `end_date`
-- If `timeframe=all`, Summary sheet defaults to 30d (matching dashboard preset); data sheets include all
-- Date filtering applies to ticket `created_at` (window); for resolved counts, uses `resolved_at` window
-- Prior-window (for delta) is auto-derived (same span before the window)
-
-**Excel styling:**
-- Sheet 1 is Summary (key-value pairs in two columns, styled header)
-- Data sheets have: header row (blue fill, white bold font), alternating row colors, frozen header pane
-- Numeric columns centered; string columns left-aligned; percentages formatted as "XX.X%"
-- Auto-width per column; text wrapping on description/action columns
-- All sheets are pivot-table-ready (no merged cells in data ranges)
+`GET /notifications/` · `POST /notifications/{id}/read` · `POST /notifications/read-all/` ·
+`POST /push/subscribe/` + `GET /push/vapid-key/` (Web Push for the PWA/mobile shell).
+Backed by `Notification` and `PushSubscription` in `apps/realtime/models.py`.
 
 ### 5.7 Realtime (Channels)
 WS authenticated by the JWT access token (§3.6). Channels: `user:{id}` (always — covers My Requests),
 plus `section:{id}` / `campus_department:{id}` per active role, and `ticket:{id}` (transient on a
 detail page). Emit on: create, assign, status change, escalation (`current_level`), priority change,
-new comment, SLA breach.
+new comment, SLA breach, and `role_changed` (forces an instant clean relogin when a user's role
+assignment changes, §5.1).
 
 ---
 
@@ -753,70 +715,18 @@ pass.)*
 
 ---
 
-## 7. Phased execution plan
+## 7. Phased execution plan — **complete**
 
-Run tests + migrations at the end of each backend phase.
+All phases (0–11) have landed: models + fresh migrations (1), config/catalogue APIs (2), create/
+routing/location (3), lifecycle/comments/feedback/logs (4), SLA + escalation engine (5), permissions
++ scope hardening + role cover (6), analytics rebuilt on the single `aggregate()` core (7), frontend
+reconciliation (8), Excel reports (9), cleanup (10), fresh schema + seeds + full R1–R17 test suite
+(11). Two acceptance rules from the plan remain **standing requirements** for all future work:
 
-- **Phase 0 — Audit (no changes):** produce `AUDIT.md` (routes/components/API inventory + mapping +
-  invariant violations + keep/modify/add/remove). Inspect the backend file structure and **decide the
-  app split** (§3.1), recording the chosen layout and rationale. This decision is made here because
-  the fresh migration reset makes the layout free to pick now and costly to change later.
-- **Phase 1 — Models, auth, fresh migrations:** implement §3.2 models + constraints (R1/R3) +
-  validators (R2) + immutable `TicketLog` (R11) + `RoleAssignment` (§3.8) into the chosen layout; set
-  up JWT auth (§3.6); reset migrations and build clean (§8); seed facility types (fixed set),
-  priorities + escalation rules.
-- **Phase 2 — Serializers & config/catalogue APIs:** admin CRUD (§5.2) + catalogue tree with campus
-  filter (R5); pagination per §3.7 (ticket feed PageNumber/`-updated_at`; append-only feeds
-  cursor/`-created_at`; config lists PageNumber); group permissions.
-- **Phase 3 — Create, routing & location:** `TicketCreateSerializer` + routing (R6) + priority
-  resolver (R7) + per-type location validation incl. the building dropdown (R13); `ticket_no`
-  generation.
-- **Phase 4 — Lifecycle, comments, feedback, logs:** status service (reason on `pending`, R8);
-  pool-only assign; comments (visibility) + feedback (once, resolved+); every action logs (R11).
-- **Phase 5 — SLA engine & escalation job:** timers at create; pause/resume on `pending` (R9);
-  escalation worker (R10) with active-holder resolution (R17); transfer handler (R12).
-- **Phase 6 — Permissions, role-scoped reads, requester & role cover:** object scoping (§3.5);
-  `?mine=1` My Requests for every user (R15); `RoleAssignment` cover CRUD + `switch-role` +
-  active-holder resolution honoured in scoping/assignment/escalation (§3.8, R17). **Harden the
-  scope resolver (`apply_ticket_scope` + JWT plumbing) — this is a prerequisite for Phase 7 and a
-  data-safety fix:** (a) traverse `section__campus_department__…` everywhere (there is no
-  `Ticket.campus_department`); (b) **fail closed** — a non-admin whose scope can't be resolved gets
-  `none()`, never the unfiltered queryset; (c) one JWT claim casing end-to-end (issuance, refresh
-  rotation, reader — the audit found snake/camel mismatch silently dropping scope on refresh);
-  (d) honour `RoleAssignment.is_active()` (cover windows); (e) read `role` from the active
-  assignment, never `filter(role=…)` on the `@property`; (f) use the real field names (`hos` not
-  `head_of_section`, `section_type.name` not `section.name`). *Acceptance includes a negative test
-  per scope boundary (HOD A sees zero of campus-dept B; technician individual ⊂ sectional) and a
-  test that an unresolved scope returns empty, not everything.*
-- **Phase 7 — Analytics endpoints (§5.4):** **rebuild, don't reconcile** — the existing
-  `api/analytics/*` modules are on dead fields (`escalation_level`, `Ticket.campus_department`,
-  `Section.name/code`, `due_date`, `title`, `pending_reason`, `Ticket.facility`) and two won't even
-  import; mine them only as the per-role **metric list**, then write fresh. Build **one
-  `aggregate(scoped_qs, date_range, group_by)` core**; role endpoints are presets over it (no
-  per-role re-derivation). Implement the metric catalogue and role/scope table in §5.4, paused-aware
-  SLA (R9), p50/p90 (not means), `current_level` attribution via `TicketLog.level_user`, and the
-  added metrics (net flow, reopen rate, first-response, at-risk, demand shape). Date range on every
-  endpoint (default 30 days) + delta vs prior window. *Acceptance: numbers reconcile against raw
-  querysets; dashboard preset == analytics for the same scope+window; paused ticket not counted
-  breached; date-range filter excludes out-of-window; every scope boundary has a negative test.*
-- **Phase 8 — Frontend reconciliation:** dashboards on the shared table; per-type location create
-  flow; context switch; JWT wiring; ticket-list pagination (PageNumber/`-updated_at`) + cursor
-  timelines; merged timeline; analytics bound to §5.4.
-- **Phase 9 — Reports & role-scoped exports (§5.5):** Implement `GenerateReportView` and `ReportTypesView`
-  with 5 report types (ticket-lifecycle, technician-performance, facility-health, pending-analysis,
-  comprehensive). Each report includes a Summary sheet (metrics matching analytics overview) and
-  data sheets (styled, pivot-ready Excel). Backend scope enforced via `scoped_ticket_qs()`; frontend
-  role-aware filtering in `GenerateReports.tsx` (technician sees "My Performance", others see role-scoped types).
-  Acceptance: all 5 report types generate without error; Summary sheet metrics reconcile with analytics;
-  scope boundaries respected (technician only exports self, HOD only exports campus-dept, etc.);
-  Excel is properly styled and pivot-compatible.
-- **Phase 10 — Cleanup & removal:** delete dead/superseded code (approve/reject, client-side SLA,
-  per-campus workflow, duplicate tables, legacy location/escalation fields).
-- **Phase 11 — Fresh schema, seed & test:** since data is fixtures, **no legacy backfill** — reset
-  migrations, recreate from the aligned models, run seeds (facility types, priorities + rules, demo
-  org tree, sample tickets incl. some at `hos`/`hod` level, one `pending`, and one active HOS cover
-  assignment). Run the full test suite (R1–R17 + escalation edge cases) and E2E role +
-  requester-context + leave-cover walkthroughs. All reports generate and download correctly across all roles.
+- **Every scope boundary has a negative test** (HOD A sees zero of campus-dept B; technician
+  individual ⊂ sectional; unresolved scope returns empty, never everything).
+- **Analytics never re-derives counts per role** — one `aggregate()` core, role endpoints are thin
+  presets over a correctly scoped queryset (§5.4).
 
 ---
 
@@ -829,12 +739,14 @@ Run tests + migrations at the end of each backend phase.
   find . -path "*/migrations/*.pyc" -delete
   # sqlite: rm -f db.sqlite3   |   postgres: dropdb resolver_dev && createdb resolver_dev
   python manage.py makemigrations && python manage.py migrate
-  python manage.py seed_full
+  SEED_DEFAULT_PASSWORD='<demo password>' python manage.py seed_full
   ```
   `seed_full` (in `apps/common/management/commands/seed_full.py`) replaces the three separate
-  `seed_reference` / `seed_org` / `seed_demo` commands. It is idempotent (get-or-create throughout)
-  and seeds: Priorities, EscalationRules, FacilityTypes (5), **Facilities (18 buildings across NRB/MSA/KSM)**,
-  Campuses, Departments, Sections, Users, RoleAssignments, Service Catalogue, and 30 demo tickets.
+  `seed_reference` / `seed_org` / `seed_demo` commands. It **requires `SEED_DEFAULT_PASSWORD`** in
+  the environment (shared demo password — never hardcoded/committed; aborts if unset), is idempotent
+  (get-or-create throughout), and seeds: Priorities, EscalationRules, FacilityTypes (5),
+  **Facilities (18 buildings across NRB/MSA/KSM)**, Campuses, Departments, Sections, Users,
+  RoleAssignments, Service Catalogue, and 30 demo tickets.
 - **Idempotent seeds:** facility types, priorities, escalation rules, facilities — get-or-create by natural key.
 - **`pending` semantics:** the paused state means "work paused, SLA frozen, waiting on something."
   Distinct `open`/`assigned` states already cover the early stages, so `pending` is unambiguous. Keep
@@ -931,124 +843,57 @@ wins is usually what you want so leave actually offloads the work.
 
 ## 11. Known implementation corrections (Phase 10 integration)
 
-These rules were discovered during live integration testing with a pure requester account. They
-**override any implied behaviour elsewhere in this document** where a conflict exists.
+Rules discovered during live integration testing. They **override any implied behaviour elsewhere
+in this document** where a conflict exists.
 
-**C1 — No `title` field on Ticket.** The `Ticket` model has no `title` field. The display label
-for a ticket is `service_item.name` (fall back to `description`). Never read or render
-`ticket.title`.
+**C1 — No `title` field on Ticket.** Display label = `service_item.name` (fallback `description`).
+Never read/render `ticket.title`.
 
-**C2 — No `/api/v1/users/<id>/` detail endpoint.** `UserViewSet` is not registered; only
-`/users/<user_pk>/role-assignments/` exists. The authoritative way to obtain the current user's
-full profile is `GET /auth/me/` (`MeView`). The frontend must not call a non-existent user-detail
-endpoint; hydrate the auth store from the login-time JWT payload / localStorage profile instead.
+**C2 — No `/users/<id>/` detail endpoint.** Only `/users/<user_pk>/role-assignments/` exists; the
+current user's profile comes from `GET /auth/me/`. Frontend hydrates the auth store from the JWT
+payload / stored profile, never a user-detail call.
 
-**C3 — All main endpoints are under `/api/v1/`.** The `apiClient` base URL must be
-`/api/v1` (not `/api`). Auth endpoints (`/auth/login/`, `/auth/refresh/`, `/auth/me/`,
-`/auth/switch-role/`) are registered at both `/api/` and `/api/v1/`, so either prefix works for
-auth; everything else requires `/api/v1/`.
+**C3 — Base URL is `/api/v1/`.** Auth endpoints are also registered at `/api/`; everything else
+requires `/api/v1/`.
 
-**C4 — Reference/config endpoints must allow authenticated reads.** `DepartmentViewSet` and
-`SectionTypeViewSet` (and any other endpoint the requester UI reads to build the catalogue or
-ticket-creation wizard) must use `IsAdminOrReadOnly` — any authenticated user may GET; only admin
-may write. Using `IsAdminGroup` on these endpoints breaks the requester flow. The
-`SectionTypeViewSet` must also include a `SectionTypeWithCategoriesSerializer` that nests the
-related `service_categories` (used by QuickActions and catalogue widgets).
+**C4 — Reference/config endpoints allow authenticated reads.** Anything the requester UI reads
+(departments, section types, catalogue) uses `IsAdminOrReadOnly` — GET for any authenticated user,
+writes admin-only. `SectionTypeViewSet` nests `service_categories` via
+`SectionTypeWithCategoriesSerializer`.
 
-**C5 — Pure requesters (null active role) must see the 'user' workspace.** Every authenticated
-user is a requester (R15). Users with no `RoleAssignment` have `role: null` from the JWT.
-The sidebar and workspace routing must treat `null` as equivalent to `'user'`; the `/user/*`
-route must be accessible to **any authenticated user** regardless of operational role
-(`requiredRoles=[]`). Never return `null` from the sidebar for a null role.
+**C5/C6 — Null active role = 'user' workspace.** Users with no `RoleAssignment` get `role: null`;
+sidebar and routing treat that as `'user'`, `/user/*` is open to any authenticated user
+(`requiredRoles=[]`), and the login redirect falls back to `/user`, never `/dashboard`.
 
-**C6 — Login redirect for null-role users must land on `/user`, not `/dashboard`.** The
-role-redirect map falls back to `/user` when `role` is null, not to `/dashboard` (which
-requires admin). The fallback must be `/user`.
+**C7 — Async Channels consumers never touch the ORM.** Read role/scope only from `self.scope` (set
+by JWT middleware at handshake); ORM property access in an async consumer raises
+`SynchronousOnlyOperation`.
 
-**C7 — Async Channels consumers must never make synchronous ORM calls.** Inside a Django
-Channels async consumer, never access ORM properties (including anything that triggers a queryset)
-on the user object. Read role/scope data exclusively from `self.scope` (set by the JWT middleware
-at WebSocket handshake time). Accessing `user.role` or similar ORM properties in an async consumer
-raises `SynchronousOnlyOperation`.
+**C8 — Dashboard hooks call real analytics endpoints.** `useUserDashboard` calls
+`GET /analytics/overview/` (auto-scopes to `raised_by=user` for role-less users). Never leave a
+dashboard hook returning `{data: null, loading: false}` — every stat card shows 0.
 
-**C8 — `useUserDashboard` must call a real analytics endpoint (not a stub).** The hook must call
-`GET /analytics/overview/`, which uses `IsAuthenticated` and automatically scopes results to
-`raised_by=user` when the user has no operational role. Map the response: `summary.total` = sum of
-all `status_distribution` counts; `summary.open` = `open_backlog`; `summary.pending` =
-`status_distribution.find('pending').count`; pass `status_distribution` through directly. Every
-role dashboard hook must call a real analytics endpoint. Never leave a dashboard hook returning
-`{data: null, loading: false}` — all stat cards will show 0.
+**C9/C10 — `campus_id` comes from the JWT payload when the active role is null.** `flattenJWT` uses
+`ar?.campusId ?? tokenCampusId ?? null`, and session hydration (`useUserData`) patches a stored-null
+`primary_campus_id` from the token claims. General rule: a null stored-profile field with a non-null
+JWT claim is patched from the token, not fixed by forcing re-login.
 
-**C9 — `flattenJWT` must read `campus_id` from the JWT token payload for null-role users.** The
-function `flattenJWT` in `src/lib/api/auth.ts` must not rely solely on `ar?.campusId` for
-`primary_campus_id`. When `activeRole` (`ar`) is null (pure requesters with no `RoleAssignment`),
-`ar?.campusId` is always null. The JWT access token payload always carries `campus_id` (written by
-`build_tokens_for_assignment` from `UserProfile.campus` for every user). The fix: decode the JWT
-and use `primary_campus_id: ar?.campusId ?? tokenCampusId ?? null`. Without this, `useCatalog(campusId)`
-receives null, disabling the catalogue and leaving the TicketCreationWizard empty.
+**C11 — Section display name is `section_type.name`.** `_SectionMinSerializer` returns
+`{id, section_type_id, section_type_name}`; the frontend Section column reads
+`section.section_type_name`. `Section` has no `name` field — don't add one to the serializer.
 
-**C10 — Stale `primary_campus_id: null` in localStorage must be patched on session hydration.**
-Fixing `flattenJWT` alone does not help users with existing sessions — their stored profile in
-localStorage still has `primary_campus_id: null` from before the fix. `useUserData` must patch
-`primary_campus_id` from the stored JWT token claims when the stored value is null, before calling
-`setUser()` to hydrate the Zustand store. General rule: when a stored profile field is null but the
-corresponding JWT claim has a non-null value, patch it from the token rather than requiring the user
-to log out and back in.
+**C12/C13 — `_overview_slice` must always include `status_distribution`** (the frontend sums it for
+the "My Tickets" total), and dashboard hooks must fall back (`open_backlog + resolved`) rather than
+render 0 when an optional field is missing.
 
-**C11 — `_SectionMinSerializer` had no human-readable name (Section column blank).** The serializer
-only returned `{id, section_type_id}` — no display name. The frontend `sectionColumn.accessorFn`
-read `s?.name`, which was always `undefined`, so the Section column showed blank for every ticket.
-Fix: added `section_type_name = CharField(source="section_type.name")` to `_SectionMinSerializer`
-in `apps/tickets/serializers.py`. No N+1 — `section__section_type` was already in the queryset's
-`select_related`. Frontend updated to read `s?.section_type_name` (with `s?.name` as
-backward-compat fallback). Rule: `Ticket.section` is `{id, section_type_id, section_type_name}`.
-The Section column must read `section.section_type_name`. Do not add a top-level `name` field to
-`_SectionMinSerializer` — the section model has no such field; the display name is always
-`section_type.name`.
+**C14 — Both database branches in `settings.py` set `CONN_MAX_AGE`** (≥60 s dev, ≥300 s prod) +
+`CONN_HEALTH_CHECKS`. Without it, NeonDB cold-starts (13–19 s per connection) look like application
+errors (`CancelledError` under Daphne).
 
-**C12 — `_overview_slice` omitted `status_distribution` (all stat cards showed 0).** The helper
-function that builds every role's `/analytics/overview/` response included `open_backlog`,
-`created`, `resolved`, etc. but not `status_distribution`. The frontend `useUserDashboard` summed
-`status_distribution` to compute `total`, so `total = 0` for every user and all stat cards showed 0.
-Fix: added `"status_distribution": data.get("status_distribution", [])` to `_overview_slice` in
-`apps/analytics/views.py`. Rule: `_overview_slice` must always include `status_distribution`; the
-frontend uses it to compute the "My Tickets" total and all per-status cards.
+**C15 — A documented scoping query param must actually filter.** `/departments/?campus=` and
+`/sections/?department=` are applied in `get_queryset()` overrides; an accepted-but-ignored param is
+worse than a missing one. New scoping param ⇒ wire the filter + negative test in the same commit.
 
-**C13 — `useUserDashboard` was fragile to missing `status_distribution`.** The hook computed
-`total = dist.reduce(sum)`. If `status_distribution` was absent from the API response, `dist = []`
-and `total = 0` permanently, with no indication of why. Fix: added fallback
-`total = distTotal > 0 ? distTotal : openBacklog + resolvedCount` in
-`src/hooks/dashboard/useUserDashboard.ts`. Rule: dashboard hooks must never produce 0 from a missing
-optional field when a reliable fallback exists. Use `open_backlog + resolved` as the fallback for
-total ticket count when `status_distribution` is not available.
-
-**C14 — NeonDB cold-start caused `CancelledError` on `/analytics/overview/` (13–19 s first
-response).** The direct-env-var database branch in `resolver/settings.py` had no `CONN_MAX_AGE`,
-so every request to NeonDB opened a new TCP+TLS+auth connection (~13–19 s). Daphne killed slow
-requests and logged `CancelledError`. After the kill the browser re-sent the request and it
-eventually succeeded, but React Query sometimes received a network error and left stat cards at
-`data=null` indefinitely. Fix: added `CONN_MAX_AGE: 300` and `CONN_HEALTH_CHECKS: True` to the
-non-DATABASE_URL branch in `resolver/settings.py`. After the first warm request, subsequent queries
-reuse the connection and respond in milliseconds. Rule: both database branches in `settings.py`
-must have `CONN_MAX_AGE` set (≥ 60 s for dev, ≥ 300 s for prod). The `DATABASE_URL` branch already
-had it via `dj_database_url.config(conn_max_age=600)`. Omitting it on the direct-env-var branch
-causes NeonDB cold-start latency that is indistinguishable from application errors.
-
-**C15 — `/departments/?campus=` and `/sections/?department=` accepted their query params but
-never applied them.** `DepartmentViewSet` and `SectionViewSet` had no `get_queryset()` override, so
-every Campus→Department→Section cascading select in the admin UI (Users page role-assignment form,
-Technician form) silently showed every department/section regardless of the selected scope — the
-param was accepted, just ignored. Fix: `DepartmentViewSet.get_queryset()` filters by
-`campus_departments__campus_id` when `?campus=` is present; `SectionViewSet.get_queryset()` filters
-by `campus_department__department_id` when `?department=` is present. Rule: a reference-data
-endpoint that documents a scoping query param must apply it in `get_queryset()` — an accepted-but-
-ignored param is worse than a missing one, because the URL looks correct while the response isn't.
-
-**C16 — Replacing a user's primary `RoleAssignment` via POST must demote the existing one, not
-error.** `UserRoleAssignmentListCreateView` only handled the delete-old-then-create-new path;
-posting a new `is_primary=True` assignment directly (the Users admin page's promote/demote flow)
-hit the `one_primary_role_per_user` `IntegrityError` instead of replacing it. Fix: when
-`is_primary=True`, the view first runs `target.role_assignments.filter(is_primary=True).update(is_primary=False)`
-inside `transaction.atomic()`, then creates the new assignment. Rule: replacing a primary role is
-demote-then-create, not delete-then-create — the old `RoleAssignment` row must remain (audit trail,
-R17 attribution), just no longer primary.
+**C16 — Replacing a primary `RoleAssignment` demotes, never deletes.** POST with `is_primary=True`
+first demotes the existing primary (`update(is_primary=False)`) inside `transaction.atomic()`, then
+creates the new one — the old row survives for audit (R17).

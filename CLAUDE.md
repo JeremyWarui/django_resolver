@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 > **Kenya School of Government — Multi-Campus Service Desk** · Django 6.0 · DRF 3.16 · PostgreSQL · JWT + Channels
-> SOT: `service-desk-implementation-plan.md` (domain invariants, phases, acceptance criteria). Frontend lives at `/home/jeremy/Desktop/portfolio/Resolver/client` (separate repo, NOT nested here).
+> SOT: `service-desk-implementation-plan.md` (domain invariants §2.3, API surface §5, corrections §11). Frontend lives at `/home/jeremy/Desktop/portfolio/Resolver/client` (separate repo, NOT nested here).
 
 **Response style: be terse.** Don't restate code you just wrote, don't echo file contents back, don't end with summaries unless asked. Short answers over structured reports.
 
@@ -44,7 +44,7 @@ All reads go through `scoped_ticket_qs(user, role)` in `apps/tickets/services/sc
 - Reports: `apps/analytics/report_views.py` (`/reports/types/`, `/reports/generate/` → styled .xlsx: Summary sheet + data sheets). Role visibility mirrored in `GenerateReports.tsx`. Summary sheet always uses 30-day window even on "all time".
 - Audit log: `AdminAuditLogView` (`/admin/audit-log/`), admin-only (`is_staff`), TicketLog is append-only/immutable. `AuditLogSerializer` is a plain `Serializer` by design.
 
-## Key invariants (SoT §1.3, §3.2, §3.8)
+## Key invariants (SoT §2.3 R1–R17, §3.2a, §3.8)
 
 1. `RoleAssignment` is the role source of truth — never read `User.role` directly.
 2. Ticket holds only intrinsic state — audit in `TicketLog`, escalation level in `Ticket.current_level`.

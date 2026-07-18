@@ -12,6 +12,9 @@ DATABASES = {
     }
 }
 
+# Fast hasher — PBKDF2 dominates suite runtime otherwise (every fixture user).
+PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
+
 # Use in-memory channel layer so WS tests don't require Redis.
 CHANNEL_LAYERS = {
     "default": {

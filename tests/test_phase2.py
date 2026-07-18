@@ -195,12 +195,19 @@ def test_catalog_shows_active_section(
 def test_catalog_hides_inactive_section(
     api_client, regular_user, campus, inactive_section, service_category
 ):
-    """R5: Category is NOT visible when only inactive sections exist at the campus."""
+    """R5: Category is NOT visible when only inactive sections exist at the campus;
+    re-activating the section restores visibility (R16 — config-driven, no cache)."""
     api_client.force_authenticate(user=regular_user)
     resp = api_client.get("/api/v1/catalog/", {"campus": campus.id})
     assert resp.status_code == 200
     ids = [item["id"] for item in resp.data["results"]]
     assert service_category.id not in ids
+
+    inactive_section.is_active = True
+    inactive_section.save()
+    resp = api_client.get("/api/v1/catalog/", {"campus": campus.id})
+    ids = [item["id"] for item in resp.data["results"]]
+    assert service_category.id in ids
 
 
 @pytest.mark.django_db
@@ -489,7 +496,8 @@ def test_priority_detail_includes_escalation_rules(api_client, admin_user, prior
 
 @pytest.mark.django_db
 def test_facility_type_list_any_auth(api_client, regular_user):
-    """Any authenticated user can list facility types (D9 — read-only)."""
+    """Any authenticated user can list facility types (D9 — read-only); anonymous → 401."""
+    assert api_client.get("/api/v1/facility-types/").status_code == 401
     api_client.force_authenticate(user=regular_user)
     resp = api_client.get("/api/v1/facility-types/")
     assert resp.status_code == 200

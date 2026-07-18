@@ -540,7 +540,9 @@ class TestTransferHandler:
         from apps.tickets.models import Ticket
         from apps.org.services.transfer import transfer_open_tickets
 
-        for i, status in enumerate(("open", "assigned", "in_progress"), start=1):
+        for i, status in enumerate(
+            ("open", "assigned", "in_progress", "pending"), start=1
+        ):
             t = Ticket.objects.create(
                 raised_by=requester,
                 requester_campus=campus,
@@ -553,7 +555,7 @@ class TestTransferHandler:
 
         count = transfer_open_tickets(technician, section)
 
-        assert count == 3
+        assert count == 4
 
     def test_does_not_touch_resolved_tickets(self, open_ticket, technician, section):
         from apps.org.services.transfer import transfer_open_tickets

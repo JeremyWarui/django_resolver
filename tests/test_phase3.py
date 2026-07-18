@@ -177,7 +177,7 @@ def service_item_with_location(service_category_with_location):
 @pytest.mark.django_db
 def test_create_ticket_success(api_client, user, service_item, active_section):
     """POST with valid service_item and authenticated user returns 201 with ticket_no."""
-    from apps.tickets.models import Ticket, TicketLog
+    from apps.tickets.models import Ticket, TicketLocation, TicketLog
 
     api_client.force_authenticate(user=user)
     resp = api_client.post(
@@ -193,6 +193,8 @@ def test_create_ticket_success(api_client, user, service_item, active_section):
 
     ticket = Ticket.objects.get(id=resp.data["id"])
     assert TicketLog.objects.filter(ticket=ticket, event_type="created").count() == 1
+    # R13: no TicketLocation row when category.location_details=False
+    assert not TicketLocation.objects.filter(ticket=ticket).exists()
 
 
 # ── Test 2: server resolves section and priority; client values ignored ────────

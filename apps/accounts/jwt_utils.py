@@ -140,11 +140,13 @@ def serialize_role_assignment(ra):
 
 def serialize_auth_user(user, active_assignment):
     """Return the AuthUser shape expected by the frontend (SoT §5.1 GET /auth/me/)."""
-    available = list(
-        user.role_assignments.select_related(
+    available = [
+        ra
+        for ra in user.role_assignments.select_related(
             "section", "campus_department", "department"
-        ).all()
-    )
+        )
+        if not ra.is_demoted()
+    ]
     if not available and active_assignment:
         available = [active_assignment]
     names = resolve_campus_and_department_names(user, active_assignment)

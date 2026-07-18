@@ -144,6 +144,12 @@ class RoleAssignment(models.Model):
         now = now or timezone.now()
         return is_window_active(self.valid_from, self.valid_until, now)
 
+    def is_demoted(self):
+        """Demoted ex-primary kept for audit (C16): non-primary with no
+        valid_until. Genuine covers always carry valid_until. Not switchable,
+        not offered in available_roles."""
+        return not self.is_primary and self.valid_until is None
+
     def clean(self):
         """Per-role scope rules — one readable, testable place."""
         if self.role in ("technician", "hos"):

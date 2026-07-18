@@ -146,6 +146,23 @@ class TestMeEndpoint:
         assert response.status_code == 200
         assert len(response.data["available_roles"]) == 2
 
+    def test_demoted_assignment_hidden_from_available_roles(
+        self, api_client, campus, section
+    ):
+        """C-2: demoted ex-primary rows (non-primary, no valid_until) are audit
+        rows — the role switcher must not offer them."""
+        from apps.accounts.models import RoleAssignment
+
+        user = make_user("me_demoted", campus=campus, role="hod", section=section)
+        RoleAssignment.objects.create(
+            user=user, role="hos", section=section, is_primary=False, valid_until=None
+        )
+        api_client.force_authenticate(user=user)
+        response = api_client.get("/api/v1/auth/me/")
+        assert response.status_code == 200
+        roles = [ra["role"] for ra in response.data["available_roles"]]
+        assert roles == ["hod"]
+
 
 # ---------------------------------------------------------------------------
 # TestSwitchRole
@@ -221,6 +238,46 @@ class TestSwitchRole:
         )
         assert response.status_code == 400
 
+    def test_switch_to_demoted_assignment_returns_400(
+        self, api_client, campus, section
+    ):
+        """C-2: a demoted ex-primary (non-primary, no valid_until — kept for
+        audit per C16) must not be switchable — otherwise a promoted user
+        retains their old role's scope indefinitely."""
+        from apps.accounts.models import RoleAssignment
+
+        user = make_user("sw_demoted", campus=campus, role="hod", section=section)
+        ra_demoted = RoleAssignment.objects.create(
+            user=user,
+            role="hos",
+            section=section,
+            is_primary=False,
+            valid_until=None,
+        )
+        api_client.force_authenticate(user=user)
+        response = api_client.post(
+            "/api/v1/auth/switch-role/", {"roleAssignmentId": ra_demoted.id}
+        )
+        assert response.status_code == 400
+
+    def test_active_cover_still_switchable(self, api_client, campus, section):
+        """Regression: time-boxed covers within their window keep working."""
+        from apps.accounts.models import RoleAssignment
+
+        user = make_user("sw_cover", campus=campus, role="technician", section=section)
+        ra_cover = RoleAssignment.objects.create(
+            user=user,
+            role="hos",
+            section=section,
+            is_primary=False,
+            valid_until=timezone.now() + timedelta(days=3),
+        )
+        api_client.force_authenticate(user=user)
+        response = api_client.post(
+            "/api/v1/auth/switch-role/", {"roleAssignmentId": ra_cover.id}
+        )
+        assert response.status_code == 200
+
 
 # ---------------------------------------------------------------------------
 # TestRoleAssignmentCRUD
@@ -246,6 +303,36 @@ class TestRoleAssignmentCRUD:
         )
         assert response.status_code == 201
         assert response.data["role"] == "technician"
+
+    def test_primary_technician_assignment_syncs_section_technician(
+        self, api_client, campus, section, campus_dept
+    ):
+        """QA A1 — the exact payload TechnicianForm sends (campus_id and
+        department_id alongside section_id, is_primary=true) must create the
+        RoleAssignment AND the SectionTechnician link the Technicians page and
+        Assign dialog read."""
+        from apps.accounts.models import RoleAssignment
+        from apps.org.models import SectionTechnician
+
+        admin = make_user("ra_admin_tech", campus=campus, role="admin")
+        target = make_user("ra_target_tech", campus=campus, role="user")
+        api_client.force_authenticate(user=admin)
+        response = api_client.post(
+            f"/api/v1/users/{target.id}/role-assignments/",
+            {
+                "role": "technician",
+                "is_primary": True,
+                "section_id": section.id,
+                "campus_id": campus.id,
+                "department_id": None,
+            },
+            format="json",
+        )
+        assert response.status_code == 201, response.data
+        assert SectionTechnician.objects.filter(user=target, section=section).exists()
+        # New primary replaced the old one; old kept demoted for audit (C16).
+        primary = RoleAssignment.objects.get(user=target, is_primary=True)
+        assert primary.role == "technician"
 
     def test_hod_creates_cover_within_own_campus_dept(
         self, api_client, campus, section, campus_dept

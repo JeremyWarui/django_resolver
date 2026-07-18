@@ -116,6 +116,17 @@ class SwitchRoleView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        if ra.is_demoted():
+            return Response(
+                {
+                    "error": {
+                        "code": "FORBIDDEN",
+                        "message": "This role assignment has been superseded",
+                    }
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         # Blacklist existing refresh token.
         raw_refresh = request.COOKIES.get(REFRESH_COOKIE)
         if raw_refresh:

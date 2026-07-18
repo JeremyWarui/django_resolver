@@ -20,6 +20,7 @@ from apps.tickets.models import (
 from apps.tickets.serializers import (
     TicketCreateSerializer,
     TicketReadSerializer,
+    TicketDetailReadSerializer,
     TicketStatusUpdateSerializer,
     TicketAssignSerializer,
     TicketCommentSerializer,
@@ -32,7 +33,11 @@ from apps.tickets.services.attachments import (
     MAX_ATTACHMENTS_PER_TICKET,
     MIME_TO_EXT,
 )
-from apps.tickets.services.lifecycle import transition_status, TransitionError
+from apps.tickets.services.lifecycle import (
+    claim_ticket,
+    transition_status,
+    TransitionError,
+)
 from apps.tickets.services.scope import scoped_ticket_qs
 from apps.common.pagination import AppendOnlyFeedPagination, TicketFeedPagination
 from apps.common.permissions import get_request_role
@@ -119,10 +124,35 @@ class TicketCreateView(CreateAPIView):
 class TicketStatusView(APIView):
     permission_classes = [IsAuthenticated]
 
+    # Transitions the requester may drive on their own ticket: Rate & Close
+    # (resolved → closed) and Reopen (resolved/closed → open). Target-status
+    # legality against the current status stays with the lifecycle ALLOWED map.
+    REQUESTER_TARGETS = ("closed", "open")
+
     def post(self, request, pk):
         ticket = get_ticket_for_request_or_403(request, pk)
         serializer = TicketStatusUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+
+        # Per-role transition gate (QA B1b). Supervisors in scope are
+        # unrestricted; a technician may only act on tickets assigned to
+        # *them* (section scope alone gives view-only); the requester may
+        # only close or reopen their own ticket.
+        role = get_request_role(request)
+        is_assigned_tech = (
+            role == "technician" and ticket.assigned_to_id == request.user.pk
+        )
+        is_supervisor = role in ("admin", "manager", "hod", "hos")
+        is_requester = ticket.raised_by_id == request.user.pk
+        if not (is_supervisor or is_assigned_tech):
+            if not (
+                is_requester
+                and serializer.validated_data["status"] in self.REQUESTER_TARGETS
+            ):
+                raise PermissionDenied(
+                    "You do not have permission to change this ticket's status."
+                )
+
         try:
             transition_status(
                 ticket,
@@ -183,6 +213,45 @@ class TicketAssignView(APIView):
         )
 
 
+class TicketClaimView(APIView):
+    """POST /tickets/{pk}/claim/ — technician self-assigns an unassigned open
+    ticket in one of their sections (QA B2a).
+
+    Scope: technician role only; the IDOR guard's scoped queryset already
+    restricts technicians to their SectionTechnician sections. Race-safe via
+    select_for_update — of two simultaneous claims exactly one wins.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        from django.db import transaction
+
+        if get_request_role(request) != "technician":
+            raise PermissionDenied("Only technicians may claim tickets.")
+
+        try:
+            with transaction.atomic():
+                ticket = get_ticket_for_request_or_403(
+                    request,
+                    pk,
+                    allow_requester=False,
+                    qs=Ticket.objects.select_for_update(),
+                )
+                claim_ticket(ticket, request.user)
+        except TransitionError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_409_CONFLICT)
+
+        return Response(
+            {
+                "ticket_no": ticket.ticket_no,
+                "status": ticket.status,
+                "assigned_to": request.user.pk,
+            },
+            status=200,
+        )
+
+
 class TicketCommentListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = TicketCommentSerializer
@@ -197,6 +266,31 @@ class TicketCommentListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         ticket = get_ticket_for_request_or_403(self.request, self.kwargs["pk"])
+
+        # Comment gating (QA B1): comments open only once a technician is
+        # assigned and close permanently with the ticket — for every role.
+        # Among technicians, only the assignee may comment (unless they are
+        # the requester themselves); supervisors in scope may comment once
+        # the ticket is assigned. Read access stays scope-only.
+        if ticket.status == "closed":
+            raise drf_serializers.ValidationError(
+                {"detail": "Comments are disabled on a closed ticket."}
+            )
+        if ticket.assigned_to_id is None:
+            raise drf_serializers.ValidationError(
+                {"detail": "Comments open once a technician is assigned."}
+            )
+        role = get_request_role(self.request)
+        is_requester = ticket.raised_by_id == self.request.user.pk
+        if (
+            role == "technician"
+            and not is_requester
+            and ticket.assigned_to_id != self.request.user.pk
+        ):
+            raise PermissionDenied(
+                "Only the assigned technician may comment on this ticket."
+            )
+
         serializer.save(ticket=ticket, author=self.request.user)
         TicketLog.objects.create(
             ticket=ticket,
@@ -448,7 +542,7 @@ class TicketDetailView(generics.RetrieveAPIView):
     """
 
     permission_classes = [IsAuthenticated]
-    serializer_class = TicketReadSerializer
+    serializer_class = TicketDetailReadSerializer
 
     def get_object(self):
         return get_ticket_for_request_or_403(
@@ -465,6 +559,7 @@ class TicketDetailView(generics.RetrieveAPIView):
                 "requester_campus",
                 "location__facility_type",
                 "location__facility",
+                "feedback",
             ),
         )
 

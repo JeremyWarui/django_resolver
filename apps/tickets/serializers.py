@@ -1,10 +1,9 @@
-from datetime import timedelta
-
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework import serializers
 
 from apps.catalog.models import ServiceItem
+from apps.sla.services.due_dates import compute_due_dates
 from apps.facilities.models import Facility, FacilityType
 from apps.facilities.validators import validate_location
 from apps.org.models import SectionTechnician
@@ -143,6 +142,26 @@ class TicketReadSerializer(serializers.ModelSerializer):
         return timezone.now() > ticket.resolution_due_at
 
 
+class TicketDetailReadSerializer(TicketReadSerializer):
+    """Detail-only extension: nests submitted feedback (QA D3).
+
+    Kept off the list serializer so list payload size is unchanged.
+    """
+
+    feedback = serializers.SerializerMethodField()
+
+    class Meta(TicketReadSerializer.Meta):
+        fields = TicketReadSerializer.Meta.fields + ["feedback"]
+        read_only_fields = fields
+
+    def get_feedback(self, ticket):
+        try:
+            feedback = ticket.feedback
+        except TicketFeedback.DoesNotExist:
+            return None
+        return TicketFeedbackSerializer(feedback).data
+
+
 class LocationInputSerializer(serializers.Serializer):
     facility_type = serializers.PrimaryKeyRelatedField(
         queryset=FacilityType.objects.all()
@@ -231,8 +250,7 @@ class TicketCreateSerializer(serializers.Serializer):
         validated_data.pop("location", None)
 
         now = timezone.now()
-        response_due_at = now + timedelta(minutes=priority.response_minutes)
-        resolution_due_at = now + timedelta(minutes=priority.resolution_minutes)
+        response_due_at, resolution_due_at = compute_due_dates(priority, now)
 
         ticket = Ticket.objects.create(
             raised_by=request.user,
@@ -285,6 +303,10 @@ class TicketAssignSerializer(serializers.Serializer):
 
 
 class TicketCommentSerializer(serializers.ModelSerializer):
+    # Nested author (QA B2e) — the comment header renders name + timestamp,
+    # matching the timeline's actor attribution.
+    author = _UserMinSerializer(read_only=True)
+
     class Meta:
         model = TicketComment
         fields = ["id", "author", "body", "visibility", "created_at", "updated_at"]

@@ -1,15 +1,26 @@
+from datetime import timedelta
+
 from django.utils import timezone
 
+from apps.sla.services.due_dates import compute_due_dates
 from apps.tickets.models import TicketLog
-from apps.realtime.ws_utils import emit_ticket_status_changed, emit_ticket_resolved
+from apps.realtime.ws_utils import (
+    emit_ticket_assigned,
+    emit_ticket_status_changed,
+    emit_ticket_resolved,
+)
 
+# Reopen (resolved/closed → open) restarts the lifecycle: `open` is the
+# unassigned state, so reopen clears the assignee and the SLA clock restarts
+# (QA B2f). Keep the frontend mirror in sync:
+# client/src/features/technician/StatusUpdateModal.tsx (NEXT_STATUSES).
 ALLOWED = {
     "open": {"assigned"},
     "assigned": {"in_progress"},
     "in_progress": {"pending", "resolved"},
-    "pending": {"in_progress"},
-    "resolved": {"closed", "in_progress"},
-    "closed": {"in_progress"},
+    "pending": {"in_progress", "resolved"},
+    "resolved": {"closed", "open"},
+    "closed": {"open"},
 }
 
 
@@ -30,6 +41,7 @@ def transition_status(ticket, new_status, actor, reason=""):
 
     old_status = ticket.status
     now = timezone.now()
+    is_reopen = old_status in ("resolved", "closed") and new_status == "open"
 
     # SLA pause/resume
     if new_status == "pending":
@@ -50,10 +62,24 @@ def transition_status(ticket, new_status, actor, reason=""):
     elif new_status == "closed":
         ticket.closed_at = now
 
+    if is_reopen:
+        # Restart the lifecycle: unassigned, fresh SLA window, no stale
+        # resolution timestamps (they'd corrupt is_breaching and resolved-time
+        # analytics on a live ticket). Breach history stays in TicketLog.
+        ticket.assigned_to = None
+        ticket.response_due_at, ticket.resolution_due_at = compute_due_dates(
+            ticket.priority, now
+        )
+        ticket.paused_at = None
+        ticket.accumulated_pause = timedelta(0)
+        ticket.resolved_at = None
+        ticket.closed_at = None
+
     ticket.status = new_status
     ticket.save(
         update_fields=[
             "status",
+            "assigned_to",
             "paused_at",
             "accumulated_pause",
             "response_due_at",
@@ -69,7 +95,7 @@ def transition_status(ticket, new_status, actor, reason=""):
         event_type = "resolved"
     elif new_status == "closed":
         event_type = "closed"
-    elif old_status in ("resolved", "closed") and new_status == "in_progress":
+    elif is_reopen:
         event_type = "reopened"
     else:
         event_type = "status_changed"
@@ -88,4 +114,32 @@ def transition_status(ticket, new_status, actor, reason=""):
     else:
         emit_ticket_status_changed(ticket, old_status)
 
+    return ticket
+
+
+def claim_ticket(ticket, technician):
+    """Self-assign an unassigned open ticket to `technician` (QA B2a).
+
+    Caller must hold the row lock (select_for_update) inside an atomic block —
+    the guard here is the post-lock re-check that makes a double claim lose.
+    Writes the `assigned` TicketLog with the technician as actor, then drives
+    open → assigned → in_progress through transition_status so both status
+    logs and the existing WS events fire.
+    """
+    if ticket.status != "open" or ticket.assigned_to_id is not None:
+        raise TransitionError("Ticket has already been claimed or assigned.")
+
+    ticket.assigned_to = technician
+    ticket.save(update_fields=["assigned_to", "updated_at"])
+    TicketLog.objects.create(
+        ticket=ticket,
+        actor=technician,
+        event_type="assigned",
+        from_value="",
+        to_value=technician.get_full_name() or technician.username,
+    )
+    emit_ticket_assigned(ticket, previous_assignee=None)
+
+    transition_status(ticket, "assigned", technician)
+    transition_status(ticket, "in_progress", technician)
     return ticket

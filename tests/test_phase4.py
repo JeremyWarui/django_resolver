@@ -175,12 +175,22 @@ class TestTransitionValidSequence:
 @pytest.mark.django_db
 class TestTransitionInvalidRaises:
 
-    def test_transition_invalid_raises(self, open_ticket, technician):
-        """open→in_progress (skipping assigned) raises TransitionError."""
+    @pytest.mark.parametrize(
+        "walk,bad_target",
+        [
+            ([], "in_progress"),  # open → in_progress skips assigned
+            ([], "resolved"),  # open → resolved skips the whole ladder
+            (["assigned", "in_progress"], "closed"),  # must go via resolved
+        ],
+    )
+    def test_transition_invalid_raises(self, open_ticket, technician, walk, bad_target):
+        """Illegal edges of the ALLOWED map raise TransitionError."""
         from apps.tickets.services.lifecycle import transition_status, TransitionError
 
+        for status in walk:
+            transition_status(open_ticket, status, technician)
         with pytest.raises(TransitionError):
-            transition_status(open_ticket, "in_progress", technician)
+            transition_status(open_ticket, bad_target, technician)
 
 
 @pytest.mark.django_db
@@ -252,40 +262,88 @@ class TestSLAPauseResume:
 
 
 @pytest.mark.django_db
-class TestTicketLogImmutableSave:
+class TestPendingToResolved:
+    """QA B2b — pending → resolved is legal and settles the SLA pause (R9)."""
 
-    def test_ticketlog_immutable_save(self, open_ticket, technician):
-        """Attempting to re-save a TicketLog (with pk set) raises ValueError."""
-        from apps.tickets.models import TicketLog
+    def test_pending_to_resolved_settles_pause(self, open_ticket, technician):
+        from apps.tickets.services.lifecycle import transition_status
 
-        log = TicketLog.objects.create(
-            ticket=open_ticket,
-            actor=technician,
-            event_type="created",
-            to_value="open",
+        ticket = open_ticket
+        original_resolution_due = ticket.resolution_due_at
+        transition_status(ticket, "assigned", technician)
+        transition_status(ticket, "in_progress", technician)
+        transition_status(ticket, "pending", technician, reason="Waiting for parts")
+
+        # Backdate the pause start so the settled pause is measurable.
+        ticket.paused_at = timezone.now() - timedelta(minutes=30)
+        ticket.save(update_fields=["paused_at"])
+
+        transition_status(ticket, "resolved", technician, reason="Parts arrived, fixed")
+        ticket.refresh_from_db()
+
+        assert ticket.status == "resolved"
+        assert ticket.paused_at is None
+        assert ticket.accumulated_pause >= timedelta(minutes=30)
+        assert ticket.resolution_due_at >= original_resolution_due + timedelta(
+            minutes=30
         )
-        assert log.pk is not None
-
-        with pytest.raises(ValueError, match="immutable"):
-            log.event_type = "status_changed"
-            log.save()
+        assert ticket.resolved_at is not None
 
 
 @pytest.mark.django_db
-class TestTicketLogImmutableDelete:
+class TestReopenRestartsLifecycle:
+    """QA B2f — reopen is resolved/closed → open: unassigned, fresh SLA clock."""
 
-    def test_ticketlog_immutable_delete(self, open_ticket, technician):
-        """Attempting to delete a TicketLog raises ValueError."""
+    def _resolve(self, ticket, technician):
+        from apps.tickets.services.lifecycle import transition_status
+
+        transition_status(ticket, "assigned", technician)
+        transition_status(ticket, "in_progress", technician)
+        transition_status(ticket, "resolved", technician, reason="done")
+
+    @pytest.mark.parametrize("from_status", ["resolved", "closed"])
+    def test_reopen_resets_state(self, open_ticket, technician, requester, from_status):
         from apps.tickets.models import TicketLog
+        from apps.tickets.services.lifecycle import transition_status
 
-        log = TicketLog.objects.create(
-            ticket=open_ticket,
-            actor=technician,
-            event_type="created",
-            to_value="open",
+        ticket = open_ticket
+        ticket.assigned_to = technician
+        ticket.save(update_fields=["assigned_to"])
+        self._resolve(ticket, technician)
+        if from_status == "closed":
+            transition_status(ticket, "closed", requester)
+
+        before = timezone.now()
+        transition_status(ticket, "open", requester, reason="issue came back")
+        ticket.refresh_from_db()
+
+        assert ticket.status == "open"
+        assert ticket.assigned_to is None
+        assert ticket.resolved_at is None
+        assert ticket.closed_at is None
+        assert ticket.paused_at is None
+        assert ticket.accumulated_pause == timedelta(0)
+        # SLA restarted from the reopen time, not the original creation time.
+        assert ticket.response_due_at >= before + timedelta(
+            minutes=ticket.priority.response_minutes
         )
-        with pytest.raises(ValueError, match="cannot be deleted"):
-            log.delete()
+        assert ticket.resolution_due_at >= before + timedelta(
+            minutes=ticket.priority.resolution_minutes
+        )
+        assert TicketLog.objects.filter(
+            ticket=ticket, event_type="reopened", to_value="open"
+        ).exists()
+
+    def test_direct_resolved_to_in_progress_removed(self, open_ticket, technician):
+        from apps.tickets.services.lifecycle import transition_status, TransitionError
+
+        ticket = open_ticket
+        self._resolve(ticket, technician)
+        with pytest.raises(TransitionError):
+            transition_status(ticket, "in_progress", technician)
+
+
+# TicketLog immutability lives in test_phase1_models.py::TestR11TicketLogImmutable.
 
 
 # ---------------------------------------------------------------------------
@@ -293,11 +351,27 @@ class TestTicketLogImmutableDelete:
 # ---------------------------------------------------------------------------
 
 
+@pytest.fixture
+def _assign_to(technician):
+    """Make the technician the ticket's assignee (B1b: technicians may only
+    transition tickets assigned to them)."""
+
+    def _do(ticket):
+        ticket.assigned_to = technician
+        ticket.save(update_fields=["assigned_to"])
+        return ticket
+
+    return _do
+
+
 @pytest.mark.django_db
 class TestStatusTransitionViaApi:
 
-    def test_status_transition_via_api(self, api_client, open_ticket, technician):
+    def test_status_transition_via_api(
+        self, api_client, open_ticket, technician, _assign_to
+    ):
         """POST /api/v1/tickets/{id}/status/ open→assigned returns 200 with updated status."""
+        _assign_to(open_ticket)
         api_client.force_authenticate(user=technician)
         url = f"/api/v1/tickets/{open_ticket.pk}/status/"
         response = api_client.post(url, {"status": "assigned"}, format="json")
@@ -305,18 +379,20 @@ class TestStatusTransitionViaApi:
         assert response.data["status"] == "assigned"
 
     def test_status_invalid_transition_returns_400(
-        self, api_client, open_ticket, technician
+        self, api_client, open_ticket, technician, _assign_to
     ):
         """POST open→resolved (invalid) returns 400."""
+        _assign_to(open_ticket)
         api_client.force_authenticate(user=technician)
         url = f"/api/v1/tickets/{open_ticket.pk}/status/"
         response = api_client.post(url, {"status": "resolved"}, format="json")
         assert response.status_code == 400
 
     def test_status_pending_without_reason_returns_400(
-        self, api_client, open_ticket, technician
+        self, api_client, open_ticket, technician, _assign_to
     ):
         """POST to 'pending' without reason returns 400."""
+        _assign_to(open_ticket)
         api_client.force_authenticate(user=technician)
         base_url = f"/api/v1/tickets/{open_ticket.pk}/status/"
 
@@ -327,8 +403,11 @@ class TestStatusTransitionViaApi:
         response = api_client.post(base_url, {"status": "pending"}, format="json")
         assert response.status_code == 400
 
-    def test_status_pending_with_reason_ok(self, api_client, open_ticket, technician):
+    def test_status_pending_with_reason_ok(
+        self, api_client, open_ticket, technician, _assign_to
+    ):
         """POST to 'pending' with reason returns 200."""
+        _assign_to(open_ticket)
         api_client.force_authenticate(user=technician)
         base_url = f"/api/v1/tickets/{open_ticket.pk}/status/"
 
@@ -408,17 +487,14 @@ class TestAssignEndpoint:
 @pytest.mark.django_db
 class TestCommentEndpoints:
 
-    def test_post_public_comment(self, api_client, open_ticket, technician):
-        """POST a public comment returns 201."""
-        api_client.force_authenticate(user=technician)
-        url = f"/api/v1/tickets/{open_ticket.pk}/comments/"
-        response = api_client.post(
-            url, {"body": "Hello", "visibility": "public"}, format="json"
-        )
-        assert response.status_code == 201
+    # Public-comment 201 for the assignee is covered by
+    # test_ticket_action_scope.py::TestCommentGating::test_assigned_technician_can_comment.
 
-    def test_post_internal_comment(self, api_client, open_ticket, technician):
+    def test_post_internal_comment(
+        self, api_client, open_ticket, technician, _assign_to
+    ):
         """POST an internal comment returns 201."""
+        _assign_to(open_ticket)
         api_client.force_authenticate(user=technician)
         url = f"/api/v1/tickets/{open_ticket.pk}/comments/"
         response = api_client.post(
@@ -569,6 +645,34 @@ class TestFeedbackEndpoints:
         url = f"/api/v1/tickets/{open_ticket.pk}/feedback/"
         response = api_client.post(url, {"rating": 6}, format="json")
         assert response.status_code == 400
+
+    def test_detail_includes_feedback_after_submission(
+        self, api_client, open_ticket, technician, requester
+    ):
+        """QA D3 — ticket detail nests feedback once submitted; list stays lean."""
+        self._advance_to_resolved(open_ticket, technician)
+
+        api_client.force_authenticate(user=requester)
+        detail_url = f"/api/v1/tickets/{open_ticket.pk}/"
+
+        # Before submission: present but null (not erroring).
+        response = api_client.get(detail_url)
+        assert response.status_code == 200
+        assert response.data["feedback"] is None
+
+        api_client.post(
+            f"/api/v1/tickets/{open_ticket.pk}/feedback/",
+            {"rating": 4, "comment": "Quick fix, thanks"},
+            format="json",
+        )
+        response = api_client.get(detail_url)
+        assert response.data["feedback"]["rating"] == 4
+        assert response.data["feedback"]["comment"] == "Quick fix, thanks"
+
+        # List payload unchanged — no feedback key (detail-only nesting).
+        response = api_client.get("/api/v1/tickets/?mine=1")
+        results = response.data.get("results", response.data)
+        assert results and "feedback" not in results[0]
 
 
 # ---------------------------------------------------------------------------

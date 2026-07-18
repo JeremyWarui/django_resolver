@@ -6,6 +6,7 @@ from .views import (
     TicketDetailView,
     TicketStatusView,
     TicketAssignView,
+    TicketClaimView,
     TicketCommentListCreateView,
     TicketFeedbackView,
     TicketLogListView,
@@ -23,6 +24,7 @@ urlpatterns = [
     path("tickets/<int:pk>/", TicketDetailView.as_view(), name="ticket-detail"),
     path("tickets/<int:pk>/status/", TicketStatusView.as_view(), name="ticket-status"),
     path("tickets/<int:pk>/assign/", TicketAssignView.as_view(), name="ticket-assign"),
+    path("tickets/<int:pk>/claim/", TicketClaimView.as_view(), name="ticket-claim"),
     path(
         "tickets/<int:pk>/comments/",
         TicketCommentListCreateView.as_view(),

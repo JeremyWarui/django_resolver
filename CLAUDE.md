@@ -55,6 +55,9 @@ All reads go through `scoped_ticket_qs(user, role)` in `apps/tickets/services/sc
 
 ## Gotchas
 
+- **Lifecycle gates (§4.1):** reopen = `resolved/closed → open` and clears `assigned_to` + restarts SLA (`open` ⇒ unassigned — claim/assign rely on it). `TicketStatusView` gates per role: technician only on own-assigned tickets; requester only close/reopen own. Comments (POST) require `assigned_to` set and status ≠ `closed`; among technicians only the assignee. Claim: `POST /tickets/{pk}/claim/`, technician + own section + `open` + unassigned, `select_for_update`. Frontend transition mirror: `client/src/features/technician/StatusUpdateModal.tsx` `VALID_NEXT` — keep in sync with `ALLOWED`.
+- **Demoted role rows:** non-primary RoleAssignment with `valid_until IS NULL` = demoted ex-primary (audit only). Excluded from `available_roles` and rejected by `SwitchRoleView`; genuine covers always carry `valid_until`.
+
 - **Ticket numbers:** allocated via `TicketSequence.allocate(campus_department)` under `select_for_update`. Never parse `ticket_no` to generate the next one (raced + string-ordering bug). Gaps are fine. Tests: `tests/test_ticket_sequence.py`.
 - **IDOR guard:** every `/tickets/{pk}/...` action view fetches via `get_ticket_for_request_or_403()` (never bare `get_object_or_404`). `allow_requester=False` / `staff_only=True` where applicable. New sub-endpoint isn't done without an out-of-scope 403 test in `tests/test_ticket_action_scope.py`.
 - **Reference-data query params must filter (C15):** `?campus=` / `?department=` are wired in `get_queryset()` overrides (`apps/org/views.py`). New scoping param ⇒ wire the filter + negative test in the same commit.

@@ -453,16 +453,28 @@ class RoleAssignment(models.Model):
 
 ```
 open ─assign→ assigned ─start→ in_progress ─resolve→ resolved ─close→ closed
-                                   │  ▲                                  │
-                              hold │  │ resume                           │ reopen
-                                   ▼  │                                  ▼
-                                pending ──────────────────────────► in_progress
+  ▲                                │  ▲                │  │              │
+  │                           hold │  │ resume         │  │              │
+  │                                ▼  │       resolve  │  │    reopen    │
+  │                             pending ───────────────┘  └──────┐       │
+  └──────────────────────────────────────────────────────────────┴───────┘
 ```
 
 Allowed (else → 400): `open→assigned`, `assigned→in_progress`, `in_progress→pending`,
-`pending→in_progress`, `in_progress→resolved`, `resolved→closed`, `resolved→in_progress` (reopen),
-`closed→in_progress` (reopen). `pending` requires a reason (R8). There is **no approval/redirect
-transition and no `escalated` status** — escalation is the `current_level` axis (§4.3).
+`pending→in_progress`, `pending→resolved`, `in_progress→resolved`, `resolved→closed`,
+`resolved→open` (reopen), `closed→open` (reopen). `pending` requires a reason (R8). **Reopen
+restarts the lifecycle at `open`**: it clears `assigned_to` (`open` ⇒ unassigned — the assign and
+claim flows rely on this), recomputes both due dates from the reopen time, resets pause state, and
+clears `resolved_at`/`closed_at`; the original breach history stays in `TicketLog`. There is **no
+approval/redirect transition and no `escalated` status** — escalation is the `current_level` axis
+(§4.3).
+
+**Per-role transition gate** (enforced in `TicketStatusView` before the machine): supervisors
+(hos/hod/manager/admin) in scope are unrestricted; a **technician** may only transition tickets
+assigned to *them* (section scope alone is view-only); the **requester** may only close
+(`resolved→closed`, Rate & Close) or reopen (`→open`) their own ticket. `POST /tickets/{id}/claim/`
+lets a section technician self-assign an unassigned `open` ticket (race-safe via
+`select_for_update`; drives `open→assigned→in_progress` through `transition_status`).
 
 ### 4.2 SLA
 
@@ -502,7 +514,8 @@ lists are role-scoped server-side (§3.5).
 ### 5.1 Auth
 `POST /auth/login/` · `POST /auth/refresh/` · `POST /auth/logout/` · `GET /auth/me/` (profile + role
 + scope + active role assignments) · `POST /auth/switch-role/` (re-issue access token for another
-active role, §3.8) · `POST /auth/register/` (self-registration: campus required, username
+active role, §3.8; demoted ex-primaries — non-primary rows without `valid_until`, kept for audit per
+C16 — are rejected here and excluded from `available_roles`) · `POST /auth/register/` (self-registration: campus required, username
 auto-generated, password set at creation). **Refresh re-derives** role/scope claims from the current
 active `RoleAssignment` (never copies stale claims) and reports `roleChanged` so the client can force
 a clean relogin; a `role_changed` WS event triggers the same instantly. Admin role-cover CRUD:
@@ -526,11 +539,12 @@ CRUD: `/campuses/`, `/departments/` (`?campus=` scopes to departments present at
 | POST | `/tickets/` | any user | Create (server resolves section + priority) — **`service_item` (+location) only** |
 | GET | `/tickets/` | scoped | Role-scoped list (PageNumber, ordered `-updated_at`; filters: status, priority, section, campus, `current_level`, breaching) |
 | GET | `/tickets/?mine=1` | any user | **My Requests** — tickets I raised (requester context, §1.2) |
-| GET | `/tickets/{id}/` | scoped | Detail + merged timeline (visibility-aware) |
-| POST | `/tickets/{id}/status/` | technician+ | Transition (+reason for `pending`) |
+| GET | `/tickets/{id}/` | scoped | Detail + merged timeline (visibility-aware) + nested read-only `feedback` (null until rated; detail-only, never on the list) |
+| POST | `/tickets/{id}/status/` | per-role gate §4.1 | Transition (+reason for `pending`; requester: close/reopen own only) |
+| POST | `/tickets/{id}/claim/` | technician | Self-assign an unassigned `open` section ticket (§4.1) |
 | POST | `/tickets/{id}/assign/` | hos/hod | Assign/reassign within section pool |
 | POST | `/tickets/{id}/priority/` | hos+ | Adjust priority (never requester) |
-| GET/POST | `/tickets/{id}/comments/` | scoped | Comments (internal hidden from requester; cursor, `-created_at`) |
+| GET/POST | `/tickets/{id}/comments/` | scoped | Comments (internal hidden from requester; cursor, `-created_at`). **POST gated:** only once `assigned_to` is set and status ≠ `closed`; among technicians only the assignee may post |
 | POST | `/tickets/{id}/feedback/` | requester | Rate (once, at/after resolved) |
 | GET | `/tickets/{id}/logs/` | staff | Immutable audit (cursor, `-created_at`) |
 | GET/POST | `/tickets/{id}/attachments/` (+ `DELETE …/{att_id}/`) | scoped | File attachments |
